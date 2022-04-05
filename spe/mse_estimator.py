@@ -19,38 +19,60 @@ from .relaxed_lasso import RelaxedLasso
 
 class MSESimulator(object):
 
-  def _get_kfcv_mse(self, model, X, y, k):
-    kfcv_res = cross_validate(model, X, y, 
+  def _get_kfcv_mse(self,
+                    model,
+                    X,
+                    y,
+                    k):
+    kfcv_res = cross_validate(model,
+                              X,
+                              y, 
                               scoring='neg_mean_squared_error', 
                               cv=KFold(k, shuffle=True), 
                               error_score='raise')
     return -np.mean(kfcv_res['test_score'])
 
 
-  def _get_spcv_mse(self, model, X, y, k):
+  def _get_spcv_mse(self,
+                    model,
+                    X,
+                    y,
+                    k):
     groups = KMeans(n_clusters=k).fit(X).labels_
-    spcv_res = cross_validate(model, X, y, 
+    spcv_res = cross_validate(model,
+                              X,
+                              y, 
                               scoring='neg_mean_squared_error', 
                               cv=GroupKFold(k), 
                               groups=groups)
 
     return -np.mean(spcv_res['test_score'])
 
-  def _get_true_mse(self, model, X, X_pred, y, y_pred):
+  def _get_true_mse(self,
+                    model,
+                    X,
+                    X_pred,
+                    y,
+                    y_pred):
     model.fit(X, y)
 
     pred = model.predict(X_pred)
     resids = (y_pred - pred)**2
     return np.mean(resids)
 
-  def _get_gmcp_mse(self, model, 
-                  X_tr, X_ts, 
-                  y_tr, y_ts, 
-                  idx_tr, idx_ts, 
-                  model_type, 
-                  pred_type, 
-                  Sigma_s, 
-                  fit_intercept):
+  def _get_gmcp_mse(self,
+                    model, 
+                    X_tr,
+                    X_ts, 
+                    y_tr,
+                    y_ts, 
+                    idx_tr,
+                    idx_ts, 
+                    model_type, 
+                    pred_type, 
+                    Sigma_s, 
+                    fit_intercept):
+
     model.fit(X_tr, y_tr)
 
     if model_type == 'lasso':
@@ -87,19 +109,28 @@ class MSESimulator(object):
     return gmcp_resids + 2*np.diag(H_e @ Sigma_ss).sum() / len(y_ts)
             #gmcp_resids + 2*np.diag(H_e2 @ Sigma_ss2).sum() / len(y_ts))
 
-  def _get_naive_rand_mse(self, model, X_tr, X_pr, 
-                          y_sel, y_fit, y_pr):
+  def _get_naive_rand_mse(self,
+                          model,
+                          X_tr,
+                          X_pr, 
+                          y_sel,
+                          y_fit,
+                          y_pr):
     
-    model.fit(X_tr, y_sel, y_fit)
+    model.fit(X_tr,
+              y_sel,
+              y_fit)
 
     preds = model.predict(X_pr)
     return np.mean((y_pr - preds)**2)
 
-  def _get_full_correction(self, X_tr, X_ts, 
-                          Sigma, 
-                          A_perp, 
-                          n_ts,
-                          fit_intercept):
+  def _get_full_correction(self,
+                           X_tr,
+                           X_ts, 
+                           Sigma, 
+                           A_perp, 
+                           n_ts,
+                           fit_intercept):
 
     if fit_intercept:
       X_mat = np.hstack([np.ones((X_tr.shape[0],1)),X_tr])
@@ -116,13 +147,19 @@ class MSESimulator(object):
     
     return 2*np.diag(H_ts @ A_perp @ Sigma).sum() / n_ts
 
-  def _get_rand_mse(self, model, nboot, X, y, y2,
-                  idx_tr, idx_ts, 
-                  Sigma_t, Chol_o,
-                  Prec_o,# Sigma_wp,
-                  #  A_perp,
-                  ret_mse,
-                  fit_intercept):
+  def _get_rand_mse(self,
+                    model,
+                    nboot,
+                    X,
+                    y,
+                    y2,
+                    idx_tr,
+                    idx_ts, 
+                    Sigma_t,
+                    Chol_o,
+                    Prec_o,
+                    ret_mse,
+                    fit_intercept):
     
     X_tr = X[idx_tr,:]
     X_ts = X[idx_ts,:]
@@ -143,33 +180,46 @@ class MSESimulator(object):
 
     for b in np.arange(nboot):
       omega = Chol_o @ np.random.randn(len(y))
-      # omega_tr = omega[idx_tr]
-      # omega_ts = omega[idx_ts]
       w = y + omega
-      # w_tr = w[idx_tr]
-      # w_ts = w[idx_ts]
-      # Cov_ot = Sigma_t @ Prec_o
       w_perp = y_ts - (Cov_ot @ omega)[idx_ts]
       omega_2 = Chol_o @ np.random.randn(len(y))
       w0 = w + omega_2
-      w1 = w - (Cov_ot @ omega_2)#[idx_ts,:]
+      w1 = w - (Cov_ot @ omega_2)
 
       # model.fit(X_tr, w, y_tr) # full
       # model.fit(X_tr, w, w) # nonhonest
       # model.fit(X_tr, w0, w1) # honest
-      full_naive_mse = self._get_naive_rand_mse(model, X, X_ts, w, y, w_perp)
+
+      full_naive_mse = self._get_naive_rand_mse(model,
+                                                X,
+                                                X_ts,
+                                                w,
+                                                y,
+                                                w_perp)
       # A_perp_inv = np.eye(Sigma_t.shape[0]) + Cov_ot
       # A_perp = np.linalg.inv(A_perp_inv)
       # Sigma_wp = A_perp_inv @ Sigma_t
+
       full_correction = self._get_full_correction(X[:,model.E_], 
-                                            X_ts[:,model.E_], 
-                                            Sigma_wp[:,idx_ts],
-                                            A_perp,#[:,idx_ts],
-                                            len(y_ts),
-                                            fit_intercept)
+                                                  X_ts[:,model.E_], 
+                                                  Sigma_wp[:,idx_ts],
+                                                  A_perp,
+                                                  len(y_ts),
+                                                  fit_intercept)
       
-      nonhonest_naive_mse = self._get_naive_rand_mse(model, X, X_ts, w, w, w_perp)
-      honest_naive_mse = self._get_naive_rand_mse(model, X, X_ts, w0, w1, w_perp)
+      nonhonest_naive_mse = self._get_naive_rand_mse(model,
+                                                     X,
+                                                     X_ts,
+                                                     w,
+                                                     w,
+                                                     w_perp)
+
+      honest_naive_mse = self._get_naive_rand_mse(model,
+                                                  X,
+                                                  X_ts,
+                                                  w0,
+                                                  w1,
+                                                  w_perp)
 
 
       # Sigma_wp = (np.eye(Sigma_t.shape[0]) + Cov_ot)[idx_ts,:] @ Sigma_t[:,idx_ts]
@@ -186,59 +236,38 @@ class MSESimulator(object):
       honest_mse[b] = honest_naive_mse# + wp_correction
 
     
-    true_mse = self._get_naive_rand_mse(model, X, X_ts, w, y, y2[idx_ts])
+    true_mse = self._get_naive_rand_mse(model,
+                                        X,
+                                        X_ts,
+                                        w,
+                                        y,
+                                        y2[idx_ts])
 
-    return full_mse.mean() + wp_correction + full_correction, nonhonest_mse.mean() + wp_correction, honest_mse.mean() + wp_correction, true_mse
+    return (full_mse.mean() + wp_correction + full_correction,
+            nonhonest_mse.mean() + wp_correction,
+            honest_mse.mean() + wp_correction,
+            true_mse)
 
-    # if model_type == 'lasso':
-    #   XE_tr = X_tr[:, model.E_]
-    #   XE_ts = X_ts[:, model.E_]
-    # elif model_type == 'linear':
-    #   XE_tr = X_tr
-    #   XE_ts = X_ts
-
-    # if fit_intercept:
-    #   X_mat = np.hstack([np.ones((XE_tr.shape[0],1)),XE_tr])
-    #   X_mat_ts = np.hstack([np.ones((XE_ts.shape[0],1)),XE_ts])
-    # else:
-    #   X_mat = XE_tr
-    #   X_mat_ts = XE_ts
-    # XtXinv = np.linalg.inv(X_mat.T.dot(X_mat)).dot(X_mat.T)
-
-    # H = X_mat.dot(XtXinv)
-    # H_ts = X_mat_ts.dot(XtXinv)
-    # idxs = np.concatenate([idx_tr, idx_ts])
-    # if pred_type == 'test':
-    #   gmcp_pr = model.predict(X_ts)
-    #   gmcp_resids = np.mean((w_perp - gmcp_pr)**2)
-    #   H_e = np.hstack([H_ts,np.zeros((H_ts.shape[0],X_ts.shape[0]))])
-    #   Sigma_ss = Sigma_s[idxs,:][:, idx_ts]
-    # elif pred_type == 'train':
-    #   gmcp_pr = model.predict(X_tr)
-    #   gmcp_resids = np.mean((y_tr - gmcp_pr)**2)
-    #   H_e = H
-    #   Sigma_ss = Sigma_s[idx_tr,:][:, idx_tr]
-    
-    # return gmcp_resids + 2*np.diag(H_e @ Sigma_ss).sum() / len(y_ts)
-
-  def cv_compare(self, niter=100, n=200,
-                p=50,
-                s=5,
-                reps=100,
-                alpha=1.,
-                nboot=100,
-                eps_sigma=1,
-                snr=None,
-                block_corr=0.6,
-                inter_corr=0.,
-                train_frac=0.1,
-                test_frac=0.1,
-                k=5,
-                fit_intercept=False,
-                model_type='linear',
-                lambd=1.,
-                pred_type='train',
-                ret_mse=True):
+  def cv_compare(self,
+                 niter=100,
+                 n=200,
+                 p=50,
+                 s=5,
+                 reps=100,
+                 alpha=1.,
+                 nboot=100,
+                 eps_sigma=1,
+                 snr=None,
+                 block_corr=0.6,
+                 inter_corr=0.,
+                 train_frac=0.1,
+                 test_frac=0.1,
+                 k=5,
+                 fit_intercept=False,
+                 model_type='linear',
+                 lambd=1.,
+                 pred_type='train',
+                 ret_mse=True):
 
     (self.n,
      self.p,
@@ -261,6 +290,7 @@ class MSESimulator(object):
                       block_corr,
                       inter_corr,
                       ret_mse)
+
     n_train = int(n*train_frac*reps)
     n_tot = int(n*(train_frac + test_frac)*reps)
 
@@ -277,12 +307,14 @@ class MSESimulator(object):
     self.nhnst_mse = np.zeros(niter)
     self.hnst_mse = np.zeros(niter)
 
-    self.data_gen = DataGen(n, p, s,
-                      snr=snr,
-                      eps_sigma=eps_sigma, 
-                      block_corr=block_corr, 
-                      inter_corr=inter_corr, 
-                      intercept=fit_intercept)
+    self.data_gen = DataGen(n,
+                            p,
+                            s,
+                            snr=snr,
+                            eps_sigma=eps_sigma, 
+                            block_corr=block_corr, 
+                            inter_corr=inter_corr, 
+                            intercept=fit_intercept)
     
     self.eps_sigma = eps_sigma = self.data_gen.eps_sigma
     self.snr = snr = self.data_gen.snr
@@ -293,20 +325,12 @@ class MSESimulator(object):
       model = RelaxedLasso(lambd=lambd, 
                            fit_intercept=fit_intercept)
 
-    # if pred_type == 'test':
-    #   Sigma_o = np.eye(n_tot)*alpha*eps_sigma**2
-    #   Prec_o = np.eye(n_tot)/(alpha*eps_sigma**2)
-    # else:
-    #   Sigma_o = np.eye(n_train)*alpha*eps_sigma**2
-    #   Prec_o = np.eye(n_train)/(alpha*eps_sigma**2)
-    
     n_rand = n_tot if pred_type == 'test' else n_train
     Sigma_o = np.eye(n_rand)*alpha*eps_sigma**2
     Prec_o = np.eye(n_rand)/(alpha*eps_sigma**2)
     
     Chol_o = np.linalg.cholesky(Sigma_o)
 
-    # Sigma_wp = Sigma_s + Sigma_s.dot(Sigma_s) / (alpha*eps_sigma**2)
     gen_idx_tr = None
     gen_idx_ts = None
 
@@ -316,23 +340,30 @@ class MSESimulator(object):
         self.data_gen.reset_data()
       
       if train_frac > 0:
-        (idx_tr, orig_idx_tr, X_tr, 
-        y_tr, y_tr2, beta, eps_tr) = self.data_gen.get_sample(frac=train_frac, 
-                                                          reps=reps, 
-                                                          sample_idx=gen_idx_tr,
-                                                          return_replicate=True)
+        (idx_tr,
+         orig_idx_tr,
+         X_tr, 
+         y_tr,
+         y_tr2,
+         beta,
+         eps_tr) = self.data_gen.get_sample(frac=train_frac, 
+                                            reps=reps, 
+                                            sample_idx=gen_idx_tr,
+                                            return_replicate=True)
         if gen_idx_tr is None:
           gen_idx_tr = orig_idx_tr
       
-      # tr_bool = np.zeros(n*reps, dtype=bool)
-      # tr_bool[idx_tr] = True
-      
       if test_frac > 0:
-        (idx_ts, orig_idx_ts, X_ts, 
-        y_ts, y_ts2, _, eps_ts) = self.data_gen.get_sample(frac=test_frac, 
-                                                      reps=reps, 
-                                                      sample_idx=gen_idx_ts,
-                                                      return_replicate=True)
+        (idx_ts,
+         orig_idx_ts,
+         X_ts, 
+         y_ts,
+         y_ts2,
+         _,
+         eps_ts) = self.data_gen.get_sample(frac=test_frac, 
+                                            reps=reps, 
+                                            sample_idx=gen_idx_ts,
+                                            return_replicate=True)
         if gen_idx_ts is None:
           gen_idx_ts = orig_idx_ts
       
@@ -341,15 +372,28 @@ class MSESimulator(object):
       self.spcv_mse[i] = self._get_spcv_mse(model, X_tr, y_tr, k)
       
       if model_type == 'linear':
-        self.true_mse[i] = self._get_true_mse(model, X_tr, X_ts, y_tr, y_ts2) if \
-                        pred_type == 'test' else self._get_true_mse(model, X_tr, X_tr, y_tr, y_tr2)
+        self.true_mse[i] = (self._get_true_mse(model,
+                                              X_tr,
+                                              X_ts,
+                                              y_tr,
+                                              y_ts2) if pred_type == 'test' else
+                            self._get_true_mse(model,
+                                               X_tr,
+                                               X_tr,
+                                               y_tr,
+                                               y_tr2)
 
-        self.gmcp_mse[i] = self._get_gmcp_mse(model, X_tr, X_ts, 
-                                  y_tr, y_ts, 
-                                  idx_tr, idx_ts, 
-                                  model_type, 
-                                  pred_type, Sigma_s,
-                                  fit_intercept)
+        self.gmcp_mse[i] = self._get_gmcp_mse(model,
+                                              X_tr,
+                                              X_ts, 
+                                              y_tr,
+                                              y_ts, 
+                                              idx_tr,
+                                              idx_ts, 
+                                              model_type, 
+                                              pred_type,
+                                              Sigma_s,
+                                              fit_intercept)
       
       if model_type == 'lasso':
         if pred_type == 'test':
@@ -358,35 +402,32 @@ class MSESimulator(object):
           self.nhnst_mse[i], 
           self.hnst_mse[i],
           self.true_mse[i]) = self._get_rand_mse(model, nboot,
-                                                np.vstack([X_tr, X_ts]), 
-                                                np.concatenate([y_tr,y_ts]), 
-                                                np.concatenate([y_tr2,y_ts2]), 
-                                                np.arange(len(y_tr)), 
-                                                np.arange(len(y_tr),len(y_tr) + len(y_ts)),
-                                                Sigma_s[idxs,:][:,idxs],
-                                                Chol_o,
-                                                Prec_o,
-                                                # Sigma_wp[idxs,:][:,idxs],
-                                                ret_mse,
-                                                fit_intercept)
+                                                 np.vstack([X_tr, X_ts]), 
+                                                 np.concatenate([y_tr,y_ts]), 
+                                                 np.concatenate([y_tr2,y_ts2]), 
+                                                 np.arange(len(y_tr)), 
+                                                 np.arange(len(y_tr),len(y_tr) + len(y_ts)),
+                                                 Sigma_s[idxs,:][:,idxs],
+                                                 Chol_o,
+                                                 Prec_o,
+                                                 ret_mse,
+                                                 fit_intercept)
         else:
           (self.frft_mse[i], 
-          self.nhnst_mse[i], 
-          self.hnst_mse[i],
-          self.true_mse[i]) = self._get_rand_mse(model, nboot,
-                                                X_tr, 
-                                                y_tr, 
-                                                y_tr2, 
-                                                np.arange(len(y_tr)), 
-                                                np.arange(len(y_tr)),
-                                                Sigma_s[idx_tr,:][:,idx_tr],
-                                                Chol_o,
-                                                Prec_o,
-                                                # Sigma_wp[idxs,:][:,idxs],
-                                                ret_mse,
-                                                fit_intercept)
+           self.nhnst_mse[i], 
+           self.hnst_mse[i],
+           self.true_mse[i]) = self._get_rand_mse(model, nboot,
+                                                  X_tr, 
+                                                  y_tr, 
+                                                  y_tr2, 
+                                                  np.arange(len(y_tr)), 
+                                                  np.arange(len(y_tr)),
+                                                  Sigma_s[idx_tr,:][:,idx_tr],
+                                                  Chol_o,
+                                                  Prec_o,
+                                                  ret_mse,
+                                                  fit_intercept)
         
-
     return (self.true_mse, 
             self.kfcv_mse, 
             self.spcv_mse, 
@@ -406,8 +447,12 @@ class MSESimulator(object):
     mse_df['idx'] = mse_df.index.values
     mse_df.set_index('idx')
     mse_df.reset_index()
-    long_df = pd.melt(mse_df, id_vars='idx', value_vars=['spcv_mse','kfcv_mse', 'gmcp_mse', 
-                                                        'frft_mse', 'nhnst_mse', 'hnst_mse'])
+    long_df = pd.melt(mse_df, id_vars='idx', value_vars=['spcv_mse',
+                                                         'kfcv_mse',
+                                                         'gmcp_mse', 
+                                                         'frft_mse',
+                                                         'nhnst_mse',
+                                                         'hnst_mse'])
     long_df.drop(columns='idx',inplace=True)
 
     fig = px.box(long_df, 
