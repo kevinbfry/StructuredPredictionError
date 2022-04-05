@@ -381,7 +381,7 @@ class MSESimulator(object):
                                                X_tr,
                                                X_tr,
                                                y_tr,
-                                               y_tr2)
+                                               y_tr2))
 
         self.gmcp_mse[i] = self._get_gmcp_mse(model,
                                               X_tr,

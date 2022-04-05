@@ -26,7 +26,6 @@ Fit lasso on $(X, y + \omega)$, then refit on $(X_E, y)$
 
 ```{python id="eqJsW_e6OEAJ"}
 import numpy as np
-import plotly.express as px
 ```
 
 ```{python id="kYxm6yG7fKdW"}
