@@ -1,14 +1,11 @@
 from itertools import product
 
 import numpy as np
-import pandas as pd
 
 from scipy.linalg import block_diag
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_validate, GroupKFold, KFold
 from sklearn.cluster import KMeans
-
-import plotly.express as px
 
 from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
@@ -432,36 +429,6 @@ class MSESimulator(object):
             self.nhnst_mse,
             self.hnst_mse)
 
-  def gen_boxplot(self):
-    
-    mse_df = pd.DataFrame({'kfcv_mse': (self.kfcv_mse)/self.true_mse,
-                           'spcv_mse': (self.spcv_mse)/self.true_mse,
-                           'gmcp_mse': (self.gmcp_mse)/self.true_mse,
-                           'frft_mse': (self.frft_mse)/self.true_mse,
-                           'nhnst_mse': (self.nhnst_mse)/self.true_mse,
-                           'hnst_mse': (self.hnst_mse)/self.true_mse})
-    mse_df['idx'] = mse_df.index.values
-    mse_df.set_index('idx')
-    mse_df.reset_index()
-    long_df = pd.melt(mse_df, id_vars='idx', value_vars=['spcv_mse',
-                                                         'kfcv_mse',
-                                                         'gmcp_mse', 
-                                                         'frft_mse',
-                                                         'nhnst_mse',
-                                                         'hnst_mse'])
-    long_df.drop(columns='idx',inplace=True)
-
-    fig = px.box(long_df, 
-                  x='variable',
-                  y='value',
-                  color='variable',
-                  points='all',
-                  title=f'{self.n*self.reps}x{self.p}, {self.reps} repls, {self.niter} its, {self.block_corr} blk corr, {self.inter_corr} intr corr',
-                  labels={'variable': 'Validation Method',
-                          'value': 'Relative MSE'})
-    fig.update_traces(boxmean=True)
-    fig.add_hline(y=1.)
-    return fig
   
 
 

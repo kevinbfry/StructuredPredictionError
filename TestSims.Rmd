@@ -26,6 +26,8 @@ Fit lasso on $(X, y + \omega)$, then refit on $(X_E, y)$
 
 ```{python id="eqJsW_e6OEAJ"}
 import numpy as np
+import pandas as pd
+import plotly.express as px
 ```
 
 ```{python id="kYxm6yG7fKdW"}
@@ -74,7 +76,40 @@ lambd=0.5
 ```
 
 ```{python colab={'base_uri': 'https://localhost:8080/', 'height': 0}, outputId="337db6a1-5d5a-4998-8e93-27e437706a31", id="Hd6i-pt9u0cS"}
-fig = mse_sim.gen_boxplot()
+
+def gen_boxplot(mse_sim):
+    
+  mse_df = pd.DataFrame({'kfcv_mse': (mse_sim.kfcv_mse)/mse_sim.true_mse,
+                         'spcv_mse': (mse_sim.spcv_mse)/mse_sim.true_mse,
+                         'gmcp_mse': (mse_sim.gmcp_mse)/mse_sim.true_mse,
+                         'frft_mse': (mse_sim.frft_mse)/mse_sim.true_mse,
+                         'nhnst_mse': (mse_sim.nhnst_mse)/mse_sim.true_mse,
+                         'hnst_mse': (mse_sim.hnst_mse)/mse_sim.true_mse})
+  mse_df['idx'] = mse_df.index.values
+  mse_df.set_index('idx')
+  mse_df.reset_index()
+  long_df = pd.melt(mse_df, id_vars='idx', value_vars=['spcv_mse',
+                                                       'kfcv_mse',
+                                                       'gmcp_mse', 
+                                                       'frft_mse',
+                                                       'nhnst_mse',
+                                                       'hnst_mse'])
+  long_df.drop(columns='idx',inplace=True)
+
+  fig = px.box(long_df, 
+               x='variable',
+               y='value',
+               color='variable',
+               points='all',
+               title=f'{mse_sim.n*mse_sim.reps}x{mse_sim.p}, {mse_sim.reps} repls, {mse_sim.niter} its, {mse_sim.block_corr} blk corr, {mse_sim.inter_corr} intr corr',
+               labels={'variable': 'Validation Method',
+                       'value': 'Relative MSE'})
+  fig.update_traces(boxmean=True)
+  fig.add_hline(y=1.)
+  return fig
+
+fig = gen_boxplot(mse_sim)
 fig.show()
+
 ```
 
