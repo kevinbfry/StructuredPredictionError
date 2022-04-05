@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class DataGen():
 
   def __init__(self, 
