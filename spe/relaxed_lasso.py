@@ -1,24 +1,15 @@
 import numpy as np
-from numpy.core.numeric import allclose
-import pandas as pd
-from scipy.linalg import toeplitz, block_diag
-from scipy.spatial.distance import cdist
-from itertools import product
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import Ridge, LinearRegression, Lasso
-from sklearn.model_selection import cross_validate, GroupKFold, KFold
-from sklearn.cluster import KMeans
+from sklearn.linear_model import LinearRegression, Lasso
 
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-
 
 class RelaxedLasso(BaseEstimator):
   def __init__(self, 
                lambd=1.0, 
                fit_intercept=True, 
-              #  lasso_type='relaxed',
-              #  refit_type='full',
+               #  lasso_type='relaxed',
+               #  refit_type='full',
                normalize='deprecated', 
                precompute=False, 
                copy_X=True, 
@@ -30,8 +21,8 @@ class RelaxedLasso(BaseEstimator):
                selection='cyclic'):
     (self.lambd, 
      self.fit_intercept,
-    #  self.lasso_type,
-    #  self.refit_type,
+     #  self.lasso_type,
+     #  self.refit_type,
      self.normalize,
      self.precompute,
      self.copy_X,
@@ -71,7 +62,9 @@ class RelaxedLasso(BaseEstimator):
                                  positive=positive)
     
 
-  def fit(self, X, lasso_y, lin_y=None,
+  def fit(self, X,
+          lasso_y,
+          lin_y=None,
           sample_weight=None,
           check_input=True):
 
@@ -83,19 +76,22 @@ class RelaxedLasso(BaseEstimator):
                     check_input=check_input)
     
     self.E_ = E = np.where(self.lassom.coef_ != 0)[0]
-    self.XE_ = XE = X[:,E]
+    if self.E_.shape[0] != 0:
+      self.XE_ = XE = X[:,E]
+    else:
+      self.XE_ = XE = np.zeros((X.shape[0], 1))
 
-    self.linm.fit(XE, lin_y,
+    self.linm.fit(XE,
+                  lin_y,
                   sample_weight=sample_weight)
 
-    # self.linm.fit(X, lin_y,
-    #               sample_weight=sample_weight)
-    
     return self
     
 
   def predict(self, X):
-    XE = X[:,self.E_]
+    if self.E_.shape[0] != 0:
+      XE = X[:,self.E_]
+    else:
+      XE = np.zeros((X.shape[0], 1))
     return self.linm.predict(XE)
 
-    # return self.linm.predict(X)
