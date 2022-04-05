@@ -12,3 +12,9 @@ Can be installed via `poetry`:
 pip install poetry
 poetry install
 ```
+
+## Tests
+
+```
+pytest spe
+```
