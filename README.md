@@ -4,7 +4,7 @@ Structured Data Prediction Error Estimation
 
 ## Install
 
-Project dependencies are in `pyptoject.toml` file.
+Project dependencies are in `pyproject.toml` file.
 
 Can be installed via `poetry`:
 

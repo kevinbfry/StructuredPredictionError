@@ -3,12 +3,79 @@ from itertools import product
 import numpy as np
 
 from scipy.linalg import block_diag
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.model_selection import cross_validate, GroupKFold, KFold
 from sklearn.cluster import KMeans
 
 from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
+from .estimators import KFoldCV, KMeansCV, TestSetEstimator, CB, CBIsotropic#, BlurLinear
+
+class ErrorComparer(object):
+
+  def compareIID(self, 
+                 niter=100,
+                 n=100,
+                 p=200,
+                 s=5,
+                 snr=0.4,
+                 model=Lasso(),
+                 alpha=0.05):
+
+    X = np.random.randn(n,p)
+    
+    beta = np.zeros(p)
+    idx = np.random.choice(p,size=s)
+    beta[idx] = np.random.uniform(-1,1,size=s)
+
+    mu = X @ beta
+    sigma = np.sqrt(np.var(mu)/snr)
+
+    test_err = np.zeros(niter)
+    test_err_alpha = np.zeros(niter)
+    cb_err = np.zeros(niter)
+    cbiso_err = np.zeros(niter)
+
+    test_est = TestSetEstimator()
+    cb_est = CB()
+    cbiso_est = CBIsotropic()
+
+    for i in np.arange(niter):
+      y = mu + sigma * np.random.randn(n)
+      y_test = mu + sigma * np.random.randn(n)
+      y_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
+      y_test_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
+
+      test_err[i] = test_est._estimate(model,
+                                       X, 
+                                       y, 
+                                       y_test, 
+                                       Chol_t=np.eye(n)*sigma, 
+                                       est_risk=True)
+      test_err_alpha[i] = test_est._estimate(model,
+                                             X, 
+                                             y_alpha, 
+                                             y_test_alpha, 
+                                             Chol_t=np.eye(n)*np.sqrt(1+alpha)*sigma, 
+                                             est_risk=True)
+      cb_err[i] = cb_est._estimate(X, 
+                                   y, 
+                                   Chol_t=np.eye(n)*sigma, 
+                                   Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+                                   model=model,
+                                   est_risk=True)
+      cbiso_err[i] = cbiso_est._estimate(X,
+                                         y,
+                                         sigma=sigma,
+                                         alpha=alpha,
+                                         model=model,
+                                         est_risk=True)
+
+    return (test_err,
+            test_err_alpha,
+            cb_err,
+            cbiso_err)
+
 
 class MSESimulator(object):
 
