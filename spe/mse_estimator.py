@@ -6,75 +6,114 @@ from scipy.linalg import block_diag
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.model_selection import cross_validate, GroupKFold, KFold
 from sklearn.cluster import KMeans
+from sklearn.base import clone
 
 from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
-from .estimators import KFoldCV, KMeansCV, TestSetEstimator, CB, CBIsotropic#, BlurLinear
+from .estimators import KFoldCV, KMeansCV, TestSetEstimator, CB, CBIsotropic, BlurLinear
 
 class ErrorComparer(object):
+  def _estimate(self, 
+                model, 
+                X, 
+                y,
+                y_test,
+                Chol_t=None, 
+                Theta=None,
+                est_risk=True):
+
+    (n, p) = X.shape
+
+    if Chol_t is None:
+      Chol_t = np.eye(n)
+
+    Sigma_t = Chol_t @ Chol_t.T
+
+    if Theta is None:
+      Theta = np.eye(n)
+
+    Sigma_t_Theta = Sigma_t @ Theta
+
+    model.fit(X, y)
+    preds = model.predict(X)
+    sse = np.sum((y_test - preds)**2)
+
+    return (sse - np.diag(Sigma_t_Theta).sum()*est_risk) / n
 
   def compareIID(self, 
                  niter=100,
                  n=100,
                  p=200,
                  s=5,
-                 snr=0.4,
+                 snr=0.4, 
+                 X=None,
+                 beta=None,
                  model=Lasso(),
-                 alpha=0.05):
+                 alpha=0.05,
+                 est_risk=True):
 
-    X = np.random.randn(n,p)
-    
-    beta = np.zeros(p)
-    idx = np.random.choice(p,size=s)
-    beta[idx] = np.random.uniform(-1,1,size=s)
 
-    mu = X @ beta
-    sigma = np.sqrt(np.var(mu)/snr)
-
-    test_err = np.zeros(niter)
-    test_err_alpha = np.zeros(niter)
-    cb_err = np.zeros(niter)
-    cbiso_err = np.zeros(niter)
+    self.test_err = np.zeros(niter)
+    self.test_err_alpha = np.zeros(niter)
+    self.cb_err = np.zeros(niter)
+    self.cbiso_err = np.zeros(niter)
 
     test_est = TestSetEstimator()
     cb_est = CB()
     cbiso_est = CBIsotropic()
 
+    gen_beta = X is None or beta is None
+
+    if not gen_beta:
+      mu = X @ beta
+      sigma = np.sqrt(np.var(mu)/snr)
+      n, p = X.shape
+
     for i in np.arange(niter):
+    
+      if gen_beta:
+        X = np.random.randn(n,p)
+        beta = np.zeros(p)
+        idx = np.random.choice(p,size=s)
+        beta[idx] = np.random.uniform(-1,1,size=s)
+
+        mu = X @ beta
+        sigma = np.sqrt(np.var(mu)/snr)
+
       y = mu + sigma * np.random.randn(n)
       y_test = mu + sigma * np.random.randn(n)
       y_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
       y_test_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
 
-      test_err[i] = test_est._estimate(model,
-                                       X, 
-                                       y, 
-                                       y_test, 
-                                       Chol_t=np.eye(n)*sigma, 
-                                       est_risk=True)
-      test_err_alpha[i] = test_est._estimate(model,
-                                             X, 
-                                             y_alpha, 
-                                             y_test_alpha, 
-                                             Chol_t=np.eye(n)*np.sqrt(1+alpha)*sigma, 
-                                             est_risk=True)
-      cb_err[i] = cb_est._estimate(X, 
-                                   y, 
-                                   Chol_t=np.eye(n)*sigma, 
-                                   Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
-                                   model=model,
-                                   est_risk=True)
-      cbiso_err[i] = cbiso_est._estimate(X,
-                                         y,
-                                         sigma=sigma,
-                                         alpha=alpha,
-                                         model=model,
-                                         est_risk=True)
+      self.test_err[i] = test_est._estimate(model=model,
+                                            X=X, 
+                                            y=y, 
+                                            y_test=y_test, 
+                                            Chol_t=np.eye(n)*sigma, 
+                                            est_risk=est_risk)
+      self.test_err_alpha[i] = test_est._estimate(model=model,
+                                                  X=X, 
+                                                  y=y_alpha, 
+                                                  y_test=y_test_alpha, 
+                                                  Chol_t=np.eye(n)*np.sqrt(1+alpha)*sigma, 
+                                                  est_risk=est_risk)
+      self.cb_err[i] = cb_est._estimate(X=X, 
+                                        y=y, 
+                                        Chol_t=np.eye(n)*sigma, 
+                                        Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+                                        model=model,
+                                        est_risk=est_risk)
+      self.cbiso_err[i] = cbiso_est._estimate(X,
+                                              y,
+                                              sigma=sigma,
+                                              alpha=alpha,
+                                              model=model,
+                                              est_risk=est_risk)
 
-    return (test_err,
-            test_err_alpha,
-            cb_err,
-            cbiso_err)
+    return (self.test_err,
+            self.test_err_alpha,
+            self.cb_err,
+            self.cbiso_err)
 
 
 class MSESimulator(object):
