@@ -15,44 +15,8 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
 
-class RandEstimator(object):
-  def __init__(self):
-    pass
-  # def __init__(self, 
-  #              model):
-  #   self.model = model
 
-
-  # def estimate_risk(self,
-  #                   X,
-  #                   y,
-  #                   nboot=100,
-  #                   model=LinearRegression(),
-  #                   kwargs={}):
-
-  #   return self._estimate(X=X,
-  #                         y=y,
-  #                         nboot=nboot, 
-  #                         model=model,
-  #                         est_risk=True,
-  #                         **kwargs)
-
-  # def estimate_mse(self,
-  #                  X,
-  #                  y,
-  #                  nboot=100,
-  #                  model=LinearRegression(),
-  #                  kwargs={}):
-
-  #   return self._estimate(X=X,
-  #                         y=y,
-  #                         nboot=nboot, 
-  #                         model=model, 
-  #                         est_risk=False,
-  #                         **kwargs)
-
-
-class CBIsotropic(RandEstimator):
+class CBIsotropic(object):
 
   def _estimate(self,
                 X,
@@ -84,11 +48,11 @@ class CBIsotropic(RandEstimator):
 
       boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(eps**2)/alpha
 
-    return (boot_ests.mean() + (n*sigma**2)*(alpha - (1+alpha)*est_risk)) / n
+    return boot_ests.mean()/n  + (sigma**2)*(alpha - (1+alpha)*est_risk)
     # return boot_ests.mean()/n - (sigma**2)*est_risk
 
 
-class CB(RandEstimator):
+class CB(object):
 
   def _estimate(self,
                 X, 
@@ -141,14 +105,14 @@ class CB(RandEstimator):
     return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk + np.diag(Sigma_eps_Theta).sum()*(1 - est_risk)) / n
 
 
-class BlurLinear(RandEstimator):
+class BlurLinear(object):
   
   def _estimate(self,
                 X, 
                 y, 
                 Chol_t=None, 
                 Chol_eps=None,
-                Theta=None,
+                # Theta=None,
                 nboot=100,
                 model=LinearRegression(),
                 est_risk=True):
@@ -173,26 +137,26 @@ class BlurLinear(RandEstimator):
 
     proj_t_eps = Sigma_t @ Prec_eps
 
-    if Theta is None:
-      Theta = np.eye(n)
-    Sigma_t_Theta = Sigma_t @ Theta
+    # if Theta is None:
+    #   Theta = np.eye(n)
+    Sigma_t_Theta = Sigma_t# @ Theta
 
     P = X @ np.linalg.inv(X.T @ X) @ X.T
 
     boot_ests = np.zeros(nboot)
 
     for b in np.arange(nboot):
-      eps = self.Chol_t @ np.random.randn(self.n)
+      eps = Chol_eps @ np.random.randn(n)
       w = y + eps
-      regress_t_eps = self.proj_t_eps @ eps
+      regress_t_eps = proj_t_eps @ eps
       wp = y - regress_t_eps
 
       model.fit(X, w)
       yhat = model.predict(X)
 
-      boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) - np.sum((self.P @ eps)**2)
+      boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) - np.sum((P @ eps)**2)
 
-    return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / self.n
+    return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / n
 
 
 class KFoldCV(object):
@@ -255,6 +219,8 @@ class TestSetEstimator(object):
     model.fit(X, y)
     preds = model.predict(X)
     sse = np.sum((y_test - preds)**2)
+
+    # print(np.diag(Sigma_t_Theta).sum())
 
     return (sse - np.diag(Sigma_t_Theta).sum()*est_risk) / n
 
