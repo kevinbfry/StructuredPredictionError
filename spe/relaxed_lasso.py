@@ -71,9 +71,21 @@ class RelaxedLasso(BaseEstimator):
     if lin_y is None:
       lin_y = lasso_y.copy()
 
-    self.lassom.fit(X, lasso_y,
+    self.lassom.fit(X, 
+                    lasso_y,
                     sample_weight=sample_weight,
                     check_input=check_input)
+    
+    self.fit_linear(X, 
+                    lin_y, 
+                    sample_weight=sample_weight)
+
+    return self
+
+  def fit_linear(self, 
+                 X, 
+                 y, 
+                 sample_weight=None):
     
     self.E_ = E = np.where(self.lassom.coef_ != 0)[0]
     if self.E_.shape[0] != 0:
@@ -82,16 +94,14 @@ class RelaxedLasso(BaseEstimator):
       self.XE_ = XE = np.zeros((X.shape[0], 1))
 
     self.linm.fit(XE,
-                  lin_y,
+                  y,
                   sample_weight=sample_weight)
-
-    return self
     
 
   def predict(self, X):
     if self.E_.shape[0] != 0:
-      XE = X[:,self.E_]
+      self.predXE_ = XE = X[:,self.E_]
     else:
-      XE = np.zeros((X.shape[0], 1))
+      self.predXE_ = XE = np.zeros((X.shape[0], 1))
     return self.linm.predict(XE)
 

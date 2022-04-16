@@ -159,6 +159,73 @@ class BlurLinear(object):
     return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / n
 
 
+## only full refit for now
+class BlurLasso(object):
+  
+  def _estimate(self,
+                X, 
+                y, 
+                Chol_t=None, 
+                Chol_eps=None,
+                nboot=1,
+                model=RelaxedLasso(),
+                type='full',
+                est_risk=True):
+
+    X = X
+    y = y
+    (n, p) = X.shape
+
+    if Chol_eps is None:
+      Chol_eps = np.eye(n)
+      Sigma_eps = Chol_eps
+    else:
+      Sigma_eps = Chol_eps @ Chol_eps.T
+    
+    Prec_eps = np.linalg.inv(Sigma_eps)
+
+    if Chol_t is None:
+      Chol_t = np.eye(n)
+      Sigma_t = np.eye(n)
+    else:
+      Sigma_t = Chol_t @ Chol_t.T
+
+    proj_t_eps = Sigma_t @ Prec_eps
+
+    # if Theta is None:
+    #   Theta = np.eye(n)
+    Sigma_t_Theta = Sigma_t# @ Theta
+
+    Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
+    Aperp = np.linalg.inv(Aperpinv)
+
+    boot_ests = np.zeros(nboot)
+
+    for b in np.arange(nboot):
+      eps = Chol_eps @ np.random.randn(n)
+      w = y + eps
+      regress_t_eps = proj_t_eps @ eps
+      wp = y - regress_t_eps
+
+      model.fit(X, w, y)
+      yhat = model.predict(X)
+
+      XE = model.predXE_
+      P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
+      PAperp = P @ Aperp
+
+      # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
+      #                 - 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+
+      boot_ests[b] = np.sum((wp - yhat)**2) \
+                      - np.diag(proj_t_eps @ Sigma_t).sum() \
+                      - 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
+
+    return (boot_ests.mean() 
+            - 2*np.diag(Sigma_t @ PAperp).sum() 
+            - np.diag(Sigma_t_Theta).sum()*est_risk) / n
+
+
 class KFoldCV(object):
 
   def _estimate(self, 
