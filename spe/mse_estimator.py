@@ -22,6 +22,8 @@ class ErrorComparer(object):
                 Theta=None,
                 est_risk=True):
 
+    model = clone(model)
+
     (n, p) = X.shape
 
     if Chol_t is None:
@@ -257,7 +259,8 @@ class ErrorComparer(object):
                                             est_risk=est_risk)
 
       XE = X[:, model.E_] if model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
-      self.test_err[i] = test_est._estimate(model=LinearRegression(),
+      self.test_err[i] = test_est._estimate(model=model,
+                                            #model=LinearRegression(),
                                             X=XE, 
                                             y=y, 
                                             y_test=y_test, 
