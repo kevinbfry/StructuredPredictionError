@@ -90,14 +90,3 @@ class BlurTreeIID(object):
 						+ 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
 						- np.diag(t_epsinv_t).sum()
 						- np.diag(Sigma_t_Theta).sum()*est_risk) / n
-
-
-
-
-
-
-
-
-
-
-
