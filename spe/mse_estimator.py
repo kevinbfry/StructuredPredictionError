@@ -23,6 +23,8 @@ class ErrorComparer(object):
                 Theta=None,
                 est_risk=True):
 
+    model = clone(model)
+
     (n, p) = X.shape
 
     if Chol_t is None:
@@ -329,8 +331,13 @@ class ErrorComparer(object):
                                             est_risk=est_risk)
 
       XE = X[:, model.E_] if model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
+<<<<<<< HEAD
       y_fit = y if rand_type == 'full' else blur_est.w
       self.test_err[i] = test_est._estimate(model=LinearRegression(),
+=======
+      self.test_err[i] = test_est._estimate(model=model,
+                                            #model=LinearRegression(),
+>>>>>>> e5916b4 (change plots to not be difference)
                                             X=XE, 
                                             y=y_fit, 
                                             y_test=y_test, 
