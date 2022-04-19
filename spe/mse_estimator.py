@@ -10,7 +10,7 @@ from sklearn.base import clone
 
 from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
-from .estimators import kfoldcv, kmeanscv, test_set_estimator, cb, cb_isotropic, blur_linear, blur_lasso
+from .estimators import KFoldCV, KMeansCV, TestSetEstimator, CB, CBIsotropic, BlurLinear, BlurLasso
 from .tree import Tree, BlurTreeIID
 
 class ErrorComparer(object):

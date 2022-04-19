@@ -178,7 +178,95 @@ def blur_lasso(X,
   else:
     Sigma_eps = Chol_eps @ Chol_eps.T
 
+<<<<<<< HEAD
   Prec_eps = np.linalg.inv(Sigma_eps)
+=======
+    proj_t_eps = Sigma_t @ Prec_eps
+
+    # if Theta is None:
+    #   Theta = np.eye(n)
+    Sigma_t_Theta = Sigma_t# @ Theta
+
+    Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
+    Aperp = np.linalg.inv(Aperpinv)
+
+    boot_ests = np.zeros(nboot)
+
+    for b in np.arange(nboot):
+      eps = Chol_eps @ np.random.randn(n)
+      w = y + eps
+      regress_t_eps = proj_t_eps @ eps
+      wp = y - regress_t_eps
+
+      model.fit(X, w, y)
+      yhat = model.predict(X)
+
+      XE = model.predXE_
+      P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
+      PAperp = P @ Aperp
+
+      # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
+      #                 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+
+      boot_ests[b] = np.sum((wp - yhat)**2) \
+                      - np.diag(proj_t_eps @ Sigma_t).sum() \
+                      + 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
+
+    return (boot_ests.mean() 
+            + 2*np.diag(Sigma_t @ PAperp).sum() 
+            - np.diag(Sigma_t_Theta).sum()*est_risk) / n
+
+
+class KFoldCV(object):
+
+  def _estimate(self, 
+                model, 
+                X, 
+                y, 
+                k=5):
+
+    self.kfcv_res = kfcv_res = cross_validate(model, X, y, 
+                                              scoring='neg_mean_squared_error', 
+                                              cv=KFold(k, shuffle=True), 
+                                              error_score='raise')
+    return -np.mean(kfcv_res['test_score'])
+
+
+class KMeansCV(object):
+
+  def _estimate(self, 
+                model, 
+                X, 
+                y, 
+                k=5):
+
+    groups = KMeans(n_clusters=k).fit(X).labels_
+    self.spcv_res = spcv_res = cross_validate(model, 
+                                              X, 
+                                              y, 
+                                              scoring='neg_mean_squared_error', 
+                                              cv=GroupKFold(k), 
+                                              groups=groups)
+
+    return -np.mean(spcv_res['test_score'])
+
+
+class TestSetEstimator(object):
+
+  def _estimate(self, 
+                model, 
+                X, 
+                y,
+                y_test,
+                Chol_t=None, 
+                Theta=None,
+                est_risk=True):
+
+    (n, p) = X.shape
+
+    if Chol_t is None:
+      Chol_t = np.eye(n)
+>>>>>>> 27a8fee (BlurLasso fix, add BlurTree)
 
   if Chol_t is None:
     Chol_t = np.eye(n)
