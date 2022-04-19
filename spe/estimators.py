@@ -215,14 +215,14 @@ class BlurLasso(object):
       PAperp = P @ Aperp
 
       # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
-      #                 - 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+      #                 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
 
       boot_ests[b] = np.sum((wp - yhat)**2) \
                       - np.diag(proj_t_eps @ Sigma_t).sum() \
-                      - 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
+                      + 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
 
     return (boot_ests.mean() 
-            - 2*np.diag(Sigma_t @ PAperp).sum() 
+            + 2*np.diag(Sigma_t @ PAperp).sum() 
             - np.diag(Sigma_t_Theta).sum()*est_risk) / n
 
 

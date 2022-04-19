@@ -10,7 +10,8 @@ from sklearn.base import clone
 
 from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
-from .estimators import KFoldCV, KMeansCV, TestSetEstimator, CB, CBIsotropic, BlurLinear
+from .estimators import KFoldCV, KMeansCV, TestSetEstimator, CB, CBIsotropic, BlurLinear, BlurLasso
+from .tree import Tree, BlurTreeIID
 
 class ErrorComparer(object):
   def _estimate(self, 
@@ -118,6 +119,84 @@ class ErrorComparer(object):
             self.cb_err,
             self.cbiso_err)
 
+  def compareTreeIID(self, 
+                     niter=100,
+                     n=100,
+                     p=200,
+                     s=5,
+                     snr=0.4, 
+                     X=None,
+                     beta=None,
+                     model=Tree(),
+                     alpha=0.05,
+                     est_risk=True):
+
+
+    self.test_err = np.zeros(niter)
+    self.test_err_alpha = np.zeros(niter)
+    self.cb_err = np.zeros(niter)
+    self.blur_err = np.zeros(niter)
+
+    test_est = TestSetEstimator()
+    cb_est = CB()
+    blur_est = BlurTreeIID()
+
+    gen_beta = X is None or beta is None
+
+    if not gen_beta:
+      mu = X @ beta
+      sigma = np.sqrt(np.var(mu)/snr)
+      n, p = X.shape
+
+    # print(f"test {n*sigma**2}")
+    # print(f"test {n*(1+alpha)*sigma**2}")
+
+    for i in np.arange(niter):
+    
+      if gen_beta:
+        X = np.random.randn(n,p)
+        beta = np.zeros(p)
+        idx = np.random.choice(p,size=s)
+        beta[idx] = np.random.uniform(-1,1,size=s)
+
+        mu = X @ beta
+        sigma = np.sqrt(np.var(mu)/snr)
+
+      y = mu + sigma * np.random.randn(n)
+      y_test = mu + sigma * np.random.randn(n)
+      y_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
+      y_test_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
+
+      self.test_err[i] = test_est._estimate(model=model,
+                                            X=X, 
+                                            y=y, 
+                                            y_test=y_test, 
+                                            Chol_t=np.eye(n)*sigma, 
+                                            est_risk=est_risk)
+      self.test_err_alpha[i] = test_est._estimate(model=model,
+                                                  X=X, 
+                                                  y=y_alpha, 
+                                                  y_test=y_test_alpha, 
+                                                  Chol_t=np.eye(n)*np.sqrt(1+alpha)*sigma, 
+                                                  est_risk=est_risk)
+      self.cb_err[i] = cb_est._estimate(X=X, 
+                                        y=y, 
+                                        Chol_t=np.eye(n)*sigma, 
+                                        Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+                                        model=model,
+                                        est_risk=est_risk)
+      self.blur_err[i] = blur_est._estimate(X, 
+                                            y, 
+                                            Chol_t=np.eye(n)*sigma, 
+                                            Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+                                            model=model,
+                                            est_risk=est_risk)
+
+    return (self.test_err,
+            self.test_err_alpha,
+            self.cb_err,
+            self.blur_err)
+
   def compareBlurLinearIID(self, 
                            niter=100,
                            n=100,
@@ -215,7 +294,7 @@ class ErrorComparer(object):
 
     test_est = TestSetEstimator()
     # cb_est = CB()
-    blur_est = BlurLinear()
+    blur_est = BlurLasso()
 
     gen_beta = X is None or beta is None
 
