@@ -1,11 +1,6 @@
 import numpy as np
-from numpy.core.numeric import allclose
-import pandas as pd
-from scipy.linalg import toeplitz, block_diag
-from scipy.spatial.distance import cdist
 from itertools import product
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import Ridge, LinearRegression, Lasso
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_validate, GroupKFold, KFold
 from sklearn.cluster import KMeans
 
