@@ -33,7 +33,7 @@ class ErrorComparer(object):
 
 		test_est = test_set_estimator
 		cb_est = cb
-		cbiso_est = cb_isotropic()
+		cbiso_est = cb_isotropic
 
 		gen_beta = X is None or beta is None
 
@@ -98,6 +98,7 @@ class ErrorComparer(object):
 						 beta=None,
 						 model=Tree(),
 						 rand_type='full',
+						 use_expectation=False,
 						 alpha=0.05,
 						 est_risk=True):
 
@@ -135,6 +136,7 @@ class ErrorComparer(object):
 																Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
 																model=model,
 																rand_type=rand_type,
+																use_expectation=use_expectation,
 																est_risk=est_risk)
 
 			Z = fitted_model.get_membership_matrix(X)
@@ -234,6 +236,7 @@ class ErrorComparer(object):
 							 beta=None,
 							 model=RelaxedLasso(),
 							 rand_type='full',
+							 use_expectation=False,
 							 alpha=0.05,
 							 est_risk=True):
 
@@ -271,12 +274,15 @@ class ErrorComparer(object):
 									Chol_t=np.eye(n)*sigma, 
 									Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
 									model=model,
+									use_expectation=use_expectation,
+									rand_type=rand_type,
 									est_risk=est_risk)
 
 			XE = X[:, fitted_model.E_] if fitted_model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
+			y_fit = y if rand_type == 'full' else blur_est.w
 			self.test_err[i] = test_est(model=LinearRegression(),
 										X=XE, 
-										y=y, 
+										y=y_fit, 
 										y_test=y_test, 
 										Chol_t=np.eye(n)*sigma, 
 										est_risk=est_risk)[0]

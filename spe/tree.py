@@ -32,6 +32,7 @@ class BlurTreeIID(object):
 					nboot=1,
 					model=Tree(),
 					rand_type='full',
+					use_expectation=False,
 					est_risk=True):
 
 		model = clone(model)
@@ -82,14 +83,14 @@ class BlurTreeIID(object):
 			# assert(np.allclose(yhat, P @ w))
 			PAperp = P @ Aperp
 
-			# boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
-			#								 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
-
-			boot_ests[b] = np.sum((wp - yhat)**2)
+			if use_expectation:
+				boot_ests[b] = np.sum((wp - yhat)**2)
+			else:
+				boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
+				                + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps)) * full_rand
 
 		t_epsinv_t = proj_t_eps @ Sigma_t
-
-		return (boot_ests.mean() 
-						+ 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
-						- np.diag(t_epsinv_t).sum()
-						- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+		expectation_correction = (2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
+									- np.diag(t_epsinv_t).sum()) * use_expectation
+		return (boot_ests.mean() + expectation_correction
+				- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model

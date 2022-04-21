@@ -7,7 +7,6 @@ from sklearn.cluster import KMeans
 from sklearn.base import BaseEstimator, clone
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-from .data_generator import DataGen
 from .relaxed_lasso import RelaxedLasso
 
 
@@ -162,11 +161,13 @@ def blur_lasso(X,
 			   Chol_eps=None,
 			   nboot=1,
 			   model=RelaxedLasso(),
-			   type='full',
+			   rand_type='full',
+			   use_expectation=False,
 			   est_risk=True):
 
 	model = clone(model)
 
+	full_rand = rand_type == 'full'
 
 	X = X
 	y = y
@@ -210,16 +211,17 @@ def blur_lasso(X,
 		P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
 		PAperp = P @ Aperp
 
-		# boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
-		#                 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+		if use_expectation:
+			boot_ests[b] = np.sum((wp - yhat)**2)
+		else:
+			boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
+			                + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps)) * full_rand
 
-		boot_ests[b] = np.sum((wp - yhat)**2) \
-						- np.diag(proj_t_eps @ Sigma_t).sum() \
-						+ 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
-
-	return (boot_ests.mean() 
-		  + 2*np.diag(Sigma_t @ PAperp).sum() 
-		  - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+	t_epsinv_t = proj_t_eps @ Sigma_t
+	expectation_correction = (2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
+								- np.diag(t_epsinv_t).sum()) * use_expectation
+	return (boot_ests.mean() + expectation_correction
+			- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
 
 
 
