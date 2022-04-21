@@ -128,13 +128,14 @@ class ErrorComparer(object):
                      X=None,
                      beta=None,
                      model=Tree(),
+                     rand_type='full',
                      alpha=0.05,
                      est_risk=True):
 
 
     self.test_err = np.zeros(niter)
-    self.test_err_alpha = np.zeros(niter)
-    self.cb_err = np.zeros(niter)
+    # self.test_err_alpha = np.zeros(niter)
+    # self.cb_err = np.zeros(niter)
     self.blur_err = np.zeros(niter)
 
     test_est = TestSetEstimator()
@@ -164,37 +165,27 @@ class ErrorComparer(object):
 
       y = mu + sigma * np.random.randn(n)
       y_test = mu + sigma * np.random.randn(n)
-      y_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
-      y_test_alpha = mu + sigma * np.sqrt(1 + alpha) * np.random.randn(n)
 
-      self.test_err[i] = test_est._estimate(model=model,
-                                            X=X, 
-                                            y=y, 
-                                            y_test=y_test, 
-                                            Chol_t=np.eye(n)*sigma, 
-                                            est_risk=est_risk)
-      self.test_err_alpha[i] = test_est._estimate(model=model,
-                                                  X=X, 
-                                                  y=y_alpha, 
-                                                  y_test=y_test_alpha, 
-                                                  Chol_t=np.eye(n)*np.sqrt(1+alpha)*sigma, 
-                                                  est_risk=est_risk)
-      self.cb_err[i] = cb_est._estimate(X=X, 
-                                        y=y, 
-                                        Chol_t=np.eye(n)*sigma, 
-                                        Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
-                                        model=model,
-                                        est_risk=est_risk)
       self.blur_err[i] = blur_est._estimate(X, 
                                             y, 
                                             Chol_t=np.eye(n)*sigma, 
                                             Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
                                             model=model,
+                                            rand_type=rand_type,
+                                            est_risk=est_risk)
+
+      Z = model.get_membership_matrix(X)
+      y_fit = y if rand_type == 'full' else blur_est.w
+      self.test_err[i] = test_est._estimate(model=LinearRegression(),
+                                            X=Z,
+                                            y=y_fit,
+                                            y_test=y_test, 
+                                            Chol_t=np.eye(n)*sigma, 
                                             est_risk=est_risk)
 
     return (self.test_err,
-            self.test_err_alpha,
-            self.cb_err,
+            # self.test_err_alpha,
+            # self.cb_err,
             self.blur_err)
 
   def compareBlurLinearIID(self, 
@@ -284,6 +275,7 @@ class ErrorComparer(object):
                            X=None,
                            beta=None,
                            model=RelaxedLasso(),
+                           rand_type='full',
                            alpha=0.05,
                            est_risk=True):
 
@@ -333,12 +325,14 @@ class ErrorComparer(object):
                                             Chol_t=np.eye(n)*sigma, 
                                             Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
                                             model=model,
+                                            rand_type=rand_type,
                                             est_risk=est_risk)
 
       XE = X[:, model.E_] if model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
+      y_fit = y if rand_type == 'full' else blur_est.w
       self.test_err[i] = test_est._estimate(model=LinearRegression(),
                                             X=XE, 
-                                            y=y, 
+                                            y=y_fit, 
                                             y_test=y_test, 
                                             Chol_t=np.eye(n)*sigma, 
                                             est_risk=est_risk)

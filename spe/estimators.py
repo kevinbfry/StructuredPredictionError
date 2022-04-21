@@ -169,12 +169,14 @@ class BlurLasso(object):
                 Chol_eps=None,
                 nboot=1,
                 model=RelaxedLasso(),
-                type='full',
+                rand_type='full',
                 est_risk=True):
 
     X = X
     y = y
     (n, p) = X.shape
+
+    full_rand = rand_type == 'full'
 
     if Chol_eps is None:
       Chol_eps = np.eye(n)
@@ -203,11 +205,14 @@ class BlurLasso(object):
 
     for b in np.arange(nboot):
       eps = Chol_eps @ np.random.randn(n)
-      w = y + eps
+      self.w = w = y + eps
       regress_t_eps = proj_t_eps @ eps
       wp = y - regress_t_eps
 
-      model.fit(X, w, y)
+      if full_rand:
+        model.fit(X, w, y)
+      else:
+        model.fit(X, w, w)
       yhat = model.predict(X)
 
       XE = model.predXE_
@@ -217,12 +222,13 @@ class BlurLasso(object):
       # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
       #                 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
 
-      boot_ests[b] = np.sum((wp - yhat)**2) \
-                      - np.diag(proj_t_eps @ Sigma_t).sum() \
-                      + 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
+      boot_ests[b] = np.sum((wp - yhat)**2)
+
+    t_epsinv_t = proj_t_eps @ Sigma_t
 
     return (boot_ests.mean() 
-            + 2*np.diag(Sigma_t @ PAperp).sum() 
+            + 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
+            - np.diag(t_epsinv_t).sum()
             - np.diag(Sigma_t_Theta).sum()*est_risk) / n
 
 
