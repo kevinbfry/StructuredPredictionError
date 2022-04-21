@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+from sklearn.base import clone
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.utils.validation import check_is_fitted
 
@@ -23,15 +24,17 @@ class Tree(DecisionTreeRegressor):
 class BlurTreeIID(object):
 	
 	def _estimate(self,
-								X, 
-								y, 
-								Chol_t=None, 
-								Chol_eps=None,
-								# Theta=None,
-								nboot=1,
-								model=Tree(),
-								rand_type='full',
-								est_risk=True):
+					X, 
+					y, 
+					Chol_t=None, 
+					Chol_eps=None,
+					# Theta=None,
+					nboot=1,
+					model=Tree(),
+					rand_type='full',
+					est_risk=True):
+
+		model = clone(model)
 
 		X = X
 		y = y
@@ -89,4 +92,4 @@ class BlurTreeIID(object):
 		return (boot_ests.mean() 
 						+ 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
 						- np.diag(t_epsinv_t).sum()
-						- np.diag(Sigma_t_Theta).sum()*est_risk) / n
+						- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model

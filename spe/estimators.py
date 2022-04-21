@@ -12,276 +12,278 @@ from .relaxed_lasso import RelaxedLasso
 
 
 def cb_isotropic(X,
-                 y,
-                 sigma=None,
-                 nboot=100,
-                 alpha=1.,
-                 model=LinearRegression(),
-                 est_risk=True):
+				 y,
+				 sigma=None,
+				 nboot=100,
+				 alpha=1.,
+				 model=LinearRegression(),
+				 est_risk=True):
 
-  model = clone(model)
+	model = clone(model)
 
-  X = X
-  y = y
-  (n, p) = X.shape
+	X = X
+	y = y
+	(n, p) = X.shape
 
-  if sigma is None:
-    model.fit(X, y)
-    pred = model.predict(X)
-    sigma = np.sqrt(((y - pred)**2).mean()) # not sure how to get df for general models...
+	if sigma is None:
+		model.fit(X, y)
+		pred = model.predict(X)
+		sigma = np.sqrt(((y - pred)**2).mean()) # not sure how to get df for general models...
 
-  boot_ests = np.zeros(nboot)
+	boot_ests = np.zeros(nboot)
 
-  for b in np.arange(nboot):
-    eps = sigma * np.random.randn(n)
-    w = y + eps*np.sqrt(alpha)
-    wp = y - eps/np.sqrt(alpha)
+	for b in np.arange(nboot):
+		eps = sigma * np.random.randn(n)
+		w = y + eps*np.sqrt(alpha)
+		wp = y - eps/np.sqrt(alpha)
 
-    model.fit(X, w)
-    yhat = model.predict(X)
+		model.fit(X, w)
+		yhat = model.predict(X)
 
-    boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(eps**2)/alpha
+		boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(eps**2)/alpha
 
-  return boot_ests.mean()/n  + (sigma**2)*(alpha - (1+alpha)*est_risk), model
+	return boot_ests.mean()/n  + (sigma**2)*(alpha - (1+alpha)*est_risk), model
 
-  # return boot_ests.mean()/n - (sigma**2)*est_risk
+	# return boot_ests.mean()/n - (sigma**2)*est_risk
 
 
 def cb(X, 
-       y, 
-       Chol_t=None, 
-       Chol_eps=None,
-       Theta=None,
-       nboot=100,
-       model=LinearRegression(),
-       est_risk=True):
+	   y, 
+	   Chol_t=None, 
+	   Chol_eps=None,
+	   Theta=None,
+	   nboot=100,
+	   model=LinearRegression(),
+	   est_risk=True):
 
-  model = clone(model)
+	model = clone(model)
 
-  X = X
-  y = y
-  (n, p) = X.shape
+	X = X
+	y = y
+	(n, p) = X.shape
 
-  if Chol_eps is None:
-    Chol_eps = np.eye(n)
-    Sigma_eps = Chol_eps
-  else:
-    Sigma_eps = Chol_eps @ Chol_eps.T
+	if Chol_eps is None:
+		Chol_eps = np.eye(n)
+		Sigma_eps = Chol_eps
+	else:
+		Sigma_eps = Chol_eps @ Chol_eps.T
 
-  Prec_eps = np.linalg.inv(Sigma_eps)
+	Prec_eps = np.linalg.inv(Sigma_eps)
 
-  if Chol_t is None:
-    Chol_t = np.eye(n)
-    Sigma_t = np.eye(n)
-  else:
-    Sigma_t = Chol_t @ Chol_t.T
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
 
-  proj_t_eps = Sigma_t @ Prec_eps
+	proj_t_eps = Sigma_t @ Prec_eps
 
-  if Theta is None:
-    Theta = np.eye(n)
-  Sigma_t_Theta = Sigma_t @ Theta
-  Sigma_eps_Theta = Sigma_eps @ Theta
+	if Theta is None:
+		Theta = np.eye(n)
+	Sigma_t_Theta = Sigma_t @ Theta
+	Sigma_eps_Theta = Sigma_eps @ Theta
 
-  boot_ests = np.zeros(nboot)
+	boot_ests = np.zeros(nboot)
 
-  for b in np.arange(nboot):
-    eps = Chol_eps @ np.random.randn(n)
-    w = y + eps
-    regress_t_eps = proj_t_eps @ eps
-    wp = y - regress_t_eps
+	for b in np.arange(nboot):
+		eps = Chol_eps @ np.random.randn(n)
+		w = y + eps
+		regress_t_eps = proj_t_eps @ eps
+		wp = y - regress_t_eps
 
-    model.fit(X, w)
-    yhat = model.predict(X)
+		model.fit(X, w)
+		yhat = model.predict(X)
 
-    boot_ests[b] = np.sum((wp - yhat)**2) - (regress_t_eps.T.dot(Theta @ regress_t_eps)).sum()
+		boot_ests[b] = np.sum((wp - yhat)**2) - (regress_t_eps.T.dot(Theta @ regress_t_eps)).sum()
 
-  return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk + np.diag(Sigma_eps_Theta).sum()*(1 - est_risk)) / n, model
+	return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk + np.diag(Sigma_eps_Theta).sum()*(1 - est_risk)) / n, model
 
 
 
 def blur_linear(X, 
-                y, 
-                Chol_t=None, 
-                Chol_eps=None,
-                # Theta=None,
-                nboot=100,
-                model=LinearRegression(),
-                est_risk=True):
+				y, 
+				Chol_t=None, 
+				Chol_eps=None,
+				# Theta=None,
+				nboot=100,
+				model=LinearRegression(),
+				est_risk=True):
 
-  model = clone(model)
+	model = clone(model)
 
-  X = X
-  y = y
-  (n, p) = X.shape
+	X = X
+	y = y
+	(n, p) = X.shape
 
-  if Chol_eps is None:
-    Chol_eps = np.eye(n)
-    Sigma_eps = Chol_eps
-  else:
-    Sigma_eps = Chol_eps @ Chol_eps.T
+	if Chol_eps is None:
+		Chol_eps = np.eye(n)
+		Sigma_eps = Chol_eps
+	else:
+		Sigma_eps = Chol_eps @ Chol_eps.T
 
-  Prec_eps = np.linalg.inv(Sigma_eps)
+	Prec_eps = np.linalg.inv(Sigma_eps)
 
-  if Chol_t is None:
-    Chol_t = np.eye(n)
-    Sigma_t = np.eye(n)
-  else:
-    Sigma_t = Chol_t @ Chol_t.T
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
 
-  proj_t_eps = Sigma_t @ Prec_eps
+	proj_t_eps = Sigma_t @ Prec_eps
 
-  # if Theta is None:
-  #   Theta = np.eye(n)
-  Sigma_t_Theta = Sigma_t# @ Theta
+	# if Theta is None:
+	#   Theta = np.eye(n)
+	Sigma_t_Theta = Sigma_t# @ Theta
 
-  P = X @ np.linalg.inv(X.T @ X) @ X.T
+	P = X @ np.linalg.inv(X.T @ X) @ X.T
 
-  boot_ests = np.zeros(nboot)
+	boot_ests = np.zeros(nboot)
 
-  for b in np.arange(nboot):
-    eps = Chol_eps @ np.random.randn(n)
-    w = y + eps
-    regress_t_eps = proj_t_eps @ eps
-    wp = y - regress_t_eps
+	for b in np.arange(nboot):
+		eps = Chol_eps @ np.random.randn(n)
+		w = y + eps
+		regress_t_eps = proj_t_eps @ eps
+		wp = y - regress_t_eps
 
-    model.fit(X, w)
-    yhat = model.predict(X)
+		model.fit(X, w)
+		yhat = model.predict(X)
 
-    boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) - np.sum((P @ eps)**2)
+		boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) - np.sum((P @ eps)**2)
 
-  return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+	return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
 
 
 
 ## only full refit for now
   
 def blur_lasso(X, 
-               y, 
-               Chol_t=None, 
-               Chol_eps=None,
-               nboot=1,
-               model=RelaxedLasso(),
-               type='full',
-               est_risk=True):
+			   y, 
+			   Chol_t=None, 
+			   Chol_eps=None,
+			   nboot=1,
+			   model=RelaxedLasso(),
+			   type='full',
+			   est_risk=True):
 
-  model = clone(model)
+	model = clone(model)
 
 
-  X = X
-  y = y
-  (n, p) = X.shape
+	X = X
+	y = y
+	(n, p) = X.shape
 
-  if Chol_eps is None:
-    Chol_eps = np.eye(n)
-    Sigma_eps = Chol_eps
-  else:
-    Sigma_eps = Chol_eps @ Chol_eps.T
+	if Chol_eps is None:
+		Chol_eps = np.eye(n)
+		Sigma_eps = Chol_eps
+	else:
+		Sigma_eps = Chol_eps @ Chol_eps.T
 
-  Prec_eps = np.linalg.inv(Sigma_eps)
+	Prec_eps = np.linalg.inv(Sigma_eps)
 
-  if Chol_t is None:
-    Chol_t = np.eye(n)
-    Sigma_t = np.eye(n)
-  else:
-    Sigma_t = Chol_t @ Chol_t.T
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
 
-  proj_t_eps = Sigma_t @ Prec_eps
+	proj_t_eps = Sigma_t @ Prec_eps
 
-  # if Theta is None:
-  #   Theta = np.eye(n)
-  Sigma_t_Theta = Sigma_t# @ Theta
+	# if Theta is None:
+	#   Theta = np.eye(n)
+	Sigma_t_Theta = Sigma_t# @ Theta
 
-  Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
-  Aperp = np.linalg.inv(Aperpinv)
+	Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
+	Aperp = np.linalg.inv(Aperpinv)
 
-  boot_ests = np.zeros(nboot)
+	boot_ests = np.zeros(nboot)
 
-  for b in np.arange(nboot):
-    eps = Chol_eps @ np.random.randn(n)
-    w = y + eps
-    regress_t_eps = proj_t_eps @ eps
-    wp = y - regress_t_eps
+	for b in np.arange(nboot):
+		eps = Chol_eps @ np.random.randn(n)
+		w = y + eps
+		regress_t_eps = proj_t_eps @ eps
+		wp = y - regress_t_eps
 
-    model.fit(X, w, y)
-    yhat = model.predict(X)
+		model.fit(X, w, y)
+		yhat = model.predict(X)
 
-    XE = model.predXE_
-    P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
-    PAperp = P @ Aperp
+		XE = model.predXE_
+		P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
+		PAperp = P @ Aperp
 
-    # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
-    #                 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+		# boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
+		#                 + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
 
-    boot_ests[b] = np.sum((wp - yhat)**2) \
-                    - np.diag(proj_t_eps @ Sigma_t).sum() \
-                    + 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
+		boot_ests[b] = np.sum((wp - yhat)**2) \
+						- np.diag(proj_t_eps @ Sigma_t).sum() \
+						+ 2*np.diag(proj_t_eps @ Sigma_t @ PAperp).sum()
 
-  return (boot_ests.mean() 
-          + 2*np.diag(Sigma_t @ PAperp).sum() 
-          - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+	return (boot_ests.mean() 
+		  + 2*np.diag(Sigma_t @ PAperp).sum() 
+		  - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
 
 
 
 def kfoldcv(model, 
-            X, 
-            y, 
-            k=5):
+			X, 
+			y, 
+			k=5):
 
-  model = clone(model)
+	model = clone(model)
 
-  kfcv_res = cross_validate(model, X, y, 
-                            scoring='neg_mean_squared_error', 
-                            cv=KFold(k, shuffle=True), 
-                            error_score='raise')
-  return -np.mean(kfcv_res['test_score']), model
+	kfcv_res = cross_validate(model, X, y, 
+							scoring='neg_mean_squared_error', 
+							cv=KFold(k, shuffle=True), 
+							error_score='raise')
+	return -np.mean(kfcv_res['test_score']), model
 
 
 
 def kmeanscv(model, 
-             X, 
-             y, 
-             k=5):
+			 X, 
+			 y, 
+			 k=5):
 
-  groups = KMeans(n_clusters=k).fit(X).labels_
-  spcv_res = spcv_res = cross_validate(model, 
-                                            X, 
-                                            y, 
-                                            scoring='neg_mean_squared_error', 
-                                            cv=GroupKFold(k), 
-                                            groups=groups)
+	groups = KMeans(n_clusters=k).fit(X).labels_
+	spcv_res = spcv_res = cross_validate(model, 
+											X, 
+											y, 
+											scoring='neg_mean_squared_error', 
+											cv=GroupKFold(k), 
+											groups=groups)
 
-  return -np.mean(spcv_res['test_score']), model
+	return -np.mean(spcv_res['test_score']), model
 
 
 
 def test_set_estimator(model, 
-                       X, 
-                       y,
-                       y_test,
-                       Chol_t=None, 
-                       Theta=None,
-                       est_risk=True):
+					   X, 
+					   y,
+					   y_test,
+					   Chol_t=None, 
+					   Theta=None,
+					   est_risk=True):
 
-  (n, p) = X.shape
+	model = clone(model)
 
-  if Chol_t is None:
-    Chol_t = np.eye(n)
+	(n, p) = X.shape
 
-  Sigma_t = Chol_t @ Chol_t.T
+	if Chol_t is None:
+		Chol_t = np.eye(n)
 
-  if Theta is None:
-    Theta = np.eye(n)
+	Sigma_t = Chol_t @ Chol_t.T
 
-  Sigma_t_Theta = Sigma_t @ Theta
+	if Theta is None:
+		Theta = np.eye(n)
 
-  model.fit(X, y)
-  preds = model.predict(X)
-  sse = np.sum((y_test - preds)**2)
+	Sigma_t_Theta = Sigma_t @ Theta
 
-  # print(np.diag(Sigma_t_Theta).sum())
+	model.fit(X, y)
+	preds = model.predict(X)
+	sse = np.sum((y_test - preds)**2)
 
-  return (sse - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+	# print(np.diag(Sigma_t_Theta).sum())
+
+	return (sse - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
 
 
 
