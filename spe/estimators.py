@@ -192,12 +192,10 @@ def blur_lasso(X,
 	#   Theta = np.eye(n)
 	Sigma_t_Theta = Sigma_t# @ Theta
 
-	Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
+	Aperpinv = np.eye(n) + proj_t_eps
 	Aperp = np.linalg.inv(Aperpinv)
 
-	# boot_ests = np.zeros(nboot)
 
-	# for b in np.arange(nboot):
 	eps = Chol_eps @ np.random.randn(n)
 	w = y + eps
 	regress_t_eps = proj_t_eps @ eps
@@ -209,20 +207,8 @@ def blur_lasso(X,
 			  lin_y=lin_y)
 	yhat = model.predict(X)
 
-	# XE = model.predXE_
-	# P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
 	P = model.get_linear_smoother(X)
 	PAperp = P @ Aperp
-
-	# boot_est = np.sum((wp - yhat)**2)
-
-	# t_epsinv_t = proj_t_eps @ Sigma_t
-	# expectation_correction = - np.diag(t_epsinv_t).sum()
-	# if full_rand:
-	# 	expectation_correction += 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum()
-	
-	# return (boot_est + expectation_correction
-	# 		- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
 
 	if use_expectation:
 		boot_est = np.sum((wp - yhat)**2)
@@ -231,11 +217,11 @@ def blur_lasso(X,
 		if full_rand:
 		    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
 
-	t_epsinv_t = proj_t_eps @ Sigma_t
 	expectation_correction = 0.
 	if full_rand:
 		expectation_correction += 2*np.diag(Sigma_t @ PAperp).sum()
 	if use_expectation:
+		t_epsinv_t = proj_t_eps @ Sigma_t
 		expectation_correction -= np.diag(t_epsinv_t).sum()
 		if full_rand:
 			expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()

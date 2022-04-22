@@ -72,7 +72,7 @@ class BlurTreeIID(object):
 		#	 Theta = np.eye(n)
 		Sigma_t_Theta = Sigma_t# @ Theta
 
-		Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
+		Aperpinv = np.eye(n) + proj_t_eps
 		Aperp = np.linalg.inv(Aperpinv)
 
 		eps = Chol_eps @ np.random.randn(n)
@@ -82,23 +82,9 @@ class BlurTreeIID(object):
 
 		model.fit(X, w)
 
-		# Z = model.get_membership_matrix(X)
-		# P = Z @ np.linalg.inv(Z.T @ Z) @ Z.T
 		P = model.get_linear_smoother(X)
 		yhat = P @ y if full_rand else P @ w
 		PAperp = P @ Aperp
-
-		# boot_est = np.sum((wp - yhat)**2)
-
-		# t_epsinv_t = proj_t_eps @ Sigma_t
-		# expectation_correction = - np.diag(t_epsinv_t).sum()
-		# if full_rand:
-		# 	expectation_correction += 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum()
-		
-		# return (boot_est + expectation_correction
-		# 		- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
-
-
 
 		if use_expectation:
 			boot_est = np.sum((wp - yhat)**2)
@@ -107,11 +93,11 @@ class BlurTreeIID(object):
 			if full_rand:
 			    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
 
-		t_epsinv_t = proj_t_eps @ Sigma_t
 		expectation_correction = 0.
 		if full_rand:
 			expectation_correction += 2*np.diag(Sigma_t @ PAperp).sum()
 		if use_expectation:
+			t_epsinv_t = proj_t_eps @ Sigma_t
 			expectation_correction -= np.diag(t_epsinv_t).sum()
 			if full_rand:
 				expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()
