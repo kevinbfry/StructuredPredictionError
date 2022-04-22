@@ -102,6 +102,7 @@ class ErrorComparer(object):
 								 rand_type='full',
 								 use_expectation=False,
 								 alpha=0.05,
+								 est_sigma=False,
 								 est_risk=True):
 
 
@@ -115,7 +116,7 @@ class ErrorComparer(object):
 
 		if not gen_beta:
 			mu = X @ beta
-			sigma = np.sqrt(np.var(mu)/snr)
+			sigma_true = np.sqrt(np.var(mu)/snr)
 			n, p = X.shape
 
 		for i in np.arange(niter):
@@ -127,10 +128,30 @@ class ErrorComparer(object):
 				beta[idx] = np.random.uniform(-1,1,size=s)
 
 				mu = X @ beta
-				sigma = np.sqrt(np.var(mu)/snr)
+				sigma_true = np.sqrt(np.var(mu)/snr)
 
-			y = mu + sigma * np.random.randn(n)
-			y_test = mu + sigma * np.random.randn(n)
+			y = mu + sigma_true * np.random.randn(n)
+			y_test = mu + sigma_true * np.random.randn(n)
+
+			if est_sigma:
+				# if isinstance(model, RelaxedLasso):
+				# 	model.fit(X,y)
+				# 	s = len(model.E_)
+				# 	yhat = model.predict(X)
+				# 	sigma = np.sum((y-yhat)**2)/(n-s)
+				# else:
+				# 	model.fit(X, y)
+				# 	yhat = model.predict(X)
+				# 	sigma = np.std(y - yhat)
+
+				model.fit(X,y)
+				P = model.get_linear_smoother(X)
+				df = np.diag(P).sum()
+				yhat = P @ y
+				sigma = np.sum((y - yhat)**2)/(n-df)
+
+			else:
+				sigma = sigma_true
 
 			(self.blur_err[i], fitted_model, w) = blur_est(X, 
 														   y, 
