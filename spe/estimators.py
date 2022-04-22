@@ -159,10 +159,8 @@ def blur_lasso(X,
 			   y, 
 			   Chol_t=None, 
 			   Chol_eps=None,
-			   nboot=1,
 			   model=RelaxedLasso(),
 			   rand_type='full',
-			   use_expectation=False,
 			   est_risk=True):
 
 	model = clone(model)
@@ -196,32 +194,52 @@ def blur_lasso(X,
 	Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
 	Aperp = np.linalg.inv(Aperpinv)
 
-	boot_ests = np.zeros(nboot)
+	# boot_ests = np.zeros(nboot)
 
-	for b in np.arange(nboot):
-		eps = Chol_eps @ np.random.randn(n)
-		w = y + eps
-		regress_t_eps = proj_t_eps @ eps
-		wp = y - regress_t_eps
+	# for b in np.arange(nboot):
+	eps = Chol_eps @ np.random.randn(n)
+	w = y + eps
+	regress_t_eps = proj_t_eps @ eps
+	wp = y - regress_t_eps
 
-		model.fit(X, w, y)
-		yhat = model.predict(X)
+	lin_y = y if full_rand else w
+	model.fit(X, 
+			  lasso_y=w, 
+			  lin_y=lin_y)
+	yhat = model.predict(X)
 
-		XE = model.predXE_
-		P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
-		PAperp = P @ Aperp
+	XE = model.predXE_
+	P = XE @ np.linalg.inv(XE.T @ XE) @ XE.T
+	PAperp = P @ Aperp
 
-		if use_expectation:
-			boot_ests[b] = np.sum((wp - yhat)**2)
-		else:
-			boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
-			                + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps)) * full_rand
+	boot_est = np.sum((wp - yhat)**2)
 
 	t_epsinv_t = proj_t_eps @ Sigma_t
-	expectation_correction = (2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
-								- np.diag(t_epsinv_t).sum()) * use_expectation
-	return (boot_ests.mean() + expectation_correction
-			- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+	expectation_correction = - np.diag(t_epsinv_t).sum()
+	if full_rand:
+		expectation_correction += 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum()
+	
+	return (boot_est + expectation_correction
+			- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
+
+	# if use_expectation:
+	# 	boot_est = np.sum((wp - yhat)**2)
+	# else:
+	# 	boot_est = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2)
+	# 	if full_rand:
+	# 	    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+
+	# t_epsinv_t = proj_t_eps @ Sigma_t
+	# expectation_correction = 0.
+	# if full_rand:
+	# 	expectation_correction += 2*np.diag(Sigma_t @ PAperp).sum()
+	# if use_expectation:
+	# 	expectation_correction -= np.diag(t_epsinv_t).sum()
+	# 	if full_rand:
+	# 		expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()
+	
+	# return (boot_est + expectation_correction
+	# 		- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
 
 
 

@@ -29,10 +29,8 @@ class BlurTreeIID(object):
 					Chol_t=None, 
 					Chol_eps=None,
 					# Theta=None,
-					nboot=1,
 					model=Tree(),
 					rand_type='full',
-					use_expectation=False,
 					est_risk=True):
 
 		model = clone(model)
@@ -66,31 +64,33 @@ class BlurTreeIID(object):
 		Aperpinv = np.eye(proj_t_eps.shape[0]) + proj_t_eps
 		Aperp = np.linalg.inv(Aperpinv)
 
-		boot_ests = np.zeros(nboot)
+		eps = Chol_eps @ np.random.randn(n)
+		w = y + eps
+		regress_t_eps = proj_t_eps @ eps
+		wp = y - regress_t_eps
 
-		for b in np.arange(nboot):
-			eps = Chol_eps @ np.random.randn(n)
-			self.w = w = y + eps
-			regress_t_eps = proj_t_eps @ eps
-			wp = y - regress_t_eps
+		model.fit(X, w)
 
-			model.fit(X, w)
-			# yhat = model.predict(X)
+		Z = model.get_membership_matrix(X)
+		P = Z @ np.linalg.inv(Z.T @ Z) @ Z.T
+		yhat = P @ y if full_rand else P @ w
+		PAperp = P @ Aperp
 
-			Z = model.get_membership_matrix(X)
-			P = Z @ np.linalg.inv(Z.T @ Z) @ Z.T
-			yhat = P @ y if full_rand else P @ w
-			# assert(np.allclose(yhat, P @ w))
-			PAperp = P @ Aperp
-
-			if use_expectation:
-				boot_ests[b] = np.sum((wp - yhat)**2)
-			else:
-				boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) \
-				                + 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps)) * full_rand
+		boot_est = np.sum((wp - yhat)**2)
 
 		t_epsinv_t = proj_t_eps @ Sigma_t
-		expectation_correction = (2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum() * full_rand
-									- np.diag(t_epsinv_t).sum()) * use_expectation
-		return (boot_ests.mean() + expectation_correction
-				- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+		expectation_correction = - np.diag(t_epsinv_t).sum()
+		if full_rand:
+			expectation_correction += 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum()
+		
+		return (boot_est + expectation_correction
+				- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
+
+
+
+
+
+
+
+
+

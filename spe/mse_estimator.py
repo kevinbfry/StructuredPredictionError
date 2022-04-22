@@ -98,7 +98,6 @@ class ErrorComparer(object):
 						 beta=None,
 						 model=Tree(),
 						 rand_type='full',
-						 use_expectation=False,
 						 alpha=0.05,
 						 est_risk=True):
 
@@ -130,17 +129,16 @@ class ErrorComparer(object):
 			y = mu + sigma * np.random.randn(n)
 			y_test = mu + sigma * np.random.randn(n)
 
-			(self.blur_err[i], fitted_model) = blur_est._estimate(X, 
+			(self.blur_err[i], fitted_model, w) = blur_est._estimate(X, 
 																y, 
 																Chol_t=np.eye(n)*sigma, 
 																Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
 																model=model,
 																rand_type=rand_type,
-																use_expectation=use_expectation,
 																est_risk=est_risk)
 
 			Z = fitted_model.get_membership_matrix(X)
-			y_fit = y if rand_type == 'full' else blur_est.w
+			y_fit = y if rand_type == 'full' else w
 			self.test_err[i] = test_est(model=LinearRegression(),
 										X=Z,
 										y=y_fit,
@@ -236,7 +234,6 @@ class ErrorComparer(object):
 							 beta=None,
 							 model=RelaxedLasso(),
 							 rand_type='full',
-							 use_expectation=False,
 							 alpha=0.05,
 							 est_risk=True):
 
@@ -269,17 +266,16 @@ class ErrorComparer(object):
 			y = mu + sigma * np.random.randn(n)
 			y_test = mu + sigma * np.random.randn(n)
 			(self.blur_err[i],
-			 fitted_model) = blur_est(X, 
+			 fitted_model, w) = blur_est(X, 
 									y, 
 									Chol_t=np.eye(n)*sigma, 
 									Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
 									model=model,
-									use_expectation=use_expectation,
 									rand_type=rand_type,
 									est_risk=est_risk)
 
 			XE = X[:, fitted_model.E_] if fitted_model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
-			y_fit = y if rand_type == 'full' else blur_est.w
+			y_fit = y if rand_type == 'full' else w
 			self.test_err[i] = test_est(model=LinearRegression(),
 										X=XE, 
 										y=y_fit, 
