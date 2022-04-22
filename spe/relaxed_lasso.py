@@ -4,7 +4,9 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
-class RelaxedLasso(BaseEstimator):
+from .tree import LinearSelector
+
+class RelaxedLasso(LinearSelector, BaseEstimator):
 	def __init__(self, 
 			   lambd=1.0, 
 			   fit_intercept=True, 
@@ -62,6 +64,23 @@ class RelaxedLasso(BaseEstimator):
 									 positive=positive)
 
 
+	def _get_selected_X(self, X):
+		check_is_fitted(self)
+
+		E = self.E_
+		if E.shape[0] != 0:
+			XE = X[:,E]
+		else:
+			XE = np.zeros((X.shape[0], 1))
+
+		return XE
+
+
+	def get_linear_smoother(self, X):
+		XE = self._get_selected_X(X)
+		return XE @ np.linalg.inv(XE.T @ XE) @ XE.T
+
+
 	def fit(self, X,
 		  lasso_y,
 		  lin_y=None,
@@ -75,10 +94,13 @@ class RelaxedLasso(BaseEstimator):
 						lasso_y,
 						sample_weight=sample_weight,
 						check_input=check_input)
+		
+		self.E_ = E = np.where(self.lassom.coef_ != 0)[0]
 
 		self.fit_linear(X, 
 						lin_y, 
 						sample_weight=sample_weight)
+
 
 		return self
 
@@ -86,12 +108,7 @@ class RelaxedLasso(BaseEstimator):
 				 X, 
 				 y, 
 				 sample_weight=None):
-
-		self.E_ = E = np.where(self.lassom.coef_ != 0)[0]
-		if self.E_.shape[0] != 0:
-			self.XE_ = XE = X[:,E]
-		else:
-			self.XE_ = XE = np.zeros((X.shape[0], 1))
+		XE = self._get_selected_X(X)
 
 		self.linm.fit(XE,
 					  y,
@@ -99,9 +116,6 @@ class RelaxedLasso(BaseEstimator):
 
 
 	def predict(self, X):
-		if self.E_.shape[0] != 0:
-			self.predXE_ = XE = X[:,self.E_]
-		else:
-			self.predXE_ = XE = np.zeros((X.shape[0], 1))
+		XE = self._get_selected_X(X)
 		return self.linm.predict(XE)
 

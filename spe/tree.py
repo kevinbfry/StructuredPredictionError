@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
 import pandas as pd
 
@@ -5,8 +7,16 @@ from sklearn.base import clone
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.utils.validation import check_is_fitted
 
+class LinearSelector(ABC):
+	@abstractmethod
+	def get_linear_smoother(self, X):
+		pass
 
-class Tree(DecisionTreeRegressor):
+class Tree(LinearSelector, DecisionTreeRegressor):
+	def get_linear_smoother(self, X):
+		Z = self.get_membership_matrix(X)
+		return Z @ np.linalg.inv(Z.T @ Z) @ Z.T
+
 	def get_membership_matrix(self, X):
 		check_is_fitted(self)
 
@@ -31,6 +41,7 @@ class BlurTreeIID(object):
 					# Theta=None,
 					model=Tree(),
 					rand_type='full',
+					use_expectation=False,
 					est_risk=True):
 
 		model = clone(model)
@@ -71,20 +82,43 @@ class BlurTreeIID(object):
 
 		model.fit(X, w)
 
-		Z = model.get_membership_matrix(X)
-		P = Z @ np.linalg.inv(Z.T @ Z) @ Z.T
+		# Z = model.get_membership_matrix(X)
+		# P = Z @ np.linalg.inv(Z.T @ Z) @ Z.T
+		P = model.get_linear_smoother(X)
 		yhat = P @ y if full_rand else P @ w
 		PAperp = P @ Aperp
 
-		boot_est = np.sum((wp - yhat)**2)
+		# boot_est = np.sum((wp - yhat)**2)
+
+		# t_epsinv_t = proj_t_eps @ Sigma_t
+		# expectation_correction = - np.diag(t_epsinv_t).sum()
+		# if full_rand:
+		# 	expectation_correction += 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum()
+		
+		# return (boot_est + expectation_correction
+		# 		- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
+
+
+
+		if use_expectation:
+			boot_est = np.sum((wp - yhat)**2)
+		else:
+			boot_est = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2)
+			if full_rand:
+			    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
 
 		t_epsinv_t = proj_t_eps @ Sigma_t
-		expectation_correction = - np.diag(t_epsinv_t).sum()
+		expectation_correction = 0.
 		if full_rand:
-			expectation_correction += 2*np.diag((Sigma_t + t_epsinv_t) @ PAperp).sum()
+			expectation_correction += 2*np.diag(Sigma_t @ PAperp).sum()
+		if use_expectation:
+			expectation_correction -= np.diag(t_epsinv_t).sum()
+			if full_rand:
+				expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()
 		
 		return (boot_est + expectation_correction
 				- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
+
 
 
 

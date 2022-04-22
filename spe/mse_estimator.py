@@ -98,6 +98,7 @@ class ErrorComparer(object):
 						 beta=None,
 						 model=Tree(),
 						 rand_type='full',
+						 use_expectation=False,
 						 alpha=0.05,
 						 est_risk=True):
 
@@ -135,6 +136,7 @@ class ErrorComparer(object):
 																Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
 																model=model,
 																rand_type=rand_type,
+																use_expectation=use_expectation,
 																est_risk=est_risk)
 
 			Z = fitted_model.get_membership_matrix(X)
@@ -234,6 +236,7 @@ class ErrorComparer(object):
 							 beta=None,
 							 model=RelaxedLasso(),
 							 rand_type='full',
+							 use_expectation=False,
 							 alpha=0.05,
 							 est_risk=True):
 
@@ -271,6 +274,7 @@ class ErrorComparer(object):
 									Chol_t=np.eye(n)*sigma, 
 									Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
 									model=model,
+									use_expectation=use_expectation,
 									rand_type=rand_type,
 									est_risk=est_risk)
 
