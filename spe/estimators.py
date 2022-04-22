@@ -8,6 +8,7 @@ from sklearn.base import BaseEstimator, clone
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 from .relaxed_lasso import RelaxedLasso
+from .tree import Tree
 
 
 def cb_isotropic(X,
@@ -152,10 +153,7 @@ def blur_linear(X,
 	return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
 
 
-
-## only full refit for now
-  
-def blur_lasso(X, 
+def blur_linear_selector(X, 
 			   y, 
 			   Chol_t=None, 
 			   Chol_eps=None,
@@ -166,18 +164,18 @@ def blur_lasso(X,
 
 	model = clone(model)
 
-	full_rand = rand_type == 'full'
-
 	X = X
 	y = y
 	(n, p) = X.shape
+
+	full_rand = rand_type == 'full'
 
 	if Chol_eps is None:
 		Chol_eps = np.eye(n)
 		Sigma_eps = Chol_eps
 	else:
 		Sigma_eps = Chol_eps @ Chol_eps.T
-
+	
 	Prec_eps = np.linalg.inv(Sigma_eps)
 
 	if Chol_t is None:
@@ -189,25 +187,21 @@ def blur_lasso(X,
 	proj_t_eps = Sigma_t @ Prec_eps
 
 	# if Theta is None:
-	#   Theta = np.eye(n)
+	#	 Theta = np.eye(n)
 	Sigma_t_Theta = Sigma_t# @ Theta
 
 	Aperpinv = np.eye(n) + proj_t_eps
 	Aperp = np.linalg.inv(Aperpinv)
-
 
 	eps = Chol_eps @ np.random.randn(n)
 	w = y + eps
 	regress_t_eps = proj_t_eps @ eps
 	wp = y - regress_t_eps
 
-	lin_y = y if full_rand else w
-	model.fit(X, 
-			  lasso_y=w, 
-			  lin_y=lin_y)
-	yhat = model.predict(X)
+	model.fit(X, w)
 
 	P = model.get_linear_smoother(X)
+	yhat = P @ y if full_rand else P @ w
 	PAperp = P @ Aperp
 
 	if use_expectation:
@@ -228,7 +222,6 @@ def blur_lasso(X,
 	
 	return (boot_est + expectation_correction
 			- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
-
 
 
 def kfoldcv(model, 

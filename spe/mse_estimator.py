@@ -9,8 +9,10 @@ from sklearn.cluster import KMeans
 from sklearn.base import clone
 
 from .relaxed_lasso import RelaxedLasso
-from .estimators import kfoldcv, kmeanscv, test_set_estimator, cb, cb_isotropic, blur_linear, blur_lasso
-from .tree import Tree, BlurTreeIID
+from .estimators import kfoldcv, kmeanscv, test_set_estimator, \
+						cb, cb_isotropic, \
+						blur_linear, blur_linear_selector
+from .tree import Tree
 
 class ErrorComparer(object):
 	def compareIID(self, 
@@ -107,7 +109,7 @@ class ErrorComparer(object):
 		self.blur_err = np.zeros(niter)
 
 		test_est = test_set_estimator
-		blur_est = BlurTreeIID()
+		blur_est = blur_linear_selector
 
 		gen_beta = X is None or beta is None
 
@@ -130,14 +132,14 @@ class ErrorComparer(object):
 			y = mu + sigma * np.random.randn(n)
 			y_test = mu + sigma * np.random.randn(n)
 
-			(self.blur_err[i], fitted_model, w) = blur_est._estimate(X, 
-																y, 
-																Chol_t=np.eye(n)*sigma, 
-																Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
-																model=model,
-																rand_type=rand_type,
-																use_expectation=use_expectation,
-																est_risk=est_risk)
+			(self.blur_err[i], fitted_model, w) = blur_est(X, 
+														   y, 
+														   Chol_t=np.eye(n)*sigma, 
+														   Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+														   model=model,
+														   rand_type=rand_type,
+														   use_expectation=use_expectation,
+														   est_risk=est_risk)
 
 			Z = fitted_model.get_membership_matrix(X)
 			y_fit = y if rand_type == 'full' else w
@@ -246,7 +248,7 @@ class ErrorComparer(object):
 		self.blur_err = np.zeros(niter)
 
 		test_est = test_set_estimator
-		blur_est = blur_lasso
+		blur_est = blur_linear_selector
 
 		gen_beta = X is None or beta is None
 
@@ -270,13 +272,13 @@ class ErrorComparer(object):
 			y_test = mu + sigma * np.random.randn(n)
 			(self.blur_err[i],
 			 fitted_model, w) = blur_est(X, 
-									y, 
-									Chol_t=np.eye(n)*sigma, 
-									Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
-									model=model,
-									use_expectation=use_expectation,
-									rand_type=rand_type,
-									est_risk=est_risk)
+										 y, 
+										 Chol_t=np.eye(n)*sigma, 
+										 Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+										 model=model,
+										 use_expectation=use_expectation,
+										 rand_type=rand_type,
+										 est_risk=est_risk)
 
 			XE = X[:, fitted_model.E_] if fitted_model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
 			y_fit = y if rand_type == 'full' else w
