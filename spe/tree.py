@@ -12,12 +12,16 @@ class LinearSelector(ABC):
 	def get_linear_smoother(self, X):
 		pass
 
+	@abstractmethod
+	def get_selected_X(self, X):
+		pass
+
 class Tree(LinearSelector, DecisionTreeRegressor):
 	def get_linear_smoother(self, X):
-		Z = self.get_membership_matrix(X)
+		Z = self.get_selected_X(X)
 		return Z @ np.linalg.inv(Z.T @ Z) @ Z.T
 
-	def get_membership_matrix(self, X):
+	def get_selected_X(self, X):
 		check_is_fitted(self)
 
 		leaf_nodes = self.apply(X)

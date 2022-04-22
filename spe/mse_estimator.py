@@ -90,19 +90,19 @@ class ErrorComparer(object):
 				self.cb_err,
 				self.cbiso_err)
 
-	def compareTreeIID(self, 
-						 niter=100,
-						 n=100,
-						 p=200,
-						 s=5,
-						 snr=0.4, 
-						 X=None,
-						 beta=None,
-						 model=Tree(),
-						 rand_type='full',
-						 use_expectation=False,
-						 alpha=0.05,
-						 est_risk=True):
+	def compareLinearSelectorIID(self, 
+								 niter=100,
+								 n=100,
+								 p=200,
+								 s=5,
+								 snr=0.4, 
+								 X=None,
+								 beta=None,
+								 model=Tree(),
+								 rand_type='full',
+								 use_expectation=False,
+								 alpha=0.05,
+								 est_risk=True):
 
 
 		self.test_err = np.zeros(niter)
@@ -141,7 +141,7 @@ class ErrorComparer(object):
 														   use_expectation=use_expectation,
 														   est_risk=est_risk)
 
-			Z = fitted_model.get_membership_matrix(X)
+			Z = fitted_model.get_selected_X(X)
 			y_fit = y if rand_type == 'full' else w
 			self.test_err[i] = test_est(model=LinearRegression(),
 										X=Z,
@@ -228,69 +228,7 @@ class ErrorComparer(object):
 				self.cb_err,
 				self.blur_err)
 
-	def compareBlurLassoIID(self, 
-							 niter=100,
-							 n=100,
-							 p=20,
-							 s=20,
-							 snr=0.4, 
-							 X=None,
-							 beta=None,
-							 model=RelaxedLasso(),
-							 rand_type='full',
-							 use_expectation=False,
-							 alpha=0.05,
-							 est_risk=True):
 
-
-		self.test_err = np.zeros(niter)
-		self.cb_err = np.zeros(niter)
-		self.blur_err = np.zeros(niter)
-
-		test_est = test_set_estimator
-		blur_est = blur_linear_selector
-
-		gen_beta = X is None or beta is None
-
-		if not gen_beta:
-			mu = X @ beta
-			sigma = np.sqrt(np.var(mu)/snr)
-			n, p = X.shape
-
-		for i in np.arange(niter):
-		
-			if gen_beta:
-				X = np.random.randn(n,p)
-				beta = np.zeros(p)
-				idx = np.random.choice(p,size=s)
-				beta[idx] = np.random.uniform(-1,1,size=s)
-
-				mu = X @ beta
-				sigma = np.sqrt(np.var(mu)/snr)
-
-			y = mu + sigma * np.random.randn(n)
-			y_test = mu + sigma * np.random.randn(n)
-			(self.blur_err[i],
-			 fitted_model, w) = blur_est(X, 
-										 y, 
-										 Chol_t=np.eye(n)*sigma, 
-										 Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
-										 model=model,
-										 use_expectation=use_expectation,
-										 rand_type=rand_type,
-										 est_risk=est_risk)
-
-			XE = X[:, fitted_model.E_] if fitted_model.E_.shape[0] != 0 else np.zeros((X.shape[0],1))
-			y_fit = y if rand_type == 'full' else w
-			self.test_err[i] = test_est(model=LinearRegression(),
-										X=XE, 
-										y=y_fit, 
-										y_test=y_test, 
-										Chol_t=np.eye(n)*sigma, 
-										est_risk=est_risk)[0]
-
-		return (self.test_err,
-				self.blur_err)
 
 	
 
