@@ -1,14 +1,63 @@
 import numpy as np
 from itertools import product
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import cross_validate, GroupKFold, KFold
 from sklearn.cluster import KMeans
 
-from sklearn.base import BaseEstimator, clone
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.base import clone
 
 from .relaxed_lasso import RelaxedLasso
 from .tree import Tree
+
+
+def _preprocess_X_y_model(X, model):
+	model = clone(model)
+	(n, p) = X.shape
+	return model, n, p
+
+
+def _get_rand_bool(rand_type):
+	return rand_type == 'full'
+
+
+def _compute_matrices(n, Chol_t, Chol_eps):
+	if Chol_eps is None:
+		Chol_eps = np.eye(n)
+		Sigma_eps = Chol_eps
+	else:
+		Sigma_eps = Chol_eps @ Chol_eps.T
+	
+	Prec_eps = np.linalg.inv(Sigma_eps)
+
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
+
+	proj_t_eps = Sigma_t @ Prec_eps
+
+	# if Theta is None:
+	#	 Theta = np.eye(n)
+	Sigma_t_Theta = Sigma_t# @ Theta
+
+	Aperpinv = np.eye(n) + proj_t_eps
+	Aperp = np.linalg.inv(Aperpinv)
+
+	return Chol_t, Sigma_t, \
+			Chol_eps, Sigma_eps, \
+			Prec_eps, proj_t_eps, \
+			Sigma_t_Theta, Aperp
+
+def _blur(y, Chol_eps, proj_t_eps):
+	n = y.shape[0]
+	eps = Chol_eps @ np.random.randn(n)
+	w = y + eps
+	regress_t_eps = proj_t_eps @ eps
+	wp = y - regress_t_eps
+
+	return w, wp, eps, regress_t_eps
 
 
 def cb_isotropic(X,
@@ -19,11 +68,7 @@ def cb_isotropic(X,
 				 model=LinearRegression(),
 				 est_risk=True):
 
-	model = clone(model)
-
-	X = X
-	y = y
-	(n, p) = X.shape
+	model, n, p = _preprocess_X_y_model(X, model)
 
 	if sigma is None:
 		model.fit(X, y)
@@ -56,11 +101,7 @@ def cb(X,
 	   model=LinearRegression(),
 	   est_risk=True):
 
-	model = clone(model)
-
-	X = X
-	y = y
-	(n, p) = X.shape
+	model, n, p = _preprocess_X_y_model(X, model)
 
 	if Chol_eps is None:
 		Chol_eps = np.eye(n)
@@ -86,10 +127,7 @@ def cb(X,
 	boot_ests = np.zeros(nboot)
 
 	for b in np.arange(nboot):
-		eps = Chol_eps @ np.random.randn(n)
-		w = y + eps
-		regress_t_eps = proj_t_eps @ eps
-		wp = y - regress_t_eps
+		w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
 		model.fit(X, w)
 		yhat = model.predict(X)
@@ -109,11 +147,7 @@ def blur_linear(X,
 				model=LinearRegression(),
 				est_risk=True):
 
-	model = clone(model)
-
-	X = X
-	y = y
-	(n, p) = X.shape
+	model, n, p = _preprocess_X_y_model(X, model)
 
 	if Chol_eps is None:
 		Chol_eps = np.eye(n)
@@ -140,10 +174,7 @@ def blur_linear(X,
 	boot_ests = np.zeros(nboot)
 
 	for b in np.arange(nboot):
-		eps = Chol_eps @ np.random.randn(n)
-		w = y + eps
-		regress_t_eps = proj_t_eps @ eps
-		wp = y - regress_t_eps
+		w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
 		model.fit(X, w)
 		yhat = model.predict(X)
@@ -162,41 +193,16 @@ def blur_linear_selector(X,
 			   use_expectation=False,
 			   est_risk=True):
 
-	model = clone(model)
+	model, n, p = _preprocess_X_y_model(X, model)
 
-	X = X
-	y = y
-	(n, p) = X.shape
+	full_rand = _get_rand_bool(rand_type)
 
-	full_rand = rand_type == 'full'
+	Chol_t, Sigma_t, \
+	Chol_eps, Sigma_eps, \
+	Prec_eps, proj_t_eps, \
+	Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps)
 
-	if Chol_eps is None:
-		Chol_eps = np.eye(n)
-		Sigma_eps = Chol_eps
-	else:
-		Sigma_eps = Chol_eps @ Chol_eps.T
-	
-	Prec_eps = np.linalg.inv(Sigma_eps)
-
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	proj_t_eps = Sigma_t @ Prec_eps
-
-	# if Theta is None:
-	#	 Theta = np.eye(n)
-	Sigma_t_Theta = Sigma_t# @ Theta
-
-	Aperpinv = np.eye(n) + proj_t_eps
-	Aperp = np.linalg.inv(Aperpinv)
-
-	eps = Chol_eps @ np.random.randn(n)
-	w = y + eps
-	regress_t_eps = proj_t_eps @ eps
-	wp = y - regress_t_eps
+	w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
 	model.fit(X, w)
 
