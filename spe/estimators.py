@@ -308,6 +308,8 @@ def blur_forest(X,
 	else:
 		eps = [eps]
 	
+	n_trees = len(P)
+
 	tree_ests, centered_preds, ws = get_estimate_terms(y, P, eps, Sigma_t,
 														Sigma_t_Theta,
 														proj_t_eps, Aperp, 
@@ -315,8 +317,8 @@ def blur_forest(X,
 														use_expectation,
 														est_risk)
 	# print(tree_ests.sum(), np.sum(centered_preds**2))
-	return (tree_ests.sum() 
-			- np.sum(centered_preds**2)) / n, model, ws
+	return (tree_ests.sum()
+			- np.sum(centered_preds**2)) / (n * n_trees), model, ws
 	# return (tree_ests.sum()) / n, model, ws
 
 

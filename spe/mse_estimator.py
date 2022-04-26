@@ -259,10 +259,11 @@ class ErrorComparer(object):
 														   est_risk=est_risk)
 
 			G = fitted_model.get_group_X(X)
-			if rand_type == 'full':
-				y_fit = [y for _ in np.arange(len(G))]
-			else:
-				y_fit = [w]
+			y_fit = [y if rand_type == 'full' else w[:,i] for i in np.arange(len(G))]
+			# if rand_type == 'full':
+			# 	y_fit = [y for _ in np.arange(len(G))]
+			# else:
+			# 	y_fit = [w[:,i] for i in np.arange(len(G))]
 			self.test_err[i] = test_est(model=LinearRegression(),
 										X=G,
 										y=y_fit,
