@@ -64,7 +64,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 									 positive=positive)
 
 
-	def get_selected_X(self, X):
+	def get_group_X(self, X):
 		check_is_fitted(self)
 
 		E = self.E_
@@ -94,7 +94,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 						lasso_y,
 						sample_weight=sample_weight,
 						check_input=check_input)
-		
+
 		self.E_ = E = np.where(self.lassom.coef_ != 0)[0]
 
 		self.fit_linear(X, 

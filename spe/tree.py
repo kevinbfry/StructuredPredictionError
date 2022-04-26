@@ -13,27 +13,27 @@ class LinearSelector(ABC):
 		pass
 
 	@abstractmethod
-	def get_selected_X(self, X):
+	def get_group_X(self, X):
 		pass
 
 class Tree(LinearSelector, DecisionTreeRegressor):
 	def get_linear_smoother(self, X):
-		Z = self.get_selected_X(X)
-		return Z @ np.linalg.inv(Z.T @ Z) @ Z.T
+		G = self.get_group_X(X)
+		return G @ np.linalg.inv(G.T @ G) @ G.T
 
-	def get_selected_X(self, X):
+	def get_group_X(self, X):
 		check_is_fitted(self)
 
 		leaf_nodes = self.apply(X)
 		_, indices = np.unique(leaf_nodes, return_inverse=True)
 
-		n_leaves = self.get_n_leaves()
+		n_leaves = np.amax(indices) + 1
 		n = X.shape[0]
 
-		Z = np.zeros((n, n_leaves))
-		Z[np.arange(n),indices] = 1
+		G = np.zeros((n, n_leaves))
+		G[np.arange(n),indices] = 1
 
-		return Z
+		return G
 
 
 
