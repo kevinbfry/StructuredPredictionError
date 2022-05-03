@@ -77,7 +77,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
 
 	def get_linear_smoother(self, X):
-		XE = self.get_selected_X(X)
+		XE = self.get_group_X(X)
 		return XE @ np.linalg.inv(XE.T @ XE) @ XE.T
 
 
@@ -108,7 +108,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 				 X, 
 				 y, 
 				 sample_weight=None):
-		XE = self.get_selected_X(X)
+		XE = self.get_group_X(X)
 
 		self.linm.fit(XE,
 					  y,
@@ -116,6 +116,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
 
 	def predict(self, X):
-		XE = self.get_selected_X(X)
+		XE = self.get_group_X(X)
 		return self.linm.predict(XE)
 
