@@ -174,6 +174,91 @@ class ErrorComparer(object):
 		return (self.test_err,
 				self.blur_err)
 
+	def compareLinearSelector(self, 
+								 niter=100,
+								 n=100,
+								 p=200,
+								 s=5,
+								 snr=0.4, 
+								 Chol_t=None,
+								 X=None,
+								 beta=None,
+								 model=Tree(),
+								 rand_type='full',
+								 use_expectation=False,
+								 alpha=0.05,
+								 est_sigma=False,
+								 est_risk=True):
+
+
+		self.test_err = np.zeros(niter)
+		self.blur_err = np.zeros(niter)
+
+		test_est = test_set_estimator
+		blur_est = blur_linear_selector
+
+		gen_beta = X is None or beta is None
+
+		if not gen_beta:
+			mu = X @ beta
+			sigma_true = np.sqrt(np.var(mu)/snr)
+			n, p = X.shape
+
+		for i in np.arange(niter):
+		
+			if gen_beta:
+				X = np.random.randn(n,p)
+				beta = np.zeros(p)
+				idx = np.random.choice(p,size=s)
+				beta[idx] = np.random.uniform(-1,1,size=s)
+
+				mu = X @ beta
+				sigma_true = np.sqrt(np.var(mu)/snr)
+
+			y = mu + sigma_true * np.random.randn(n)
+			y_test = mu + sigma_true * np.random.randn(n)
+
+			if est_sigma:
+				# if isinstance(model, RelaxedLasso):
+				# 	model.fit(X,y)
+				# 	s = len(model.E_)
+				# 	yhat = model.predict(X)
+				# 	sigma = np.sum((y-yhat)**2)/(n-s)
+				# else:
+				# 	model.fit(X, y)
+				# 	yhat = model.predict(X)
+				# 	sigma = np.std(y - yhat)
+
+				model.fit(X,y)
+				P = model.get_linear_smoother(X)
+				df = np.diag(P).sum()
+				yhat = P @ y
+				sigma = np.sum((y - yhat)**2)/(n-df)
+
+			else:
+				sigma = sigma_true
+
+			(self.blur_err[i], fitted_model, w) = blur_est(X, 
+														   y, 
+														   Chol_t=Chol_t*sigma, 
+														   Chol_eps=Chol_t*np.sqrt(alpha)*sigma,
+														   model=model,
+														   rand_type=rand_type,
+														   use_expectation=use_expectation,
+														   est_risk=est_risk)
+
+			G = fitted_model.get_group_X(X)
+			y_fit = y if rand_type == 'full' else w
+			self.test_err[i] = test_est(model=LinearRegression(),
+										X=G,
+										y=y_fit,
+										y_test=y_test, 
+										Chol_t=Chol_t*sigma,
+										est_risk=est_risk)[0]
+
+		return (self.test_err,
+				self.blur_err)
+
 	def compareForestIID(self, 
 						 niter=100,
 						 n=100,
@@ -269,6 +354,116 @@ class ErrorComparer(object):
 										y=y_fit,
 										y_test=y_test, 
 										Chol_t=np.eye(n)*sigma, 
+										est_risk=est_risk)[0]
+
+		return (self.test_err,
+				# self.tree_err,
+				self.blur_err)
+
+	def compareForest(
+		self, 
+		niter=100,
+		n=100,
+		p=200,
+		s=5,
+		snr=0.4, 
+		Chol_t=None,
+		X=None,
+		beta=None,
+		model=Tree(),
+		rand_type='full',
+		use_expectation=False,
+		alpha=0.05,
+		est_sigma=False,
+		est_risk=True):
+
+
+		self.test_err = np.zeros(niter)
+		self.blur_err = np.zeros(niter)
+		# self.tree_err = np.zeros(niter)
+
+		test_est = test_set_estimator
+		blur_est = blur_forest
+		# tree_est = blur_linear_selector
+
+		gen_beta = X is None or beta is None
+
+		if not gen_beta:
+			mu = X @ beta
+			sigma_true = np.sqrt(np.var(mu)/snr)
+			n, p = X.shape
+
+		for i in np.arange(niter):
+		
+			if gen_beta:
+				X = np.random.randn(n,p)
+				beta = np.zeros(p)
+				idx = np.random.choice(p,size=s)
+				beta[idx] = np.random.uniform(-1,1,size=s)
+
+				mu = X @ beta
+				sigma_true = np.sqrt(np.var(mu)/snr)
+
+
+			eps = sigma_true * np.random.randn(n)
+			eps_test = sigma_true * np.random.randn(n)
+			if Chol_t is not None:
+				eps = Chol_t @ eps
+				eps_test = Chol_t @ eps_test
+
+			y = mu + eps
+			y_test = mu + eps_test
+
+			if est_sigma:
+				# if isinstance(model, RelaxedLasso):
+				# 	model.fit(X,y)
+				# 	s = len(model.E_)
+				# 	yhat = model.predict(X)
+				# 	sigma = np.sum((y-yhat)**2)/(n-s)
+				# else:
+				# 	model.fit(X, y)
+				# 	yhat = model.predict(X)
+				# 	sigma = np.std(y - yhat)
+
+				model.fit(X,y)
+				P = model.get_linear_smoother(X)
+				df = np.diag(P).sum()
+				yhat = P @ y
+				sigma = np.sum((y - yhat)**2)/(n-df)
+
+			else:
+				sigma = sigma_true
+
+			# (self.tree_err[i], fitted_model, w) = tree_est(X, 
+			# 											   y, 
+			# 											   Chol_t=np.eye(n)*sigma, 
+			# 											   Chol_eps=np.eye(n)*np.sqrt(alpha)*sigma,
+			# 											   model=Tree(max_depth=4),
+			# 											   rand_type=rand_type,
+			# 											   use_expectation=use_expectation,
+			# 											   est_risk=est_risk)
+
+			(self.blur_err[i], fitted_model, w) = blur_est(X, 
+														   y, 
+														   # eps=w - y,
+														   Chol_t=Chol_t*sigma, 
+														   Chol_eps=Chol_t*np.sqrt(alpha)*sigma,
+														   model=model,
+														   rand_type=rand_type,
+														   use_expectation=use_expectation,
+														   est_risk=est_risk)
+
+			G = fitted_model.get_group_X(X)
+			y_fit = [y if rand_type == 'full' else w[:,i] for i in np.arange(len(G))]
+			# if rand_type == 'full':
+			# 	y_fit = [y for _ in np.arange(len(G))]
+			# else:
+			# 	y_fit = [w[:,i] for i in np.arange(len(G))]
+			self.test_err[i] = test_est(model=LinearRegression(),
+										X=G,
+										y=y_fit,
+										y_test=y_test, 
+										Chol_t=Chol_t*sigma, 
 										est_risk=est_risk)[0]
 
 		return (self.test_err,
