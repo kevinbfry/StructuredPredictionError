@@ -25,7 +25,7 @@ def _get_rand_bool(rand_type):
 	return rand_type == 'full'
 
 
-def _compute_matrices(n, Chol_t, Chol_eps):
+def _compute_matrices(n, Chol_t, Chol_eps, Theta):
 	if Chol_eps is None:
 		Chol_eps = np.eye(n)
 		Sigma_eps = Chol_eps
@@ -42,9 +42,9 @@ def _compute_matrices(n, Chol_t, Chol_eps):
 
 	proj_t_eps = Sigma_t @ Prec_eps
 
-	# if Theta is None:
-	#	 Theta = np.eye(n)
-	Sigma_t_Theta = Sigma_t# @ Theta
+	if Theta is None:
+		 Theta = np.eye(n)
+	Sigma_t_Theta = Sigma_t @ Theta
 
 	Aperpinv = np.eye(n) + proj_t_eps
 	Aperp = np.linalg.inv(Aperpinv)
@@ -52,7 +52,7 @@ def _compute_matrices(n, Chol_t, Chol_eps):
 	return Chol_t, Sigma_t, \
 			Chol_eps, Sigma_eps, \
 			Prec_eps, proj_t_eps, \
-			Sigma_t_Theta, Aperp
+			Theta, Sigma_t_Theta, Aperp
 
 def _blur(y, Chol_eps, proj_t_eps):
 	n = y.shape[0]
@@ -93,8 +93,6 @@ def cb_isotropic(X,
 
 	return boot_ests.mean()/n  + (sigma**2)*(alpha - (1+alpha)*est_risk), model
 
-	# return boot_ests.mean()/n - (sigma**2)*est_risk
-
 
 def cb(X, 
 	   y, 
@@ -107,25 +105,11 @@ def cb(X,
 
 	X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-	if Chol_eps is None:
-		Chol_eps = np.eye(n)
-		Sigma_eps = Chol_eps
-	else:
-		Sigma_eps = Chol_eps @ Chol_eps.T
+	Chol_t, Sigma_t, \
+	Chol_eps, Sigma_eps, \
+	Prec_eps, proj_t_eps, \
+	Theta, Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps, Theta)
 
-	Prec_eps = np.linalg.inv(Sigma_eps)
-
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	proj_t_eps = Sigma_t @ Prec_eps
-
-	if Theta is None:
-		Theta = np.eye(n)
-	Sigma_t_Theta = Sigma_t @ Theta
 	Sigma_eps_Theta = Sigma_eps @ Theta
 
 	boot_ests = np.zeros(nboot)
@@ -138,40 +122,26 @@ def cb(X,
 
 		boot_ests[b] = np.sum((wp - yhat)**2) - (regress_t_eps.T.dot(Theta @ regress_t_eps)).sum()
 
-	return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk + np.diag(Sigma_eps_Theta).sum()*(1 - est_risk)) / n, model
-
+	return (boot_ests.mean() 
+			- np.diag(Sigma_t_Theta).sum()*est_risk 
+			+ np.diag(Sigma_eps_Theta).sum()*(1 - est_risk)) / n, model
 
 
 def blur_linear(X, 
 				y, 
 				Chol_t=None, 
 				Chol_eps=None,
-				# Theta=None,
+				Theta=None,
 				nboot=100,
 				model=LinearRegression(),
 				est_risk=True):
 
 	X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-	if Chol_eps is None:
-		Chol_eps = np.eye(n)
-		Sigma_eps = Chol_eps
-	else:
-		Sigma_eps = Chol_eps @ Chol_eps.T
-
-	Prec_eps = np.linalg.inv(Sigma_eps)
-
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	proj_t_eps = Sigma_t @ Prec_eps
-
-	# if Theta is None:
-	#   Theta = np.eye(n)
-	Sigma_t_Theta = Sigma_t# @ Theta
+	Chol_t, Sigma_t, \
+	Chol_eps, Sigma_eps, \
+	Prec_eps, proj_t_eps, \
+	Theta, Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps, Theta)
 
 	P = X @ np.linalg.inv(X.T @ X) @ X.T
 
@@ -188,10 +158,47 @@ def blur_linear(X,
 	return (boot_ests.mean() - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
 
 
+def _compute_correction(
+	y, 
+	w, 
+	wp, 
+	P, 
+	Aperp, 
+	regress_t_eps, 
+	Sigma_t_Theta, 
+	proj_t_eps, 
+	full_rand, 
+	use_expectation, 
+	est_risk,
+	):
+	yhat = P @ y if full_rand else P @ w
+	PAperp = P @ Aperp
+
+	if use_expectation:
+		boot_est = np.sum((wp - yhat)**2)
+	else:
+		boot_est = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2)
+		if full_rand:
+		    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+
+	expectation_correction = 0.
+	if full_rand:
+		expectation_correction += 2*np.diag(Sigma_t_Theta @ PAperp).sum()
+	if use_expectation:
+		t_epsinv_t = proj_t_eps @ Sigma_t_Theta
+		expectation_correction -= np.diag(t_epsinv_t).sum()
+		if full_rand:
+			expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()
+
+	return boot_est + expectation_correction \
+			- np.diag(Sigma_t_Theta).sum()*est_risk, yhat
+
+
 def blur_linear_selector(X, 
 			   y, 
 			   Chol_t=None, 
 			   Chol_eps=None,
+			   Theta=None,
 			   model=RelaxedLasso(),
 			   rand_type='full',
 			   use_expectation=False,
@@ -204,35 +211,24 @@ def blur_linear_selector(X,
 	Chol_t, Sigma_t, \
 	Chol_eps, Sigma_eps, \
 	Prec_eps, proj_t_eps, \
-	Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps)
+	Theta, Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps, Theta)
 
 	w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
 	model.fit(X, w)
 
 	P = model.get_linear_smoother(X)
-	yhat = P @ y if full_rand else P @ w
-	PAperp = P @ Aperp
-	# print(P)
 
-	if use_expectation:
-		boot_est = np.sum((wp - yhat)**2)
-	else:
-		boot_est = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2)
-		if full_rand:
-		    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
+	est, _ = _compute_correction(y, w, wp, P, 
+								Aperp, 
+								regress_t_eps, 
+								Sigma_t_Theta, 
+								proj_t_eps, 
+								full_rand, 
+								use_expectation, 
+								est_risk)
 
-	expectation_correction = 0.
-	if full_rand:
-		expectation_correction += 2*np.diag(Sigma_t @ PAperp).sum()
-	if use_expectation:
-		t_epsinv_t = proj_t_eps @ Sigma_t
-		expectation_correction -= np.diag(t_epsinv_t).sum()
-		if full_rand:
-			expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()
-	
-	return (boot_est + expectation_correction
-			- np.diag(Sigma_t_Theta).sum()*est_risk) / n, model, w
+	return est / n, model, w
 
 
 def get_estimate_terms(y, P, eps, Sigma_t,
@@ -252,26 +248,15 @@ def get_estimate_terms(y, P, eps, Sigma_t,
 		regress_t_eps = proj_t_eps @ eps_i
 		wp = y - regress_t_eps
 
-		yhat = P_i @ y if full_rand else P_i @ w
-		PAperp = P_i @ Aperp
+		tree_ests[i], yhat = _compute_correction(y, w, wp, P_i, 
+												Aperp, 
+												regress_t_eps, 
+												Sigma_t_Theta, 
+												proj_t_eps, 
+												full_rand, 
+												use_expectation, 
+												est_risk)
 
-		if use_expectation:
-			boot_est = np.sum((wp - yhat)**2)
-		else:
-			boot_est = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2)
-			if full_rand:
-			    boot_est += 2*regress_t_eps.T.dot(PAperp.dot(regress_t_eps))
-
-		expectation_correction = 0.
-		if full_rand:
-			expectation_correction += 2*np.diag(Sigma_t @ PAperp).sum()
-		if use_expectation:
-			t_epsinv_t = proj_t_eps @ Sigma_t
-			expectation_correction -= np.diag(t_epsinv_t).sum()
-			if full_rand:
-				expectation_correction += 2*np.diag(t_epsinv_t @ PAperp).sum()
-		
-		tree_ests[i] = boot_est + expectation_correction - np.diag(Sigma_t_Theta).sum()*est_risk
 		ws[:,i] = w
 		yhats[:,i] = yhat
 
@@ -285,6 +270,7 @@ def blur_forest(X,
 			    eps=None,
 			    Chol_t=None, 
 			    Chol_eps=None,
+			    Theta=None,
 			    model=BlurredForest(),
 			    rand_type='full',
 			    use_expectation=False,
@@ -297,9 +283,8 @@ def blur_forest(X,
 	Chol_t, Sigma_t, \
 	Chol_eps, Sigma_eps, \
 	Prec_eps, proj_t_eps, \
-	Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps)
+	Theta, Sigma_t_Theta, Aperp = _compute_matrices(n, Chol_t, Chol_eps, Theta)
 
-	# model.fit(X, y+eps, chol_eps=np.zeros_like(Chol_eps))
 	model.fit(X, y, chol_eps=Chol_eps)#, Sigma_t=Sigma_t)
 
 	P = model.get_linear_smoother(X)
@@ -316,10 +301,8 @@ def blur_forest(X,
 														full_rand, 
 														use_expectation,
 														est_risk)
-	# print(tree_ests.sum(), np.sum(centered_preds**2))
 	return (tree_ests.sum()
 			- np.sum(centered_preds**2)) / (n * n_trees), model, ws
-	# return (tree_ests.sum()) / n, model, ws
 
 
 def kfoldcv(model, 
@@ -336,7 +319,6 @@ def kfoldcv(model,
 	return -np.mean(kfcv_res['test_score']), model
 
 
-
 def kmeanscv(model, 
 			 X, 
 			 y, 
@@ -351,7 +333,6 @@ def kmeanscv(model,
 											groups=groups)
 
 	return -np.mean(spcv_res['test_score']), model
-
 
 
 def test_set_estimator(model, 
@@ -395,6 +376,15 @@ def test_set_estimator(model,
 	
 	sse = np.sum((y_test - preds)**2)
 	return (sse - np.diag(Sigma_t_Theta).sum()*est_risk) / n, model
+
+
+
+
+
+
+
+
+
 
 
 
