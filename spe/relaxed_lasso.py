@@ -9,7 +9,7 @@ from .tree import LinearSelector
 class RelaxedLasso(LinearSelector, BaseEstimator):
 	def __init__(self, 
 			   lambd=1.0, 
-			   fit_intercept=True, 
+			   fit_intercept=False, 
 			   #  lasso_type='relaxed',
 			   #  refit_type='full',
 			   normalize='deprecated', 
@@ -76,9 +76,13 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 		return XE
 
 
-	def get_linear_smoother(self, X):
+	def get_linear_smoother(self, X, X_pred=None):
 		XE = self.get_group_X(X)
-		return XE @ np.linalg.inv(XE.T @ XE) @ XE.T
+		if X_pred is None:
+			XE_pred = XE
+		else:
+			XE_pred = self.get_group_X(X_pred)
+		return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
 
 
 	def fit(self, X,
