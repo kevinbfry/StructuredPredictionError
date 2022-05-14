@@ -102,6 +102,29 @@ def split_data(
 	return X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts
 
 
+def better_test_est_split(
+	model, 
+	X,
+	y,
+	y2,
+	tr_idx,
+	**kwargs,
+	):
+
+	model = clone(model)
+	
+	X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+
+	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+	y2_ts = y2[ts_idx]
+
+	model.fit(X_tr, y_tr, **kwargs)
+	preds = model.predict(X_ts)
+
+	sse = np.sum((y2_ts - preds)**2)
+	return sse / n_ts
+
+
 def test_est_split(
 	model, 
 	X,
@@ -109,6 +132,8 @@ def test_est_split(
 	y2,
 	tr_idx,
 	):
+
+	model = clone(model)
 
 	multiple_X = isinstance(X, list)
 
@@ -144,6 +169,47 @@ def test_est_split(
 	return sse / n_ts
 
 
+# def test_brl_split(
+# 	X,
+# 	y,
+# 	y2,
+# 	tr_idx,
+# 	):
+
+# 	multiple_X = isinstance(X, list)
+
+# 	if multiple_X:
+# 		n = X[0].shape[0]
+# 	else:
+# 		n = X.shape[0]
+
+
+# 	if multiple_X:
+# 		preds = np.zeros_like(y[0])
+# 		for X_i in X:
+# 			p = X_i.shape[1]
+# 			X_i, y, model, n, p = _preprocess_X_y_model(X_i, y, model)
+
+# 			(X_i_tr, X_i_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X_i, y, tr_idx)
+# 			y2_ts = y2[ts_idx]
+
+# 			model.fit(X_i_tr, y_tr)
+# 			preds = model.predict(X_i_ts)
+
+# 		preds /= len(X)
+# 	else:
+# 		X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+
+# 		(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+# 		y2_ts = y2[ts_idx]
+
+# 		model.fit(X_tr, y_tr)
+# 		preds = model.predict(X_ts)
+
+# 	sse = np.sum((y2_ts - preds)**2)
+# 	return sse / n_ts
+
+
 def cp_linear_train_test(
 	X,
 	y, 
@@ -172,6 +238,7 @@ def cp_linear_train_test(
 
 
 def cp_relaxed_lasso_train_test(
+	model,
 	X,
 	y, 
 	tr_idx,
@@ -179,7 +246,7 @@ def cp_relaxed_lasso_train_test(
 	alpha=1.,
 	):
 	
-	model = RelaxedLasso(fit_intercept=False)
+	model = clone(model)
 
 	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
 
@@ -205,12 +272,75 @@ def cp_relaxed_lasso_train_test(
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
 	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
 
-	Cov_wp = (1 + alpha)*Sigma_t
+	Cov_wp = (1 + 1/alpha)*Sigma_t
 	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
 
 	correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
 
-	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts
+	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts, model
+
+
+def cp_bagged_relaxed_lasso_train_test(
+	model,
+	X,
+	y, 
+	y2,
+	tr_idx,
+	Chol_t=None,
+	n_estimators=10,
+	):
+
+	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+
+	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+	y2_ts = y2[ts_idx]
+
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
+
+	Chol_eps = Chol_t
+	proj_t_eps = np.eye(n)
+		
+	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
+	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
+
+	Cov_wp = 2*Sigma_t
+	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
+
+	ests = np.zeros(n_estimators)
+	yhats = np.zeros((n_ts, n_estimators))
+	models = []
+	preds2 = np.zeros(n_ts)
+
+	for i in np.arange(n_estimators):
+		w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+		w_tr = w[tr_idx]
+		wp_ts = wp[ts_idx]
+
+		model = clone(model)
+		model.fit(X_tr, w_tr)
+		models.append(model)
+		w2, _, _, _ = _blur(y, Chol_eps, proj_t_eps)
+		model = clone(model)
+		model.fit(X_tr, w2[tr_idx])
+		preds2 += model.predict(X_ts)
+
+		P = model.get_linear_smoother(X_tr, X_ts)
+		yhats[:,i] = P @ y_tr
+
+		correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+
+		ests[i] = np.sum((wp_ts - P @ y_tr)**2) + correction
+
+	centered_preds = yhats.mean(axis=1)[:,None] - yhats
+
+	# return (ests.sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum() - np.sum(centered_preds**2)/n_ts)/(n_estimators), models
+	# return ((ests.sum() - np.sum(centered_preds**2))/n_estimators  + np.diag(Cov_ts).sum() \
+	# 			- np.diag(Cov_wp_ts).sum())/n_ts, models
+	return (ests.sum() - np.sum(centered_preds**2))/(n_ts*n_estimators), np.mean((y2_ts - preds2/n_estimators)**2)#, models
 
 
 def cp_random_forest_train_test(
@@ -271,7 +401,68 @@ def cp_random_forest_train_test(
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
 
-	return (tree_ests.sum() - np.sum((centered_preds)**2))/ (n*n_trees), model, ws
+	return (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees), model, ws
+
+
+def cp_bagged_train_test(
+	model,
+	X,
+	y, 
+	tr_idx,
+	Chol_t=None,
+	n_estimators=5,
+	**kwargs,
+	):
+	
+	model = clone(model)
+
+	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+
+	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
+
+	# Chol_eps = np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx])
+	Chol_eps = Chol_t
+
+	model.fit(X_tr, y_tr, **kwargs)
+
+	Ps = model.get_linear_smoother(X_tr, X_ts)
+	eps = model.eps_
+	
+	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
+	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
+
+	Cov_wp = 2*Sigma_t
+	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
+
+	n_trees = len(Ps)
+
+	tree_ests = np.zeros(n_trees)
+	ws = np.zeros((n, n_trees))
+	yhats = np.zeros((n_ts, n_trees))
+
+	for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
+		eps_i = eps_i.ravel()
+		w = y + eps_i
+		# ws[:,i] = w
+		regress_t_eps = eps_i
+		wp = y - regress_t_eps
+		wp_ts = wp[ts_idx]
+
+		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
+
+		yhat = P_i @ y_tr
+		yhats[:,i] = yhat
+
+	centered_preds = yhats.mean(axis=1)[:,None] - yhats
+
+	return (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees)
 
 
 
@@ -597,17 +788,105 @@ def blur_forest(X,
 			- np.sum((Chol_e@centered_preds)**2)) / (n * n_trees), model, ws
 
 
+def bag_kfoldcv(model, 
+					X, 
+					y, 
+					k=10,
+					Chol_t=None,
+					):
+
+	model = clone(model)
+	X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+
+	kf=KFold(k, shuffle=True)
+
+	err = []
+	kwargs = dict() if type(model).__name__ == 'BaggedRelaxedLasso' else dict(bootstrap_type='blur')
+	for tr_idx, ts_idx in kf.split(X):
+		tr_bool = np.zeros(n)
+		tr_bool[tr_idx] = 1
+		(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_bool)
+		if Chol_t is None:
+			kwargs['chol_eps'] = None
+		else:
+			kwargs['chol_eps'] = Chol_t[tr_idx,:][:,tr_idx]
+		model.fit(X_tr, y_tr, **kwargs)
+		err.append(np.mean((y_ts - model.predict(X_ts))**2))
+
+	return np.mean(err)
+
+	# err = []
+	# for tr_idx, ts_idx in kf.split(X):
+	# 	tr_bool = np.zeros(n)
+	# 	tr_bool[tr_idx] = 1
+	# 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_bool)
+	# 	if Chol_t is None:
+	# 		Chol_eps = None
+	# 	else:
+	# 		Chol_eps = Chol_t[tr_idx,:][:,tr_idx]
+	# 	model.fit(X_tr, y_tr, chol_eps=Chol_eps)
+	# 	err.append(np.mean((y_ts - model.predict(X_ts))**2))
+
+	# return np.mean(err)
+
+
+def bag_kmeanscv(model, 
+					X, 
+					y, 
+					coord,
+					k=10,
+					Chol_t=None,
+					):
+
+	model = clone(model)
+	X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+	
+	groups = KMeans(n_clusters=k).fit(coord).labels_
+	gkf=GroupKFold(k)
+
+	err = []
+	kwargs = dict() if type(model).__name__ == 'BaggedRelaxedLasso' else dict(bootstrap_type='blur')
+	for tr_idx, ts_idx in gkf.split(X, groups=groups):
+		tr_bool = np.zeros(n)
+		tr_bool[tr_idx] = 1
+		(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_bool)
+		if Chol_t is None:
+			kwargs['chol_eps'] = None
+		else:
+			kwargs['chol_eps'] = Chol_t[tr_idx,:][:,tr_idx]
+		model.fit(X_tr, y_tr, **kwargs)
+		err.append(np.mean((y_ts - model.predict(X_ts))**2))
+
+	return np.mean(err)
+
+	# err = []
+	# for tr_idx, ts_idx in gkf.split(X, groups=groups):
+	# 	tr_bool = np.zeros(n)
+	# 	tr_bool[tr_idx] = 1
+	# 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_bool)
+	# 	if Chol_t is None:
+	# 		Chol_eps = None
+	# 	else:
+	# 		Chol_eps = Chol_t[tr_idx,:][:,tr_idx]
+	# 	model.fit(X_tr, y_tr, chol_eps=Chol_eps)
+	# 	err.append(np.mean((y_ts - model.predict(X_ts))**2))
+
+	# return np.mean(err)
+
+
 def kfoldcv(model, 
 			X, 
 			y, 
-			k=10):
+			k=10,
+			**kwargs):
 
 	model = clone(model)
 
 	kfcv_res = cross_validate(model, X, y, 
 							scoring='neg_mean_squared_error', 
 							cv=KFold(k, shuffle=True), 
-							error_score='raise')
+							error_score='raise',
+							fit_params=kwargs)
 	return -np.mean(kfcv_res['test_score']), model
 
 
@@ -615,15 +894,17 @@ def kmeanscv(model,
 			 X, 
 			 y, 
 			 coord,
-			 k=10):
+			 k=10,
+			 **kwargs):
 
 	groups = KMeans(n_clusters=k).fit(coord).labels_
-	spcv_res = spcv_res = cross_validate(model, 
-											X, 
-											y, 
-											scoring='neg_mean_squared_error', 
-											cv=GroupKFold(k), 
-											groups=groups)
+	spcv_res = cross_validate(model, 
+								X, 
+								y, 
+								scoring='neg_mean_squared_error', 
+								cv=GroupKFold(k), 
+								groups=groups,
+								fit_params=kwargs)
 
 	return -np.mean(spcv_res['test_score']), model
 

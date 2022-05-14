@@ -19,7 +19,8 @@ class LinearSelector(ABC):
 class Tree(LinearSelector, DecisionTreeRegressor):
 	def get_linear_smoother(self, X):
 		G = self.get_group_X(X)
-		return G @ np.linalg.inv(G.T @ G) @ G.T
+		# return G @ np.linalg.inv(G.T @ G) @ G.T
+		return G @ np.linalg.pinv(G)
 
 	def get_group_X(self, X):
 		check_is_fitted(self)

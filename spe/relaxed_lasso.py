@@ -3,8 +3,34 @@ from sklearn.linear_model import LinearRegression, Lasso
 
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.ensemble import BaggingRegressor
 
 from .tree import LinearSelector
+
+class BaggedRelaxedLasso(BaggingRegressor):
+	def get_linear_smoother(self, X, X_pred=None):
+		return [est.get_linear_smoother(X, X_pred) for est in self.estimators_]
+
+	def get_group_X(self, X):
+		check_is_fitted(self)
+
+		n = X.shape[0]
+
+		Gs = []
+		for i in np.arange(self.n_estimators):
+			est = self.estimators_[i]
+
+			E = est.E_
+			if E.shape[0] != 0:
+				XE = X[:,E]
+			else:
+				XE = np.zeros((X.shape[0], 1))
+
+			return Gs.append(XE)
+
+		return Gs
+
+			
 
 class RelaxedLasso(LinearSelector, BaseEstimator):
 	def __init__(self, 
@@ -78,11 +104,15 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
 	def get_linear_smoother(self, X, X_pred=None):
 		XE = self.get_group_X(X)
+		if not np.any(XE):
+			print("zeros")
+			return np.zeros((X_pred.shape[0], X.shape[0]))
 		if X_pred is None:
 			XE_pred = XE
 		else:
 			XE_pred = self.get_group_X(X_pred)
-		return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
+		# return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
+		return XE_pred @ np.linalg.pinv(XE)
 
 
 	def fit(self, X,
