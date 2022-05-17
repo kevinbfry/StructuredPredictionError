@@ -215,6 +215,8 @@ def cp_linear_train_test(
 	y, 
 	tr_idx,
 	Chol_t=None,
+	Chol_s=None,
+	# Cov_st=None,
 	):
 
 	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
@@ -227,12 +229,22 @@ def cp_linear_train_test(
 	else:
 		Sigma_t = Chol_t @ Chol_t.T
 
+	same_cov = Chol_s is None
+	if same_cov:
+		Chol_s = np.zeros_like(Chol_t)
+		Sigma_s = np.zeros_like(Sigma_t)
+	else:
+		Sigma_s = Chol_s @ Chol_s.T
+
 
 	P = X_ts @ np.linalg.inv(X_tr.T @ X_tr) @ X_tr.T
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
 
 	correction = np.diag(Cov_tr_ts @ P).sum()
+	if not same_cov:
+		correction += np.sum(np.diag(Sigma_s[ts_idx,:][:,ts_idx]) 
+								- np.diag(Sigma_t[ts_idx,:][:,ts_idx]))
 
 	return (np.sum((y_ts - P @ y_tr)**2) + correction) / n_ts
 
@@ -243,6 +255,7 @@ def cp_relaxed_lasso_train_test(
 	y, 
 	tr_idx,
 	Chol_t=None,
+	Chol_s=None,
 	alpha=1.,
 	):
 	
@@ -258,6 +271,13 @@ def cp_relaxed_lasso_train_test(
 	else:
 		Sigma_t = Chol_t @ Chol_t.T
 
+	same_cov = Chol_s is None
+	if same_cov:
+		Chol_s = np.zeros_like(Chol_t)
+		Sigma_s = np.zeros_like(Sigma_t)
+	else:
+		Sigma_s = Chol_s @ Chol_s.T
+
 	Chol_eps = np.sqrt(alpha) * Chol_t
 	proj_t_eps = np.eye(n) / alpha
 
@@ -270,138 +290,16 @@ def cp_relaxed_lasso_train_test(
 	P = model.get_linear_smoother(X_tr, X_ts)
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
+	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
 
 	Cov_wp = (1 + 1/alpha)*Sigma_t
 	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
 
-	correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+	correction = 2*np.diag(Cov_tr_ts @ P).sum()
+	if not same_cov:
+		correction += np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
 
 	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts, model
-
-
-def cp_bagged_relaxed_lasso_train_test(
-	model,
-	X,
-	y, 
-	y2,
-	tr_idx,
-	Chol_t=None,
-	n_estimators=10,
-	):
-
-	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
-
-	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-	y2_ts = y2[ts_idx]
-
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	Chol_eps = Chol_t
-	proj_t_eps = np.eye(n)
-		
-	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
-
-	Cov_wp = 2*Sigma_t
-	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
-
-	ests = np.zeros(n_estimators)
-	yhats = np.zeros((n_ts, n_estimators))
-	models = []
-	preds2 = np.zeros(n_ts)
-
-	for i in np.arange(n_estimators):
-		w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-		w_tr = w[tr_idx]
-		wp_ts = wp[ts_idx]
-
-		model = clone(model)
-		model.fit(X_tr, w_tr)
-		models.append(model)
-		w2, _, _, _ = _blur(y, Chol_eps, proj_t_eps)
-		model = clone(model)
-		model.fit(X_tr, w2[tr_idx])
-		preds2 += model.predict(X_ts)
-
-		P = model.get_linear_smoother(X_tr, X_ts)
-		yhats[:,i] = P @ y_tr
-
-		correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
-
-		ests[i] = np.sum((wp_ts - P @ y_tr)**2) + correction
-
-	centered_preds = yhats.mean(axis=1)[:,None] - yhats
-
-	# return (ests.sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum() - np.sum(centered_preds**2)/n_ts)/(n_estimators), models
-	# return ((ests.sum() - np.sum(centered_preds**2))/n_estimators  + np.diag(Cov_ts).sum() \
-	# 			- np.diag(Cov_wp_ts).sum())/n_ts, models
-	return (ests.sum() - np.sum(centered_preds**2))/(n_ts*n_estimators), np.mean((y2_ts - preds2/n_estimators)**2)#, models
-
-
-def cp_random_forest_train_test(
-	X,
-	y, 
-	tr_idx,
-	Chol_t=None,
-	max_depth=4,
-	n_estimators=5,
-	):
-	
-	model = BlurredForest(max_depth=max_depth, 
-							n_estimators=n_estimators)
-
-	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
-
-	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	# Chol_eps = np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx])
-	Chol_eps = Chol_t
-
-	model.fit(X_tr, y_tr, chol_eps=Chol_eps, tr_idx=tr_idx, bootstrap_type='blur')
-
-	Ps = model.get_linear_smoother(X_tr, X_ts)
-	eps = model.eps_
-	
-	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
-
-	Cov_wp = 2*Sigma_t
-	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
-
-	n_trees = len(Ps)
-
-	tree_ests = np.zeros(n_trees)
-	ws = np.zeros((n, n_trees))
-	yhats = np.zeros((n_ts, n_trees))
-
-	for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
-		eps_i = eps_i.ravel()
-		w = y + eps_i
-		# ws[:,i] = w
-		regress_t_eps = eps_i
-		wp = y - regress_t_eps
-		wp_ts = wp[ts_idx]
-
-		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
-		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
-
-		yhat = P_i @ y_tr
-		yhats[:,i] = yhat
-
-	centered_preds = yhats.mean(axis=1)[:,None] - yhats
-
-	return (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees), model, ws
 
 
 def cp_bagged_train_test(
@@ -410,6 +308,7 @@ def cp_bagged_train_test(
 	y, 
 	tr_idx,
 	Chol_t=None,
+	Chol_s=None,
 	n_estimators=5,
 	**kwargs,
 	):
@@ -426,6 +325,13 @@ def cp_bagged_train_test(
 	else:
 		Sigma_t = Chol_t @ Chol_t.T
 
+	same_cov = Chol_s is None
+	if same_cov:
+		Chol_s = np.zeros_like(Chol_t)
+		Sigma_s = np.zeros_like(Sigma_t)
+	else:
+		Sigma_s = Chol_s @ Chol_s.T
+
 	# Chol_eps = np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx])
 	Chol_eps = Chol_t
 
@@ -435,7 +341,7 @@ def cp_bagged_train_test(
 	eps = model.eps_
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_t[ts_idx,:][:,ts_idx]
+	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
 
 	Cov_wp = 2*Sigma_t
 	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
@@ -454,7 +360,9 @@ def cp_bagged_train_test(
 		wp = y - regress_t_eps
 		wp_ts = wp[ts_idx]
 
-		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() 
+		if not same_cov:
+			correction += np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
 		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
 
 		yhat = P_i @ y_tr

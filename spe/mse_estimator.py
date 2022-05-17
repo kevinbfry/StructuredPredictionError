@@ -15,8 +15,7 @@ from .estimators import kfoldcv, kmeanscv, test_set_estimator, \
 						cb, cb_isotropic, \
 						blur_linear, blur_linear_selector, blur_forest, \
 						cp_linear_train_test, test_est_split, \
-						cp_relaxed_lasso_train_test, cp_random_forest_train_test, \
-						cp_bagged_relaxed_lasso_train_test, cp_bagged_train_test, \
+						cp_relaxed_lasso_train_test, cp_bagged_train_test, \
 						better_test_est_split, bag_kfoldcv, bag_kmeanscv
 from .tree import Tree
 from .forest import BlurredForest
@@ -78,6 +77,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		tr_idx=None,
 		k=10,
 		):
@@ -101,6 +101,15 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
+
 		for i in np.arange(niter):
 		
 			# if gen_beta:
@@ -121,22 +130,15 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = sigma * np.random.randn(n)
-			eps2 = sigma * np.random.randn(n)
-			if Chol_t is not None:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
-			# return X, y, mu
-
 			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
 			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
 			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -158,7 +160,8 @@ class ErrorComparer(object):
 			self.lin_err[i] = lin_est(X=X, 
 									  y=y, 
 									  tr_idx=tr_idx,
-									  Chol_t=Chol_t*sigma)
+									  Chol_t=Chol_t,
+									  Chol_s=Chol_s)
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.lin_err
 
@@ -174,6 +177,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		tr_idx=None,
 		k=10,
 		):
@@ -197,7 +201,14 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
-		Chol_t = Chol_t*sigma
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -225,23 +236,15 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = np.random.randn(n)
-			eps2 = np.random.randn(n)
-			if Chol_t is None:
-				eps *= sigma
-				eps2 *= sigma
-			else:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
 			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
 			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
 			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -252,7 +255,8 @@ class ErrorComparer(object):
 			self.lin_err[i] = lin_est(X=X, 
 										y=y,
 										tr_idx=tr_idx,
-										Chol_t=Chol_t)
+										Chol_t=Chol_t,
+										Chol_s=Chol_s)
 
 			self.kfcv_err[i] = kfcv_est(model=model,
 										X=X, 
@@ -279,6 +283,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		alpha=1.,
 		lambd=0.31,
 		tr_idx=None,
@@ -304,6 +309,15 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
+
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 			# if gen_beta:
@@ -324,20 +338,15 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = sigma * np.random.randn(n)
-			eps2 = sigma * np.random.randn(n)
-			if Chol_t is not None:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
 			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
 			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
 			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -360,7 +369,8 @@ class ErrorComparer(object):
 										X=X, 
 										y=y, 
 										tr_idx=tr_idx,
-										Chol_t=Chol_t*sigma,
+										Chol_t=Chol_t,
+										Chol_s=Chol_s,
 										alpha=alpha)[0]
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.rela_err
@@ -377,6 +387,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		tr_idx=None,
 		lambd=.1,
 		alpha=1.,
@@ -403,7 +414,14 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
-		Chol_t = Chol_t*sigma
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -431,14 +449,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = np.random.randn(n)
-			eps2 = np.random.randn(n)
-			if Chol_t is None:
-				eps *= sigma
-				eps2 *= sigma
-			else:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
@@ -460,6 +473,7 @@ class ErrorComparer(object):
 										y=y,
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
+										Chol_s=Chol_s,
 										alpha=alpha)[0]
 
 			self.kfcv_err[i] = kfcv_est(model=model,
@@ -489,6 +503,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		n_estimators=10,
 		# lambd=0.31,
 		tr_idx=None,
@@ -519,7 +534,14 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
-		Chol_t = Chol_t*sigma
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
 
 		kwargs['chol_eps'] = Chol_t
 
@@ -546,14 +568,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = np.random.randn(n)
-			eps2 = np.random.randn(n)
-			if Chol_t is None:
-				eps *= sigma
-				eps2 *= sigma
-			else:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
@@ -576,6 +593,7 @@ class ErrorComparer(object):
 										y=y,
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
+										Chol_s=Chol_s,
 										n_estimators=n_estimators,
 										**kwargs)
 
@@ -610,6 +628,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		n_estimators=10,
 		# lambd=0.31,
 		tr_idx=None,
@@ -640,7 +659,14 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
-		Chol_t = Chol_t*sigma
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
 
 		kwargs['chol_eps'] = Chol_t
 
@@ -671,14 +697,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = np.random.randn(n)
-			eps2 = np.random.randn(n)
-			if Chol_t is None:
-				eps *= sigma
-				eps2 *= sigma
-			else:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
@@ -701,6 +722,7 @@ class ErrorComparer(object):
 										y=y,
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
+										Chol_s=Chol_s,
 										n_estimators=n_estimators,
 										**kwargs)
 
@@ -731,6 +753,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		max_depth=4,
 		n_estimators=5,
 		tr_idx=None,
@@ -761,7 +784,14 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
-		Chol_t = Chol_t*sigma
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
 
 		kwargs['chol_eps'] = Chol_t
 		# tr_idx = np.ones(n).astype(bool)
@@ -793,23 +823,15 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = np.random.randn(n)
-			eps2 = np.random.randn(n)
-			if Chol_t is None:
-				eps *= sigma
-				eps2 *= sigma
-			else:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
 			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
 			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
 			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -823,6 +845,7 @@ class ErrorComparer(object):
 										y=y,
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
+										Chol_s=Chol_s,
 										n_estimators=n_estimators,
 										**kwargs)
 
@@ -855,6 +878,7 @@ class ErrorComparer(object):
 		beta=None,
 		coord=None,
 		Chol_t=None,
+		Chol_s=None,
 		max_depth=4,
 		n_estimators=5,
 		tr_idx=None,
@@ -885,7 +909,14 @@ class ErrorComparer(object):
 		sigma = np.sqrt(np.var(mu)/snr)
 		n, p = X.shape
 
-		Chol_t = Chol_t*sigma
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
 
 		kwargs['chol_eps'] = Chol_t
 
@@ -916,14 +947,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = np.random.randn(n)
-			eps2 = np.random.randn(n)
-			if Chol_t is None:
-				eps *= sigma
-				eps2 *= sigma
-			else:
-				eps = Chol_t @ eps
-				eps2 = Chol_t @ eps2
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+
 			y = mu + eps
 			y2 = mu + eps2
 
@@ -946,6 +972,7 @@ class ErrorComparer(object):
 										y=y,
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
+										Chol_s=Chol_s,
 										n_estimators=n_estimators,
 										**kwargs)
 
