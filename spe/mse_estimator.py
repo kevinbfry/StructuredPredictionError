@@ -87,7 +87,7 @@ class ErrorComparer(object):
 		return gen_beta, n, p
 
 
-	def _preprocess_chol(self, Chol_t, Chol_s, sigma):
+	def _preprocess_chol(self, Chol_t, Chol_s, sigma, n):
 		if Chol_t is None:
 			Chol_t = np.eye(n)
 		Chol_t *= sigma
@@ -145,16 +145,19 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 		for i in np.arange(niter):
 		
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			if i == 0:
@@ -225,10 +228,13 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -236,6 +242,7 @@ class ErrorComparer(object):
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -313,16 +320,20 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			if i == 0:
@@ -398,10 +409,13 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -409,6 +423,7 @@ class ErrorComparer(object):
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -495,12 +510,15 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
-		kwargs['chol_eps'] = Chol_t
+			kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -508,6 +526,9 @@ class ErrorComparer(object):
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+				kwargs['chol_eps'] = Chol_t
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			kwargs['idx_tr'] = tr_idx
@@ -597,12 +618,15 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
-		kwargs['chol_eps'] = Chol_t
+			kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -610,6 +634,9 @@ class ErrorComparer(object):
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+				kwargs['chol_eps'] = Chol_t
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -699,12 +726,15 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
-		kwargs['chol_eps'] = Chol_t
+			kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -712,6 +742,9 @@ class ErrorComparer(object):
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+				kwargs['chol_eps'] = Chol_t
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -803,12 +836,15 @@ class ErrorComparer(object):
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
-		kwargs['chol_eps'] = Chol_t
+			kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -816,6 +852,9 @@ class ErrorComparer(object):
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+				kwargs['chol_eps'] = Chol_t
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -866,6 +905,230 @@ class ErrorComparer(object):
 										Chol_t=Chol_t)
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.bagg_err
+
+
+	def compareGLSFTrTs(
+		self, 
+		niter=100,
+		n=200,
+		p=30,
+		s=5,
+		snr=0.4, 
+		X=None,
+		beta=None,
+		coord=None,
+		Chol_t=None,
+		Chol_s=None,
+		max_depth=4,
+		n_estimators=5,
+		tr_idx=None,
+		k=10,
+		**kwargs,
+		):
+
+		# model = RelaxedLasso(lambd=lambd, fit_intercept=False)
+		model = BlurredForest(
+				max_depth=max_depth,
+				n_estimators=n_estimators,
+				)
+
+		self.test_err = np.zeros(niter)
+		# self.kfcv_err = np.zeros(niter)
+		# self.spcv_err = np.zeros(niter)
+		self.bagg_err = np.zeros(niter)
+		self.glsf_err = np.zeros(niter)
+
+		test_est = better_test_est_split
+		# kfcv_est = bag_kfoldcv
+		# spcv_est = bag_kmeanscv
+		bagg_est = cp_bagged_train_test
+		glsf_est = cp_bagged_train_test
+
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
+
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
+
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+			kwargs['chol_eps'] = Chol_t
+
+		for i in np.arange(niter):
+			if i % 10 == 0: print(i)
+		
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+				kwargs['chol_eps'] = Chol_t
+
+			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
+			# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
+			# tr_idx = np.zeros(n).astype(bool)
+			# tr_idx[tr_samples] = True
+			# ts_idx = (1 - tr_idx).astype(bool)
+			kwargs['idx_tr'] = tr_idx
+			if i == 0:
+				print(tr_idx.mean())
+
+			# if tr_idx is None:
+				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
+				# tr_idx = np.zeros(n)
+				# tr_idx[tr_samples] = 1
+				# ts_idx = (1 - tr_idx).astype(bool)
+
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
+
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
+
+			self.test_err[i] = test_est(model=model,
+										X=X, 
+										y=y, 
+										y2=y2,
+										tr_idx=tr_idx,
+										**kwargs)
+
+			self.bagg_err[i], self.glsf_err[i] = bagg_est(model=model,
+										X=X, 
+										y=y,
+										tr_idx=tr_idx,
+										Chol_t=Chol_t,
+										Chol_s=Chol_s,
+										n_estimators=n_estimators,
+										ret_gls=True,
+										**kwargs)
+
+			# cvChol_t = Chol_t[tr_idx,:][:,tr_idx]
+
+			# self.kfcv_err[i] = kfcv_est(model=model,
+			# 							X=X_tr, 
+			# 							y=y_tr,
+			# 							k=k,
+			# 							Chol_t=cvChol_t)
+
+			# self.spcv_err[i] = spcv_est(model=model,
+			# 							X=X_tr, 
+			# 							y=y_tr,
+			# 							coord=coord_tr,
+			# 							k=k,
+			# 							Chol_t=cvChol_t)
+
+		return self.test_err, self.bagg_err, self.glsf_err
+
+
+	def compareGLSFTrTsFair(
+		self, 
+		niter=100,
+		n=200,
+		p=30,
+		s=5,
+		snr=0.4, 
+		X=None,
+		beta=None,
+		coord=None,
+		Chol_t=None,
+		Chol_s=None,
+		max_depth=4,
+		n_estimators=5,
+		tr_idx=None,
+		k=10,
+		**kwargs,
+		):
+
+		# model = RelaxedLasso(lambd=lambd, fit_intercept=False)
+		model = BlurredForest(
+				max_depth=max_depth,
+				n_estimators=n_estimators,
+				)
+
+		self.test_err = np.zeros(niter)
+		# self.kfcv_err = np.zeros(niter)
+		# self.spcv_err = np.zeros(niter)
+		self.bagg_err = np.zeros(niter)
+		self.glsf_err = np.zeros(niter)
+
+		test_est = better_test_est_split
+		# kfcv_est = bag_kfoldcv
+		# spcv_est = bag_kmeanscv
+		bagg_est = cp_bagged_train_test
+		glsf_est = cp_bagged_train_test
+
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
+
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
+
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+			kwargs['chol_eps'] = Chol_t
+
+		for i in np.arange(niter):
+			if i % 10 == 0: print(i)
+		
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+
+				kwargs['chol_eps'] = Chol_t
+
+			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
+			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
+			tr_idx = np.zeros(n).astype(bool)
+			tr_idx[tr_samples] = True
+			ts_idx = (1 - tr_idx).astype(bool)
+			kwargs['idx_tr'] = tr_idx
+			if i == 0:
+				print(tr_idx.mean())
+
+			# if tr_idx is None:
+				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
+				# tr_idx = np.zeros(n)
+				# tr_idx[tr_samples] = 1
+				# ts_idx = (1 - tr_idx).astype(bool)
+
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
+
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
+
+			self.test_err[i] = test_est(model=model,
+										X=X, 
+										y=y, 
+										y2=y2,
+										tr_idx=tr_idx,
+										**kwargs)
+
+			self.bagg_err[i], self.glsf_err[i] = bagg_est(model=model,
+										X=X, 
+										y=y,
+										tr_idx=tr_idx,
+										Chol_t=Chol_t,
+										Chol_s=Chol_s,
+										n_estimators=n_estimators,
+										ret_gls=True,
+										**kwargs)
+
+			# self.kfcv_err[i] = kfcv_est(model=model,
+			# 							X=X, 
+			# 							y=y,
+			# 							k=k,
+			# 							Chol_t=Chol_t)
+
+			# self.spcv_err[i] = spcv_est(model=model,
+			# 							X=X, 
+			# 							y=y,
+			# 							coord=coord,
+			# 							k=k,
+			# 							Chol_t=Chol_t)
+
+		return self.test_err, self.bagg_err, self.glsf_err
 
 
 

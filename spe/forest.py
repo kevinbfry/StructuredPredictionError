@@ -14,7 +14,7 @@ from joblib import Parallel
 ## code from sklearn, only need to change a small part of fit function
 
 class BlurredForest(RandomForestRegressor):
-	def get_linear_smoother(self, X, X_pred=None):
+	def get_linear_smoother(self, X, X_pred=None, Chol=None):
 		Gs = self.get_group_X(X)
 		if X_pred is None:
 			G_preds = Gs
@@ -23,7 +23,10 @@ class BlurredForest(RandomForestRegressor):
 			delattr(self, 'n_leaves')
 		
 		# return [G_pred @ np.linalg.inv(G.T @ G) @ G.T for (G,G_pred) in zip(Gs, G_preds)]
-		return [G_pred @ np.linalg.pinv(G) for (G,G_pred) in zip(Gs, G_preds)]
+		if Chol is None:
+			return [G_pred @ np.linalg.pinv(G) for (G,G_pred) in zip(Gs, G_preds)]
+
+		return [G_pred @ np.linalg.pinv(Chol.T @ G) @ Chol.T for (G,G_pred) in zip(Gs, G_preds)]
 
 
 	# def get_group_X(self, X):

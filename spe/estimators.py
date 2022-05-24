@@ -310,6 +310,7 @@ def cp_bagged_train_test(
 	Chol_t=None,
 	Chol_s=None,
 	n_estimators=5,
+	ret_gls=False,
 	**kwargs,
 	):
 	
@@ -336,7 +337,7 @@ def cp_bagged_train_test(
 	Chol_eps = Chol_t
 
 	model.fit(X_tr, y_tr, **kwargs)
-
+	
 	Ps = model.get_linear_smoother(X_tr, X_ts)
 	eps = model.eps_
 	
@@ -370,7 +371,40 @@ def cp_bagged_train_test(
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
 
-	return (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees)
+	ols_est = (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees)
+
+	if not ret_gls:
+		return ols_est
+
+
+	Ps = model.get_linear_smoother(X_tr, X_ts, np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx]))
+	eps = model.eps_
+
+	n_trees = len(Ps)
+
+	tree_ests = np.zeros(n_trees)
+	ws = np.zeros((n, n_trees))
+	yhats = np.zeros((n_ts, n_trees))
+
+	for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
+		eps_i = eps_i.ravel()
+		w = y + eps_i
+		# ws[:,i] = w
+		regress_t_eps = eps_i
+		wp = y - regress_t_eps
+		wp_ts = wp[ts_idx]
+
+		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() 
+		if not same_cov:
+			correction += np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
+
+		yhat = P_i @ y_tr
+		yhats[:,i] = yhat
+
+	centered_preds = yhats.mean(axis=1)[:,None] - yhats
+
+	return ols_est, (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees)
 
 
 
