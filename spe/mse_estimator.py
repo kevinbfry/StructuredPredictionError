@@ -66,6 +66,55 @@ def create_clus_split(nx, ny, rn=None):
 
 
 class ErrorComparer(object):
+	def _gen_X_beta(self, n, p, s):
+		X = np.random.randn(n,p)
+		beta = np.zeros(p)
+		idx = np.random.choice(p,size=s)
+		beta[idx] = np.random.uniform(-1,1,size=s)
+
+		return X, beta
+
+	def _gen_mu_sigma(self, X, beta, snr):
+		mu = X @ beta
+		sigma = np.sqrt(np.var(mu)/snr)
+		return mu, sigma
+
+
+	def _preprocess_X_beta(self, X, beta, n, p):
+		gen_beta = X is None or beta is None
+		if not X is None:
+			n, p = X.shape
+		return gen_beta, n, p
+
+
+	def _preprocess_chol(self, Chol_t, Chol_s, sigma):
+		if Chol_t is None:
+			Chol_t = np.eye(n)
+		Chol_t *= sigma
+
+		if Chol_s is None:
+			Chol_s = Chol_t
+		else:
+			Chol_s *= sigma
+
+		return Chol_t, Chol_s
+
+
+	def _gen_ys(self, mu, Chol_t, Chol_s):
+		n = len(mu)
+		eps = Chol_t @ np.random.randn(n)
+		eps2 = Chol_s @ np.random.randn(n)
+
+		y = mu + eps
+		y2 = mu + eps2
+
+		return y, y2
+
+
+	def _get_train(self, X, y, coord, tr_idx):
+		return X[tr_idx,:], y[tr_idx], coord[tr_idx,:]
+
+
 	def compareLinearTrTs(
 		self, 
 		niter=100,
@@ -94,32 +143,18 @@ class ErrorComparer(object):
 		spcv_est = kmeanscv
 		lin_est = cp_linear_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		for i in np.arange(niter):
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			if i == 0:
@@ -130,15 +165,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			y_tr = y[tr_idx]
-			coord_tr = coord[tr_idx,:]
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -194,33 +223,19 @@ class ErrorComparer(object):
 		spcv_est = kmeanscv
 		lin_est = cp_linear_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -236,15 +251,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			y_tr = y[tr_idx]
-			coord_tr = coord[tr_idx,:]
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -302,32 +311,18 @@ class ErrorComparer(object):
 		spcv_est = kmeanscv
 		rela_est = cp_relaxed_lasso_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			if i == 0:
@@ -338,15 +333,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			y_tr = y[tr_idx]
-			coord_tr = coord[tr_idx,:]
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -407,33 +396,19 @@ class ErrorComparer(object):
 		spcv_est = kmeanscv
 		rela_est = cp_relaxed_lasso_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -449,18 +424,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
-			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
-			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -527,35 +493,21 @@ class ErrorComparer(object):
 		spcv_est = bag_kmeanscv
 		bagg_est = cp_bagged_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			kwargs['idx_tr'] = tr_idx
@@ -568,18 +520,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
-			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
-			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -652,35 +595,21 @@ class ErrorComparer(object):
 		spcv_est = bag_kmeanscv
 		bagg_est = cp_bagged_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -697,18 +626,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
-			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
-			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -777,36 +697,21 @@ class ErrorComparer(object):
 		spcv_est = bag_kmeanscv
 		bagg_est = cp_bagged_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		kwargs['chol_eps'] = Chol_t
-		# tr_idx = np.ones(n).astype(bool)
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -823,15 +728,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			y_tr = y[tr_idx]
-			coord_tr = coord[tr_idx,:]
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -902,35 +801,21 @@ class ErrorComparer(object):
 		spcv_est = bag_kmeanscv
 		bagg_est = cp_bagged_train_test
 
-		# gen_beta = X is None or beta is None
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
-		# if not gen_beta:
-		mu = X @ beta
-		sigma = np.sqrt(np.var(mu)/snr)
-		n, p = X.shape
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
-		if Chol_t is None:
-			Chol_t = np.eye(n)
-		Chol_t *= sigma
-
-		if Chol_s is None:
-			Chol_s = Chol_t
-		else:
-			Chol_s *= sigma
+		Chol_t, Chol_s = self._preprocess_chol(Chol_t, Chol_s, sigma)
 
 		kwargs['chol_eps'] = Chol_t
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
 		
-			# if gen_beta:
-			# 	X = np.random.randn(n,p)
-			# 	beta = np.zeros(p)
-			# 	idx = np.random.choice(p,size=s)
-			# 	beta[idx] = np.random.uniform(-1,1,size=s)
-
-			# 	mu = X @ beta
-			# 	sigma = np.sqrt(np.var(mu)/snr)
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
 
 			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
 			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
@@ -947,18 +832,9 @@ class ErrorComparer(object):
 				# tr_idx[tr_samples] = 1
 				# ts_idx = (1 - tr_idx).astype(bool)
 
-			eps = Chol_t @ np.random.randn(n)
-			eps2 = Chol_s @ np.random.randn(n)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
 
-			y = mu + eps
-			y2 = mu + eps2
-
-			X_tr = X[tr_idx,:]
-			# X_ts = X[ts_idx,:]
-			y_tr = y[tr_idx]
-			# y_ts = y[ts_idx]
-			coord_tr = coord[tr_idx,:]
-			# return X_tr, y_tr, coord_tr
+			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 
 			self.test_err[i] = test_est(model=model,
 										X=X, 
@@ -990,6 +866,8 @@ class ErrorComparer(object):
 										Chol_t=Chol_t)
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.bagg_err
+
+
 
 
 
