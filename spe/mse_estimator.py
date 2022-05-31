@@ -1,4 +1,5 @@
 from itertools import product
+import inspect
 
 import numpy as np
 
@@ -69,6 +70,11 @@ def create_clus_split(nx, ny, n_centers=None):
 
 
 class ErrorComparer(object):
+	DATA_ARGS = ['X', 'y', 'y2', 'tr_idx', 'Chol_t', 'Chol_s']
+	BAGCV_METHODS = ['bag_kfoldcv', 'bag_kmeanscv']
+	CV_METHODS = ['kfoldcv', 'kmeanscv'] + BAGCV_METHODS
+	SPCV_METHODS = ['bag_kmeanscv', 'kmeanscv']
+
 	def _gen_X_beta(self, n, p, s):
 		X = np.random.randn(n,p)
 		beta = np.zeros(p)
@@ -116,6 +122,122 @@ class ErrorComparer(object):
 
 	def _get_train(self, X, y, coord, tr_idx):
 		return X[tr_idx,:], y[tr_idx], coord[tr_idx,:]
+
+
+	def compare(self, 
+		model,
+		ests,
+		est_kwargs,
+		niter=100,
+		n=200,
+		p=30,
+		s=5,
+		snr=0.4, 
+		X=None,
+		beta=None,
+		coord=None,
+		Chol_t=None,
+		Chol_s=None,
+		tr_idx=None,
+		fair=False,
+		**kwargs):
+
+		if len(ests) != len(est_kwargs):
+			raise ValueError("est must be same length as est_kwargs")
+
+		errs = [np.zeros(niter) for _ in range(len(ests)+1)]
+		ests.insert(0, better_test_est_split)
+		est_kwargs.insert(0, {})
+		for j,est in enumerate(ests):
+			if est.__name__ not in self.CV_METHODS:
+				est_kwargs[j] = {**est_kwargs[j], **kwargs, **{'model': model}}
+			else:
+				est_kwargs[j]['model'] = model
+			# if j == 0:
+			# 	est_kwargs[j]['model'] = model
+
+		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
+
+		Chol_t_orig = Chol_t
+		Chol_s_orig = Chol_s
+
+		if not gen_beta:
+			mu, sigma = self._gen_mu_sigma(X, beta, snr)
+			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+			for j in range(len(est_kwargs)):
+				if j == 0:
+					est_kwargs[j] = {**est_kwargs[j], 
+									 **{'X': X}}
+				else:
+					est_kwargs[j] = {**est_kwargs[j], 
+									 **{'X': X, 
+									    'Chol_t': Chol_t, 
+									    'Chol_s': Chol_s}}
+
+		for i in np.arange(niter):
+			if i % 10 == 0: print(i)
+		
+			if gen_beta:
+				X, beta = self._gen_X_beta(n, p, s)
+				mu, sigma = self._gen_mu_sigma(X, beta, snr)
+				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+				for j in range(len(est_kwargs)):
+					if j == 0:
+						est_kwargs[j] = {**est_kwargs[j], 
+										 **{'X': X}}
+					else:
+						est_kwargs[j] = {**est_kwargs[j], 
+										 **{'X': X, 
+										    'Chol_t': Chol_t, 
+										    'Chol_s': Chol_s}}
+
+			if fair:
+				tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
+				tr_idx = np.zeros(n).astype(bool)
+				tr_idx[tr_samples] = True
+			else:
+				tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
+			if i == 0:
+				print(tr_idx.mean())
+
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
+			for j in range(len(est_kwargs)):
+				if j == 0:
+					est_kwargs[j] = {**est_kwargs[j], 
+									 **{'tr_idx': tr_idx,
+									 	'y': y,
+									 	'y2':y2}}
+				else:
+					est_kwargs[j] = {**est_kwargs[j], 
+									 **{'tr_idx': tr_idx,
+									 	'y': y}}
+
+			if fair:
+				for j, est in enumerate(ests):
+						if est.__name__ in self.SPCV_METHODS:
+							est_kwargs[j]['coord'] = coord
+			else:
+				X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
+				cvChol_t = Chol_t[tr_idx,:][:,tr_idx]
+				for j, est in enumerate(ests):
+					if est.__name__ in self.CV_METHODS:
+						est_kwargs[j]['X'] = X_tr
+						est_kwargs[j]['y'] = y_tr
+						if est.__name__ in self.BAGCV_METHODS:
+							est_kwargs[j]['Chol_t'] = cvChol_t
+						else:
+							del est_kwargs[j]['Chol_t']
+						del est_kwargs[j]['Chol_s']
+						del est_kwargs[j]['tr_idx']
+						if est.__name__ in self.SPCV_METHODS:
+							est_kwargs[j]['coord'] = coord_tr
+
+			for err, est, est_kwarg in zip(errs, ests, est_kwargs):
+				print(est_kwarg.keys())
+				err[i] = est(**est_kwarg)
+
+		return errs
+
 
 
 	def compareLinearTrTs(
@@ -184,15 +306,16 @@ class ErrorComparer(object):
 			self.kfcv_err[i] = kfcv_est(model=model,
 										X=X_tr, 
 										y=y_tr,
-										k=k)[0]
+										k=k)#[0]
 
 			self.spcv_err[i] = spcv_est(model=model,
 										X=X_tr, 
 										y=y_tr,
 										coord=coord_tr,
-										k=k)[0]
+										k=k)#[0]
 
-			self.lin_err[i] = lin_est(X=X, 
+			self.lin_err[i] = lin_est(model=model,
+									  X=X, 
 									  y=y, 
 									  tr_idx=tr_idx,
 									  Chol_t=Chol_t,
@@ -271,7 +394,8 @@ class ErrorComparer(object):
 										y2=y2,
 										tr_idx=tr_idx)
 
-			self.lin_err[i] = lin_est(X=X, 
+			self.lin_err[i] = lin_est(model=model,
+										X=X, 
 										y=y,
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
@@ -280,13 +404,13 @@ class ErrorComparer(object):
 			self.kfcv_err[i] = kfcv_est(model=model,
 										X=X, 
 										y=y,
-										k=k)[0]
+										k=k)#[0]
 
 			self.spcv_err[i] = spcv_est(model=model,
 										X=X, 
 										y=y,
 										coord=coord,
-										k=k)[0]
+										k=k)#[0]
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.lin_err
 
@@ -360,13 +484,13 @@ class ErrorComparer(object):
 			self.kfcv_err[i] = kfcv_est(model=model,
 										X=X_tr, 
 										y=y_tr,
-										k=k)[0]
+										k=k)#[0]
 
 			self.spcv_err[i] = spcv_est(model=model,
 										X=X_tr, 
 										y=y_tr,
 										coord=coord_tr,
-										k=k)[0]
+										k=k)#[0]
 
 			self.rela_err[i] = rela_est(model=model,
 										X=X, 
@@ -374,7 +498,7 @@ class ErrorComparer(object):
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
 										Chol_s=Chol_s,
-										alpha=alpha)[0]
+										alpha=alpha)#[0]
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.rela_err
 
@@ -458,18 +582,18 @@ class ErrorComparer(object):
 										tr_idx=tr_idx,
 										Chol_t=Chol_t,
 										Chol_s=Chol_s,
-										alpha=alpha)[0]
+										alpha=alpha)#[0]
 
 			self.kfcv_err[i] = kfcv_est(model=model,
 										X=X, 
 										y=y,
-										k=k)[0]
+										k=k)#[0]
 
 			self.spcv_err[i] = spcv_est(model=model,
 										X=X, 
 										y=y,
 										coord=coord,
-										k=k)[0]
+										k=k)#[0]
 
 		return self.test_err, self.kfcv_err, self.spcv_err, self.rela_err
 

@@ -234,6 +234,7 @@ def test_est_split(
 
 
 def cp_linear_train_test(
+	model,
 	X,
 	y, 
 	tr_idx,
@@ -295,7 +296,7 @@ def cp_relaxed_lasso_train_test(
 
 	correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
 
-	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts, model
+	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts#, model
 
 
 def cp_bagged_train_test(
@@ -310,12 +311,14 @@ def cp_bagged_train_test(
 	):
 	
 	model = clone(model)
+	kwargs['chol_eps'] = Chol_t
+	kwargs['idx_tr'] = tr_idx
 
 	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
 
 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-	Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, _ = _get_covs(Chol_t, Chol_s)
+	Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s)
 
 	model.fit(X_tr, y_tr, **kwargs)
 	
@@ -367,12 +370,14 @@ def cp_rf_train_test(
 	):
 	
 	model = clone(model)
+	kwargs['chol_eps'] = Chol_t
+	kwargs['idx_tr'] = tr_idx
 
 	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
 
 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-	Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, _ = _get_covs(Chol_t, Chol_s)
+	Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s)
 
 	model.fit(X_tr, y_tr, **kwargs)
 	
@@ -850,7 +855,7 @@ def kfoldcv(model,
 							cv=KFold(k, shuffle=True), 
 							error_score='raise',
 							fit_params=kwargs)
-	return -np.mean(kfcv_res['test_score']), model
+	return -np.mean(kfcv_res['test_score'])#, model
 
 
 def kmeanscv(model, 
@@ -869,7 +874,7 @@ def kmeanscv(model,
 								groups=groups,
 								fit_params=kwargs)
 
-	return -np.mean(spcv_res['test_score']), model
+	return -np.mean(spcv_res['test_score'])#, model
 
 
 def test_set_estimator(model, 
