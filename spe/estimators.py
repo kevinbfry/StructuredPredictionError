@@ -74,6 +74,29 @@ def _blur(y, Chol_eps, proj_t_eps):
 	return w, wp, eps, regress_t_eps
 
 
+def _get_covs(Chol_t, Chol_s, alpha=1.):
+	n = Chol_t.shape[0]
+	if Chol_t is None:
+		Chol_t = np.eye(n)
+		Sigma_t = np.eye(n)
+	else:
+		Sigma_t = Chol_t @ Chol_t.T
+
+	same_cov = Chol_s is None
+	if same_cov:
+		# Chol_s = np.zeros_like(Chol_t)
+		# Sigma_s = np.zeros_like(Sigma_t)
+		Chol_s = Chol_t
+		Sigma_s = Sigma_t
+	else:
+		Sigma_s = Chol_s @ Chol_s.T
+
+	Chol_eps = np.sqrt(alpha) * Chol_t
+	proj_t_eps = np.eye(n) / alpha
+
+	return Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps
+
+
 
 
 
@@ -223,28 +246,17 @@ def cp_linear_train_test(
 
 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	same_cov = Chol_s is None
-	if same_cov:
-		Chol_s = np.zeros_like(Chol_t)
-		Sigma_s = np.zeros_like(Sigma_t)
-	else:
-		Sigma_s = Chol_s @ Chol_s.T
-
+	Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s)
 
 	P = X_ts @ np.linalg.inv(X_tr.T @ X_tr) @ X_tr.T
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
+	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
+	Cov_ts_ts = Sigma_t[ts_idx,:][:,ts_idx]
 
-	correction = np.diag(Cov_tr_ts @ P).sum()
-	if not same_cov:
-		correction += np.sum(np.diag(Sigma_s[ts_idx,:][:,ts_idx]) 
-								- np.diag(Sigma_t[ts_idx,:][:,ts_idx]))
+	correction = np.diag(Cov_tr_ts @ P).sum() + \
+							np.sum(np.diag(Cov_ts) 
+									- np.diag(Cov_ts_ts))
 
 	return (np.sum((y_ts - P @ y_tr)**2) + correction) / n_ts
 
@@ -265,21 +277,7 @@ def cp_relaxed_lasso_train_test(
 
 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	same_cov = Chol_s is None
-	if same_cov:
-		Chol_s = np.zeros_like(Chol_t)
-		Sigma_s = np.zeros_like(Sigma_t)
-	else:
-		Sigma_s = Chol_s @ Chol_s.T
-
-	Chol_eps = np.sqrt(alpha) * Chol_t
-	proj_t_eps = np.eye(n) / alpha
+	Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(Chol_t, Chol_s)
 
 	w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 	w_tr = w[tr_idx]
@@ -295,9 +293,7 @@ def cp_relaxed_lasso_train_test(
 	Cov_wp = (1 + 1/alpha)*Sigma_t
 	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
 
-	correction = 2*np.diag(Cov_tr_ts @ P).sum()
-	if not same_cov:
-		correction += np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+	correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
 
 	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts, model
 
@@ -310,7 +306,6 @@ def cp_bagged_train_test(
 	Chol_t=None,
 	Chol_s=None,
 	n_estimators=5,
-	ret_gls=False,
 	**kwargs,
 	):
 	
@@ -320,21 +315,7 @@ def cp_bagged_train_test(
 
 	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-	if Chol_t is None:
-		Chol_t = np.eye(n)
-		Sigma_t = np.eye(n)
-	else:
-		Sigma_t = Chol_t @ Chol_t.T
-
-	same_cov = Chol_s is None
-	if same_cov:
-		Chol_s = np.zeros_like(Chol_t)
-		Sigma_s = np.zeros_like(Sigma_t)
-	else:
-		Sigma_s = Chol_s @ Chol_s.T
-
-	# Chol_eps = np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx])
-	Chol_eps = Chol_t
+	Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, _ = _get_covs(Chol_t, Chol_s)
 
 	model.fit(X_tr, y_tr, **kwargs)
 	
@@ -361,30 +342,59 @@ def cp_bagged_train_test(
 		wp = y - regress_t_eps
 		wp_ts = wp[ts_idx]
 
-		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() 
-		if not same_cov:
-			correction += np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+		correction = 2*np.diag(Cov_tr_ts @ P_i).sum()
 		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
 
 		yhat = P_i @ y_tr
 		yhats[:,i] = yhat
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
+	iter_indep_correction = n_trees * (np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum())
 
-	ols_est = (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees)
-
-	if not ret_gls:
-		return ols_est
+	return (tree_ests.sum() + iter_indep_correction - np.sum((centered_preds)**2)) / (n_ts*n_trees)
 
 
-	Ps = model.get_linear_smoother(X_tr, X_ts, np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx]))
+def cp_rf_train_test(
+	model,
+	X,
+	y, 
+	tr_idx,
+	Chol_t=None,
+	Chol_s=None,
+	n_estimators=5,
+	ret_gls=False,
+	**kwargs,
+	):
+	
+	model = clone(model)
+
+	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+
+	(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+
+	Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, _ = _get_covs(Chol_t, Chol_s)
+
+	model.fit(X_tr, y_tr, **kwargs)
+	
+	Ps = model.get_linear_smoother(X_tr, X_ts)
 	eps = model.eps_
+	
+	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
+	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
+
+	Cov_wp = 2*Sigma_t
+	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
 
 	n_trees = len(Ps)
 
 	tree_ests = np.zeros(n_trees)
 	ws = np.zeros((n, n_trees))
 	yhats = np.zeros((n_ts, n_trees))
+
+	if ret_gls:
+		P_gls_s = model.get_linear_smoother(X_tr, X_ts, np.linalg.cholesky(Sigma_t[tr_idx, :][:,tr_idx]))
+		tree_gls_ests = np.zeros(n_trees)
+		yhats_gls = np.zeros((n_ts, n_trees))
 
 	for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
 		eps_i = eps_i.ravel()
@@ -394,17 +404,28 @@ def cp_bagged_train_test(
 		wp = y - regress_t_eps
 		wp_ts = wp[ts_idx]
 
-		correction = 2*np.diag(Cov_tr_ts @ P_i).sum() 
-		if not same_cov:
-			correction += np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+		correction = 2*np.diag(Cov_tr_ts @ P_i).sum()
 		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
-
-		yhat = P_i @ y_tr
-		yhats[:,i] = yhat
+		yhats[:,i] = P_i @ y_tr
+		
+		if ret_gls:
+			P_gls_i = P_gls_s[i]
+			gls_correction = 2*np.diag(Cov_tr_ts @ P_gls_i).sum()
+			tree_gls_ests[i] = np.sum((wp_ts - P_gls_i @ y_tr)**2) + gls_correction
+			yhats_gls[:,i] = P_gls_i @ y_tr
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
+	iter_indep_correction = n_trees * (np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum())
+	ols_est = (tree_ests.sum() + iter_indep_correction - np.sum((centered_preds)**2)) / (n_ts*n_trees)
 
-	return ols_est, (tree_ests.sum() - np.sum((centered_preds)**2))/ (n_ts*n_trees)
+	if ret_gls:
+		gls_centered_preds = yhats_gls.mean(axis=1)[:,None] - yhats_gls
+		return ols_est, (tree_gls_ests.sum() + iter_indep_correction - np.sum((gls_centered_preds)**2)) / (n_ts*n_trees)
+
+	return ols_est
+
+
+
 
 
 

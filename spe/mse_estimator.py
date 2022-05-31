@@ -16,6 +16,7 @@ from .estimators import kfoldcv, kmeanscv, test_set_estimator, \
 						blur_linear, blur_linear_selector, blur_forest, \
 						cp_linear_train_test, test_est_split, \
 						cp_relaxed_lasso_train_test, cp_bagged_train_test, \
+						cp_rf_train_test, \
 						better_test_est_split, bag_kfoldcv, bag_kmeanscv
 from .tree import Tree
 from .forest import BlurredForest
@@ -45,15 +46,17 @@ def gen_rbf_X(c_x, c_y, p, nspikes=None):
 	return X
 
 
-def create_clus_split(nx, ny, rn=None):
+def create_clus_split(nx, ny, n_centers=None):
 	xv, yv = np.meshgrid(np.arange(nx), np.arange(ny))
 	pts = np.stack([xv.ravel(), yv.ravel()]).T
 	n = nx*ny
-	if rn is None:
-		rn = int(np.log2(n))
-	ctr = np.random.choice(pts.shape[0], size=rn, replace=True)
+	if n_centers is None or n_centers == 'log':
+		n_centers = int(np.log2(n))
+	elif n_centers == 'sqrt':
+		n_centers = int(np.sqrt(n))
+	ctr = np.random.choice(pts.shape[0], size=n_centers, replace=True)
 	ctr = pts[ctr]
-	tr_idx = np.vstack([[pt + np.array((1.25*np.random.randn(2)).astype(int)) for _ in np.arange(int(1.5*n/rn))] for pt in ctr])
+	tr_idx = np.vstack([[pt + np.array((1.25*np.random.randn(2)).astype(int)) for _ in np.arange(int(1.5*n/n_centers))] for pt in ctr])
 	tr_idx = np.maximum(0, tr_idx)
 	tr_idx[:,0] = cx = np.minimum(nx-1, tr_idx[:,0])
 	tr_idx[:,1] = cy = np.minimum(ny-1, tr_idx[:,1])
@@ -722,7 +725,7 @@ class ErrorComparer(object):
 		test_est = better_test_est_split
 		kfcv_est = bag_kfoldcv
 		spcv_est = bag_kmeanscv
-		bagg_est = cp_bagged_train_test
+		bagg_est = cp_rf_train_test
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
@@ -832,7 +835,7 @@ class ErrorComparer(object):
 		test_est = better_test_est_split
 		kfcv_est = bag_kfoldcv
 		spcv_est = bag_kmeanscv
-		bagg_est = cp_bagged_train_test
+		bagg_est = cp_rf_train_test
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
@@ -941,8 +944,8 @@ class ErrorComparer(object):
 		test_est = better_test_est_split
 		# kfcv_est = bag_kfoldcv
 		# spcv_est = bag_kmeanscv
-		bagg_est = cp_bagged_train_test
-		glsf_est = cp_bagged_train_test
+		bagg_est = cp_rf_train_test
+		glsf_est = cp_rf_train_test
 
 		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
 
