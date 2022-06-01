@@ -360,7 +360,8 @@ def cp_bagged_train_test(
 	eps = model.eps_
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
+	Cov_s_ts = Sigma_s[ts_idx,:][:,ts_idx]
+	Cov_t_ts = Sigma_t[ts_idx,:][:,ts_idx]
 
 	Cov_wp = 2*Sigma_t
 	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
@@ -380,13 +381,18 @@ def cp_bagged_train_test(
 		wp_ts = wp[ts_idx]
 
 		correction = 2*np.diag(Cov_tr_ts @ P_i).sum()
+		if not use_trace_corr:
+			correction -= (regress_t_eps[ts_idx]**2).sum()
 		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
 
 		yhat = P_i @ y_tr
 		yhats[:,i] = yhat
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
-	iter_indep_correction = n_trees * (np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum())
+	if use_trace_corr:
+		iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum())
+	else:
+		iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum())
 
 	return (tree_ests.sum() + iter_indep_correction - np.sum((centered_preds)**2)) / (n_ts*n_trees)
 
@@ -456,6 +462,8 @@ def cp_rf_train_test(
 		if ret_gls:
 			P_gls_i = P_gls_s[i]
 			gls_correction = 2*np.diag(Cov_tr_ts @ P_gls_i).sum()
+			if not use_trace_corr:
+				correction -= (regress_t_eps[ts_idx]**2).sum()
 			tree_gls_ests[i] = np.sum((wp_ts - P_gls_i @ y_tr)**2) + gls_correction
 			yhats_gls[:,i] = P_gls_i @ y_tr
 

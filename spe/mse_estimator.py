@@ -216,31 +216,30 @@ class ErrorComparer(object):
 
 				# print(est_kwargs[j].keys())
 
-			if fair:
-				for j, est in enumerate(ests):
-						if est.__name__ in self.SPCV_METHODS:
-							est_kwargs[j]['coord'] = coord
-			else:
+			if not fair:
 				X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
 				cvChol_t = Chol_t[tr_idx,:][:,tr_idx]
-				for j, est in enumerate(ests):
-					if est.__name__ in self.CV_METHODS:
+			for j, est in enumerate(ests):
+				if est.__name__ in self.CV_METHODS:
+					if fair:
+						if est.__name__ in self.SPCV_METHODS:
+							est_kwargs[j]['coord'] = coord
+					else:
 						est_kwargs[j]['X'] = X_tr
 						est_kwargs[j]['y'] = y_tr
 						if est.__name__ in self.BAGCV_METHODS:
 							est_kwargs[j]['Chol_t'] = cvChol_t
-						else:
-							est_kwargs[j].pop('Chol_t',None)
-						est_kwargs[j].pop('Chol_s',None)
-						est_kwargs[j].pop('tr_idx',None)
 						if est.__name__ in self.SPCV_METHODS:
 							est_kwargs[j]['coord'] = coord_tr
+					if est.__name__ not in self.BAGCV_METHODS:
+						est_kwargs[j].pop('Chol_t',None)
+					est_kwargs[j].pop('Chol_s',None)
+					est_kwargs[j].pop('tr_idx',None)
 
 			for err, est, est_kwarg in zip(errs, ests, est_kwargs):
 				err[i] = est(**est_kwarg)
 
 		return errs
-
 
 
 	def compareLinearTrTs(
@@ -258,73 +257,22 @@ class ErrorComparer(object):
 		tr_idx=None,
 		k=10,
 		):
-
-		model = LinearRegression(fit_intercept=False)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.lin_err = np.zeros(niter)
-
-		test_est = test_est_split
-		kfcv_est = kfoldcv
-		spcv_est = kmeanscv
-		lin_est = cp_linear_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-		for i in np.arange(niter):
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			if i == 0:
-				print(tr_idx.mean())
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx)
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										k=k)#[0]
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										coord=coord_tr,
-										k=k)#[0]
-
-			self.lin_err[i] = lin_est(model=model,
-									  X=X, 
-									  y=y, 
-									  tr_idx=tr_idx,
-									  Chol_t=Chol_t,
-									  Chol_s=Chol_s)
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.lin_err
+		return self.compare(LinearRegression(fit_intercept=False),
+						[kfoldcv, kmeanscv, cp_linear_train_test],
+						[{'k':k}, {'k': k}, {}],
+						niter,
+						n,
+						p,
+						s,
+						snr, 
+						X,
+						beta,
+						coord,
+						Chol_t,
+						Chol_s,
+						tr_idx,
+						fair=False,
+						**{})
 
 
 	def compareLinearTrTsFair(
@@ -342,80 +290,22 @@ class ErrorComparer(object):
 		tr_idx=None,
 		k=10,
 		):
-
-		model = LinearRegression(fit_intercept=False)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.lin_err = np.zeros(niter)
-
-		test_est = better_test_est_split
-		kfcv_est = kfoldcv
-		spcv_est = kmeanscv
-		lin_est = cp_linear_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-			tr_idx = np.zeros(n).astype(bool)
-			tr_idx[tr_samples] = True
-			ts_idx = (1 - tr_idx).astype(bool)
-			if i == 0:
-				print(tr_idx.mean())
-
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx)
-
-			self.lin_err[i] = lin_est(model=model,
-										X=X, 
-										y=y,
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s)
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X, 
-										y=y,
-										k=k)#[0]
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X, 
-										y=y,
-										coord=coord,
-										k=k)#[0]
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.lin_err
+		return self.compare(LinearRegression(fit_intercept=False),
+						[kfoldcv, kmeanscv, cp_linear_train_test],
+						[{'k':k}, {'k': k}, {}],
+						niter,
+						n,
+						p,
+						s,
+						snr, 
+						X,
+						beta,
+						coord,
+						Chol_t,
+						Chol_s,
+						tr_idx,
+						fair=True,
+						**{})
 
 
 	def compareRelaxedLassoTrTs(
@@ -435,75 +325,22 @@ class ErrorComparer(object):
 		tr_idx=None,
 		k=10,
 		):
-
-		model = RelaxedLasso(lambd=lambd, fit_intercept=False)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.rela_err = np.zeros(niter)
-
-		test_est = test_est_split
-		kfcv_est = kfoldcv
-		spcv_est = kmeanscv
-		rela_est = cp_relaxed_lasso_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			if i == 0:
-				print(tr_idx.mean())
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx)
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										k=k)#[0]
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										coord=coord_tr,
-										k=k)#[0]
-
-			self.rela_err[i] = rela_est(model=model,
-										X=X, 
-										y=y, 
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s,
-										alpha=alpha)#[0]
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.rela_err
+		return self.compare(RelaxedLasso(lambd=lambd),
+                                     [kfoldcv, kmeanscv, cp_relaxed_lasso_train_test],
+                                     [{'k':k}, {'k':k}, {'alpha':alpha, 'use_trace_corr': True}],
+                                     niter,
+                                     n,
+                                     p,
+                                     s,
+                                     snr, 
+                                     X,
+                                     beta,
+                                     coord,
+                                     Chol_t,
+                                     Chol_s,
+                                     tr_idx,
+                                     fair=False,
+                                     )
 
 
 	def compareRelaxedLassoTrTsFair(
@@ -518,87 +355,27 @@ class ErrorComparer(object):
 		coord=None,
 		Chol_t=None,
 		Chol_s=None,
-		tr_idx=None,
-		lambd=.1,
 		alpha=1.,
+		lambd=0.31,
+		tr_idx=None,
 		k=10,
 		):
-
-		model = RelaxedLasso(lambd=lambd,
-							 fit_intercept=False)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.rela_err = np.zeros(niter)
-
-		test_est = better_test_est_split
-		kfcv_est = kfoldcv
-		spcv_est = kmeanscv
-		rela_est = cp_relaxed_lasso_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-			tr_idx = np.zeros(n).astype(bool)
-			tr_idx[tr_samples] = True
-			ts_idx = (1 - tr_idx).astype(bool)
-			if i == 0:
-				print(tr_idx.mean())
-
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx)
-
-			self.rela_err[i] = rela_est(model=model,
-										X=X, 
-										y=y,
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s,
-										alpha=alpha)#[0]
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X, 
-										y=y,
-										k=k)#[0]
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X, 
-										y=y,
-										coord=coord,
-										k=k)#[0]
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.rela_err
+		return self.compare(RelaxedLasso(lambd=lambd),
+                                     [kfoldcv, kmeanscv, cp_relaxed_lasso_train_test],
+                                     [{'k':k}, {'k':k}, {'alpha':alpha, 'use_trace_corr': True}],
+                                     niter,
+                                     n,
+                                     p,
+                                     s,
+                                     snr, 
+                                     X,
+                                     beta,
+                                     coord,
+                                     Chol_t,
+                                     Chol_s,
+                                     tr_idx,
+                                     fair=True,
+                                     )
 
 
 	def compareBaggedTrTs(
@@ -621,92 +398,23 @@ class ErrorComparer(object):
 		k=10,
 		**kwargs,
 		):
-
-		# model = RelaxedLasso(lambd=lambd, fit_intercept=False)
-		model = BaggedRelaxedLasso(
-				base_estimator=base_estimator,
-				n_estimators=n_estimators,
-				)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.bagg_err = np.zeros(niter)
-
-		test_est = better_test_est_split
-		kfcv_est = bag_kfoldcv
-		spcv_est = bag_kmeanscv
-		bagg_est = cp_bagged_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			kwargs['chol_eps'] = Chol_t
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-				kwargs['chol_eps'] = Chol_t
-
-			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			kwargs['idx_tr'] = tr_idx
-			if i == 0:
-				print(tr_idx.mean())
-
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx,
-										**kwargs)
-
-			self.bagg_err[i] = bagg_est(model=model,
-										X=X, 
-										y=y,
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s,
-										n_estimators=n_estimators,
-										**kwargs)
-
-			cvChol_t = Chol_t[tr_idx,:][:,tr_idx]
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										k=k,
-										Chol_t=cvChol_t)
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										coord=coord_tr,
-										k=k,
-										Chol_t=cvChol_t)
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.bagg_err
+		return self.compare(BaggedRelaxedLasso(base_estimator=base_estimator, 
+											   n_estimators=n_estimators),
+							[bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
+							[{'k':k}, {'k':k}, {'use_trace_corr': True}],
+							niter,
+							n,
+							p,
+							s,
+							snr, 
+							X,
+							beta,
+							coord,
+							Chol_t,
+							Chol_s,
+							tr_idx,
+							fair=False,
+							)
 
 
 	def compareBaggedTrTsFair(
@@ -729,95 +437,23 @@ class ErrorComparer(object):
 		k=10,
 		**kwargs,
 		):
-
-		# model = RelaxedLasso(lambd=lambd, fit_intercept=False)
-		model = BaggedRelaxedLasso(
-				base_estimator=base_estimator,
-				n_estimators=n_estimators,
-				)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.bagg_err = np.zeros(niter)
-
-		test_est = better_test_est_split
-		kfcv_est = bag_kfoldcv
-		spcv_est = bag_kmeanscv
-		bagg_est = cp_bagged_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			kwargs['chol_eps'] = Chol_t
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-				kwargs['chol_eps'] = Chol_t
-
-			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-			tr_idx = np.zeros(n).astype(bool)
-			tr_idx[tr_samples] = True
-			ts_idx = (1 - tr_idx).astype(bool)
-			kwargs['idx_tr'] = tr_idx
-			if i == 0:
-				print(tr_idx.mean())
-
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx,
-										**kwargs)
-
-			self.bagg_err[i] = bagg_est(model=model,
-										X=X, 
-										y=y,
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s,
-										n_estimators=n_estimators,
-										**kwargs)
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X, 
-										y=y,
-										k=k,
-										Chol_t=Chol_t)
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X, 
-										y=y,
-										coord=coord,
-										k=k,
-										Chol_t=Chol_t)
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.bagg_err
-
+		return self.compare(BaggedRelaxedLasso(base_estimator=base_estimator, 
+											   n_estimators=n_estimators),
+							[bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
+							[{'k':k}, {'k':k}, {'use_trace_corr': True}],
+							niter,
+							n,
+							p,
+							s,
+							snr, 
+							X,
+							beta,
+							coord,
+							Chol_t,
+							Chol_s,
+							tr_idx,
+							fair=True,
+							)
 
 	def compareForestTrTs(
 		self, 
@@ -837,97 +473,23 @@ class ErrorComparer(object):
 		k=10,
 		**kwargs,
 		):
-
-		# model = RelaxedLasso(lambd=lambd, fit_intercept=False)
-		model = BlurredForest(
-				max_depth=max_depth,
-				n_estimators=n_estimators,
-				)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.bagg_err = np.zeros(niter)
-
-		test_est = better_test_est_split
-		kfcv_est = bag_kfoldcv
-		spcv_est = bag_kmeanscv
-		bagg_est = cp_rf_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			kwargs['chol_eps'] = Chol_t
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-				kwargs['chol_eps'] = Chol_t
-
-			tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-			# tr_idx = np.zeros(n).astype(bool)
-			# tr_idx[tr_samples] = True
-			# ts_idx = (1 - tr_idx).astype(bool)
-			kwargs['idx_tr'] = tr_idx
-			if i == 0:
-				print(tr_idx.mean())
-
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx,
-										**kwargs)
-
-			self.bagg_err[i] = bagg_est(model=model,
-										X=X, 
-										y=y,
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s,
-										n_estimators=n_estimators,
-										**kwargs)
-
-			cvChol_t = Chol_t[tr_idx,:][:,tr_idx]
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										k=k,
-										Chol_t=cvChol_t)
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X_tr, 
-										y=y_tr,
-										coord=coord_tr,
-										k=k,
-										Chol_t=cvChol_t)
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.bagg_err
-
+		return self.compare(BlurredForest(n_estimators=n_estimators),
+                                     [bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
+                                     [{'k':k}, {'k':k}, {'use_trace_corr': True}],
+                                     niter,
+                                     n,
+                                     p,
+                                     s,
+                                     snr, 
+                                     X,
+                                     beta,
+                                     coord,
+                                     Chol_t,
+                                     Chol_s,
+                                     tr_idx,
+                                     fair=False,
+                                     **kwargs,
+                                     )
 
 	def compareForestTrTsFair(
 		self, 
@@ -947,94 +509,23 @@ class ErrorComparer(object):
 		k=10,
 		**kwargs,
 		):
-
-		# model = RelaxedLasso(lambd=lambd, fit_intercept=False)
-		model = BlurredForest(
-				max_depth=max_depth,
-				n_estimators=n_estimators,
-				)
-
-		self.test_err = np.zeros(niter)
-		self.kfcv_err = np.zeros(niter)
-		self.spcv_err = np.zeros(niter)
-		self.bagg_err = np.zeros(niter)
-
-		test_est = better_test_est_split
-		kfcv_est = bag_kfoldcv
-		spcv_est = bag_kmeanscv
-		bagg_est = cp_rf_train_test
-
-		gen_beta, n, p = self._preprocess_X_beta(X, beta, n, p)
-
-		Chol_t_orig = Chol_t
-		Chol_s_orig = Chol_s
-
-		if not gen_beta:
-			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-			kwargs['chol_eps'] = Chol_t
-
-		for i in np.arange(niter):
-			if i % 10 == 0: print(i)
-		
-			if gen_beta:
-				X, beta = self._gen_X_beta(n, p, s)
-				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
-
-				kwargs['chol_eps'] = Chol_t
-
-			# tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
-			tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-			tr_idx = np.zeros(n).astype(bool)
-			tr_idx[tr_samples] = True
-			ts_idx = (1 - tr_idx).astype(bool)
-			kwargs['idx_tr'] = tr_idx
-			if i == 0:
-				print(tr_idx.mean())
-
-			# if tr_idx is None:
-				# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				# tr_idx = np.zeros(n)
-				# tr_idx[tr_samples] = 1
-				# ts_idx = (1 - tr_idx).astype(bool)
-
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
-
-			X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
-
-			self.test_err[i] = test_est(model=model,
-										X=X, 
-										y=y, 
-										y2=y2,
-										tr_idx=tr_idx,
-										**kwargs)
-
-			self.bagg_err[i] = bagg_est(model=model,
-										X=X, 
-										y=y,
-										tr_idx=tr_idx,
-										Chol_t=Chol_t,
-										Chol_s=Chol_s,
-										n_estimators=n_estimators,
-										**kwargs)
-
-			self.kfcv_err[i] = kfcv_est(model=model,
-										X=X, 
-										y=y,
-										k=k,
-										Chol_t=Chol_t)
-
-			self.spcv_err[i] = spcv_est(model=model,
-										X=X, 
-										y=y,
-										coord=coord,
-										k=k,
-										Chol_t=Chol_t)
-
-		return self.test_err, self.kfcv_err, self.spcv_err, self.bagg_err
+		return self.compare(BlurredForest(n_estimators=n_estimators),
+                                     [bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
+                                     [{'k':k}, {'k':k}, {'use_trace_corr': True}],
+                                     niter,
+                                     n,
+                                     p,
+                                     s,
+                                     snr, 
+                                     X,
+                                     beta,
+                                     coord,
+                                     Chol_t,
+                                     Chol_s,
+                                     tr_idx,
+                                     fair=True,
+                                     **kwargs,
+                                     )
 
 
 	def compareGLSFTrTs(
