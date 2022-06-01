@@ -52,12 +52,12 @@ def create_clus_split(nx, ny, n_centers=None):
 	pts = np.stack([xv.ravel(), yv.ravel()]).T
 	n = nx*ny
 	if n_centers is None or n_centers == 'log':
-		n_centers = int(np.log2(n))
+		n_centers = 2*int(np.log2(n))
 	elif n_centers == 'sqrt':
 		n_centers = int(np.sqrt(n))
 	ctr = np.random.choice(pts.shape[0], size=n_centers, replace=True)
 	ctr = pts[ctr]
-	tr_idx = np.vstack([[pt + np.array((1.25*np.random.randn(2)).astype(int)) for _ in np.arange(int(1.5*n/n_centers))] for pt in ctr])
+	tr_idx = np.vstack([[pt + np.array((1.25*np.random.randn(2)).astype(int)) for _ in np.arange(int(3.5*n/n_centers))] for pt in ctr])
 	tr_idx = np.maximum(0, tr_idx)
 	tr_idx[:,0] = cx = np.minimum(nx-1, tr_idx[:,0])
 	tr_idx[:,1] = cy = np.minimum(ny-1, tr_idx[:,1])
@@ -173,6 +173,7 @@ class ErrorComparer(object):
 									 **{'X': X, 
 									    'Chol_t': Chol_t, 
 									    'Chol_s': Chol_s}}
+				# print(est_kwargs[j].keys())
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
@@ -201,6 +202,7 @@ class ErrorComparer(object):
 				print(tr_idx.mean())
 
 			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
+			# print("after y2")
 			for j in range(len(est_kwargs)):
 				if j == 0:
 					est_kwargs[j] = {**est_kwargs[j], 
@@ -211,6 +213,8 @@ class ErrorComparer(object):
 					est_kwargs[j] = {**est_kwargs[j], 
 									 **{'tr_idx': tr_idx,
 									 	'y': y}}
+
+				# print(est_kwargs[j].keys())
 
 			if fair:
 				for j, est in enumerate(ests):
@@ -226,14 +230,13 @@ class ErrorComparer(object):
 						if est.__name__ in self.BAGCV_METHODS:
 							est_kwargs[j]['Chol_t'] = cvChol_t
 						else:
-							del est_kwargs[j]['Chol_t']
-						del est_kwargs[j]['Chol_s']
-						del est_kwargs[j]['tr_idx']
+							est_kwargs[j].pop('Chol_t',None)
+						est_kwargs[j].pop('Chol_s',None)
+						est_kwargs[j].pop('tr_idx',None)
 						if est.__name__ in self.SPCV_METHODS:
 							est_kwargs[j]['coord'] = coord_tr
 
 			for err, est, est_kwarg in zip(errs, ests, est_kwargs):
-				print(est_kwarg.keys())
 				err[i] = est(**est_kwarg)
 
 		return errs

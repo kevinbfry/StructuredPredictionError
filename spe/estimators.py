@@ -252,12 +252,12 @@ def cp_linear_train_test(
 	P = X_ts @ np.linalg.inv(X_tr.T @ X_tr) @ X_tr.T
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
-	Cov_ts_ts = Sigma_t[ts_idx,:][:,ts_idx]
+	Cov_s_ts = Sigma_s[ts_idx,:][:,ts_idx]
+	Cov_t_ts = Sigma_t[ts_idx,:][:,ts_idx]
 
-	correction = np.diag(Cov_tr_ts @ P).sum() + \
-							np.sum(np.diag(Cov_ts) 
-									- np.diag(Cov_ts_ts))
+	correction = 2*np.diag(Cov_tr_ts @ P).sum() \
+							+ np.diag(Cov_s_ts).sum() \
+							- np.diag(Cov_t_ts).sum()
 
 	return (np.sum((y_ts - P @ y_tr)**2) + correction) / n_ts
 
@@ -269,7 +269,9 @@ def cp_relaxed_lasso_train_test(
 	tr_idx,
 	Chol_t=None,
 	Chol_s=None,
+	nboot=100,
 	alpha=1.,
+	use_trace_corr=True,
 	):
 	
 	model = clone(model)
@@ -280,23 +282,38 @@ def cp_relaxed_lasso_train_test(
 
 	Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(Chol_t, Chol_s)
 
-	w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-	w_tr = w[tr_idx]
-	wp_ts = wp[ts_idx]
+	boot_ests = np.zeros(nboot)
+	for i in range(nboot):
+		w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+		w_tr = w[tr_idx]
+		wp_ts = wp[ts_idx]
 
-	model.fit(X_tr, w_tr)
+		model.fit(X_tr, w_tr)
 
-	P = model.get_linear_smoother(X_tr, X_ts)
-	
-	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
+		P = model.get_linear_smoother(X_tr, X_ts)
+		
+		Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
+		Cov_s_ts = Sigma_s[ts_idx,:][:,ts_idx]
 
-	Cov_wp = (1 + 1/alpha)*Sigma_t
-	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
+		Cov_wp = (1 + 1/alpha)*Sigma_t
+		Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
 
-	correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum()
+		correction = 2*np.diag(Cov_tr_ts @ P).sum()
+		if use_trace_corr:
+			correction += np.diag(Cov_s_ts).sum() \
+							- np.diag(Cov_wp_ts).sum()
+		else:
+			Cov_t_ts = Sigma_t[ts_idx,:][:,ts_idx]
+			correction += np.diag(Cov_s_ts).sum() \
+							- np.diag(Cov_t_ts).sum() \
+							- (regress_t_eps[ts_idx]**2).sum()
 
-	return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts#, model
+		boot_ests[i] = np.sum((wp_ts - P @ y_tr)**2) + correction
+
+	# correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()
+
+	# return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts#, model
+	return boot_ests.mean() / n_ts#, model
 
 
 def cp_bagged_train_test(
@@ -306,6 +323,7 @@ def cp_bagged_train_test(
 	tr_idx,
 	Chol_t=None,
 	Chol_s=None,
+	use_trace_corr=False,
 	n_estimators=5,
 	**kwargs,
 	):
@@ -366,6 +384,7 @@ def cp_rf_train_test(
 	Chol_s=None,
 	n_estimators=5,
 	ret_gls=False,
+	use_trace_corr=True,
 	**kwargs,
 	):
 	
@@ -385,7 +404,8 @@ def cp_rf_train_test(
 	eps = model.eps_
 	
 	Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-	Cov_ts = Sigma_s[ts_idx,:][:,ts_idx]
+	Cov_s_ts = Sigma_s[ts_idx,:][:,ts_idx]
+	Cov_t_ts = Sigma_t[ts_idx,:][:,ts_idx]
 
 	Cov_wp = 2*Sigma_t
 	Cov_wp_ts = Cov_wp[ts_idx,:][:,ts_idx]
@@ -410,6 +430,10 @@ def cp_rf_train_test(
 		wp_ts = wp[ts_idx]
 
 		correction = 2*np.diag(Cov_tr_ts @ P_i).sum()
+		if not use_trace_corr:
+			correction -= (regress_t_eps[ts_idx]**2).sum()
+
+		# correction = 2*np.diag(Cov_tr_ts @ P_i).sum()
 		tree_ests[i] = np.sum((wp_ts - P_i @ y_tr)**2) + correction
 		yhats[:,i] = P_i @ y_tr
 		
@@ -420,7 +444,12 @@ def cp_rf_train_test(
 			yhats_gls[:,i] = P_gls_i @ y_tr
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
-	iter_indep_correction = n_trees * (np.diag(Cov_ts).sum() - np.diag(Cov_wp_ts).sum())
+	# iter_indep_correction = 0
+	if use_trace_corr:
+		iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum())
+	else:
+		iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum())
+	# iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum())
 	ols_est = (tree_ests.sum() + iter_indep_correction - np.sum((centered_preds)**2)) / (n_ts*n_trees)
 
 	if ret_gls:
