@@ -192,55 +192,13 @@ def test_est_split(
 	return sse / n_ts
 
 
-# def test_brl_split(
-# 	X,
-# 	y,
-# 	y2,
-# 	tr_idx,
-# 	):
-
-# 	multiple_X = isinstance(X, list)
-
-# 	if multiple_X:
-# 		n = X[0].shape[0]
-# 	else:
-# 		n = X.shape[0]
-
-
-# 	if multiple_X:
-# 		preds = np.zeros_like(y[0])
-# 		for X_i in X:
-# 			p = X_i.shape[1]
-# 			X_i, y, model, n, p = _preprocess_X_y_model(X_i, y, model)
-
-# 			(X_i_tr, X_i_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X_i, y, tr_idx)
-# 			y2_ts = y2[ts_idx]
-
-# 			model.fit(X_i_tr, y_tr)
-# 			preds = model.predict(X_i_ts)
-
-# 		preds /= len(X)
-# 	else:
-# 		X, y, model, n, p = _preprocess_X_y_model(X, y, model)
-
-# 		(X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-# 		y2_ts = y2[ts_idx]
-
-# 		model.fit(X_tr, y_tr)
-# 		preds = model.predict(X_ts)
-
-# 	sse = np.sum((y2_ts - preds)**2)
-# 	return sse / n_ts
-
-
-def cp_linear_train_test(
+def cp_smoother_train_test(
 	model,
 	X,
 	y, 
 	tr_idx,
 	Chol_t=None,
 	Chol_s=None,
-	# Cov_st=None,
 	):
 
 	X, y, _, n, p = _preprocess_X_y_model(X, y, None)
@@ -262,7 +220,33 @@ def cp_linear_train_test(
 	return (np.sum((y_ts - P @ y_tr)**2) + correction) / n_ts
 
 
-def cp_relaxed_lasso_train_test(
+def cp_linear_train_test(
+	model,
+	X,
+	y, 
+	tr_idx,
+	Chol_t=None,
+	Chol_s=None,
+	):
+	if model.__class__.__name__ == 'LinearRegression':
+		return cp_smoother_train_test(model,
+										X,
+										y, 
+										tr_idx,
+										Chol_t,
+										Chol_s,
+										)
+	else:
+		return cp_smoother_train_test(LinearRegression(fit_intercept=False),
+										X,
+										y, 
+										tr_idx,
+										Chol_t,
+										Chol_s,
+										)
+
+
+def cp_adaptive_smoother_train_test(
 	model,
 	X,
 	y, 
@@ -310,10 +294,42 @@ def cp_relaxed_lasso_train_test(
 
 		boot_ests[i] = np.sum((wp_ts - P @ y_tr)**2) + correction
 
-	# correction = 2*np.diag(Cov_tr_ts @ P).sum() + np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()
-
-	# return (np.sum((wp_ts - P @ y_tr)**2) + correction) / n_ts#, model
 	return boot_ests.mean() / n_ts#, model
+
+
+def cp_relaxed_lasso_train_test(
+	model,
+	X,
+	y, 
+	tr_idx,
+	Chol_t=None,
+	Chol_s=None,
+	nboot=100,
+	alpha=1.,
+	use_trace_corr=True,
+	):
+	if model.__class__.__name__ == 'RelaxedLasso':
+		return cp_adaptive_smoother_train_test(model,
+												X,
+												y, 
+												tr_idx,
+												Chol_t,
+												Chol_s,
+												nboot,
+												alpha,
+												use_trace_corr,
+												)
+	else:
+		return cp_adaptive_smoother_train_test(RelaxedLasso(lambd=1.),
+												X,
+												y, 
+												tr_idx,
+												Chol_t,
+												Chol_s,
+												nboot,
+												alpha,
+												use_trace_corr,
+												)
 
 
 def cp_bagged_train_test(
@@ -444,12 +460,10 @@ def cp_rf_train_test(
 			yhats_gls[:,i] = P_gls_i @ y_tr
 
 	centered_preds = yhats.mean(axis=1)[:,None] - yhats
-	# iter_indep_correction = 0
 	if use_trace_corr:
 		iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum())
 	else:
 		iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum())
-	# iter_indep_correction = n_trees * (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum())
 	ols_est = (tree_ests.sum() + iter_indep_correction - np.sum((centered_preds)**2)) / (n_ts*n_trees)
 
 	if ret_gls:
