@@ -15,6 +15,12 @@ pip install poetry
 poetry install
 ```
 
+Additionally, a modified version of scikit-learn must be installed:
+
+```
+pip install git+https://github.com/kevinbfry/scikit-learn.git
+```
+
 ## Tests
 
 ```
