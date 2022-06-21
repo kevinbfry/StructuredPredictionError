@@ -1,15 +1,62 @@
 import numpy as np
-from sklearn.gaussian_process.kernels import RBF
+from sklearn.gaussian_process.kernels import RBF, Matern
 
 
-def gen_rbf_X(c_x, c_y, p, nspikes=None):
+def gen_matern_X(
+	c_x, 
+	c_y, 
+	p, 
+	length_scale=5, 
+	nu=1.5,
+	nspikes=None,
+	):
+	# locs = np.stack([c_x, c_y]).T
+
+	# n = len(locs)
+	n = len(c_x)
+
+	matern_kernel = Matern(length_scale=length_scale, 
+						   nu=nu)
+	# cov = matern_kernel(locs)
+	cov = gen_cov_mat(c_x, c_y, matern_kernel)
+
+	return _gen_X(n, p, cov, nspikes)
+
+
+def gen_rbf_X(
+	c_x, 
+	c_y, 
+	p, 
+	length_scale=5, 
+	nspikes=None,
+	):
+	# locs = np.stack([c_x, c_y]).T
+
+	# n = len(locs)
+	n = len(c_x)
+
+	rbf_kernel = RBF(length_scale)
+	# cov = rbf_kernel(locs)
+	cov = gen_cov_mat(c_x, c_y, rbf_kernel)
+
+	return _gen_X(n, p, cov, nspikes)
+
+
+def gen_cov_mat(
+	c_x,
+	c_y,
+	kernel,
+	):
 	locs = np.stack([c_x, c_y]).T
+	return kernel(locs)
 
-	n = len(locs)
 
-	rbf_kernel = RBF(5)
-	cov = rbf_kernel(locs)
-
+def _gen_X(
+	n, 
+	p, 
+	cov, 
+	nspikes=None
+	):
 	if nspikes is None:
 		nspikes = int(2*np.log2(n))
 
@@ -25,7 +72,11 @@ def gen_rbf_X(c_x, c_y, p, nspikes=None):
 	return X
 
 
-def create_clus_split(nx, ny, n_centers=None):
+def create_clus_split(
+	nx, 
+	ny, 
+	n_centers=None
+	):
 	xv, yv = np.meshgrid(np.arange(nx), np.arange(ny))
 	pts = np.stack([xv.ravel(), yv.ravel()]).T
 	n = nx*ny

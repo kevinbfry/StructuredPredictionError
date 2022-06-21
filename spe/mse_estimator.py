@@ -97,7 +97,10 @@ class ErrorComparer(object):
 		**kwargs):
 
 		if len(ests) != len(est_kwargs):
-			raise ValueError("est must be same length as est_kwargs")
+			raise ValueError("ests must be same length as est_kwargs")
+
+		# if len(ests) != len(models):
+		# 	raise ValueError("ests must be same length as models")
 
 		errs = [np.zeros(niter) for _ in range(len(ests)+1)]
 		ests.insert(0, better_test_est_split)
