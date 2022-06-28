@@ -39,6 +39,7 @@ class ErrorComparer(object):
 
 	def _gen_mu_sigma(self, X, beta, snr):
 		mu = X @ beta
+		# sigma = 3.
 		sigma = np.sqrt(np.var(mu)/snr)
 		return mu, sigma
 
@@ -50,7 +51,7 @@ class ErrorComparer(object):
 		return gen_beta, n, p
 
 
-	def _preprocess_chol(self, Chol_t, Chol_s, sigma, n):
+	def _preprocess_chol(self, Chol_t, Chol_s, sigma, n, Cov_st=None):
 		if Chol_t is None:
 			Chol_t = np.eye(n)
 		Chol_t *= sigma
@@ -60,13 +61,21 @@ class ErrorComparer(object):
 		else:
 			Chol_s *= sigma
 
-		return Chol_t, Chol_s
+		if Cov_st is not None:
+			Cov_st *= sigma**2
+
+		return Chol_t, Chol_s, Cov_st
 
 
-	def _gen_ys(self, mu, Chol_t, Chol_s):
+	def _gen_ys(self, mu, Chol_t, Chol_s, sigma=1., Cov_st=None, delta=None):
 		n = len(mu)
-		eps = Chol_t @ np.random.randn(n)
-		eps2 = Chol_s @ np.random.randn(n)
+		if delta is None:
+			eps = Chol_t @ np.random.randn(n)
+			eps2 = Chol_s @ np.random.randn(n)
+		else:
+			shared_eps = np.linalg.cholesky(Cov_st) @ np.random.randn(n)
+			eps = shared_eps + np.sqrt(1-delta) * sigma * np.random.randn(n)
+			eps2 = shared_eps + np.sqrt(1-delta) * sigma * np.random.randn(n)
 
 		y = mu + eps
 		y2 = mu + eps2
@@ -79,7 +88,7 @@ class ErrorComparer(object):
 
 
 	def compare(self, 
-		model,
+		models,
 		ests,
 		est_kwargs,
 		niter=100,
@@ -92,24 +101,34 @@ class ErrorComparer(object):
 		coord=None,
 		Chol_t=None,
 		Chol_s=None,
+		Cov_st=None,
+		delta=None,
 		tr_idx=None,
 		fair=False,
+		tr_frac=0.6,
+		# test_kwargs={},
 		**kwargs):
 
 		if len(ests) != len(est_kwargs):
 			raise ValueError("ests must be same length as est_kwargs")
 
-		# if len(ests) != len(models):
-		# 	raise ValueError("ests must be same length as models")
+		if not isinstance(models, (list, tuple)):
+			models = [models]*len(ests)
+		elif len(models) == 1:
+			models = models*len(ests)
+		elif len(ests) != len(models):
+			raise ValueError("ests must be same length as models")
 
-		errs = [np.zeros(niter) for _ in range(len(ests)+1)]
-		ests.insert(0, better_test_est_split)
-		est_kwargs.insert(0, {})
+		errs = [np.zeros(niter) for _ in range(len(ests))]
+		# errs = [np.zeros(niter) for _ in range(len(ests)+1)]
+		# ests.insert(0, better_test_est_split)
+		# est_kwargs.insert(0, test_kwargs)
+		# print(models)
 		for j,est in enumerate(ests):
 			if est.__name__ not in self.CV_METHODS:
-				est_kwargs[j] = {**est_kwargs[j], **kwargs, **{'model': model}}
+				est_kwargs[j] = {**est_kwargs[j], **kwargs, **{'model': models[j]}}
 			else:
-				est_kwargs[j]['model'] = model
+				est_kwargs[j]['model'] = models[j]
 			# if j == 0:
 			# 	est_kwargs[j]['model'] = model
 
@@ -117,30 +136,38 @@ class ErrorComparer(object):
 
 		Chol_t_orig = Chol_t
 		Chol_s_orig = Chol_s
-
+		Cov_st_orig = Cov_st
 		if not gen_beta:
 			mu, sigma = self._gen_mu_sigma(X, beta, snr)
-			Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+			Chol_t, Chol_s, Cov_st = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig)
 			for j in range(len(est_kwargs)):
-				if j == 0:
+				# if j == 0:
+				if ests[j].__name__ == 'better_test_est_split':
 					est_kwargs[j] = {**est_kwargs[j], 
-									 **{'X': X}}
+									 **{'X': X,
+									 	'Chol_t': Chol_t}}
 				else:
 					est_kwargs[j] = {**est_kwargs[j], 
 									 **{'X': X, 
 									    'Chol_t': Chol_t, 
 									    'Chol_s': Chol_s}}
+					if delta is not None:
+						if ests[j].__name__ not in self.CV_METHODS:
+							est_kwargs[j] = {**est_kwargs[j], 
+											 **{'Cov_st': Cov_st}}
 				# print(est_kwargs[j].keys())
 
 		for i in np.arange(niter):
 			if i % 10 == 0: print(i)
-		
+			# print(i)
+
 			if gen_beta:
 				X, beta = self._gen_X_beta(n, p, s)
 				mu, sigma = self._gen_mu_sigma(X, beta, snr)
-				Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
+				Chol_t, Chol_s, Cov_st = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig)
 				for j in range(len(est_kwargs)):
-					if j == 0:
+					# if j == 0:
+					if ests[j].__name__ == 'better_test_est_split':
 						est_kwargs[j] = {**est_kwargs[j], 
 										 **{'X': X}}
 					else:
@@ -148,20 +175,27 @@ class ErrorComparer(object):
 										 **{'X': X, 
 										    'Chol_t': Chol_t, 
 										    'Chol_s': Chol_s}}
+						if delta is not None:
+							if ests[j].__name__ not in self.CV_METHODS:
+								est_kwargs[j] = {**est_kwargs[j], 
+												 **{'Cov_st': Cov_st}}
 
-			if fair:
-				tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
-				tr_idx = np.zeros(n).astype(bool)
-				tr_idx[tr_samples] = True
-			else:
-				tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
+			if tr_idx is None:
+				if fair:
+					# tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
+					tr_samples = np.random.choice(n, size=int(tr_frac*n), replace=False)
+					tr_idx = np.zeros(n).astype(bool)
+					tr_idx[tr_samples] = True
+				else:
+					tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)), tr_frac)
 			if i == 0:
 				print(tr_idx.mean())
 
-			y, y2 = self._gen_ys(mu, Chol_t, Chol_s)
+			y, y2 = self._gen_ys(mu, Chol_t, Chol_s, sigma=sigma, Cov_st=Cov_st, delta=delta)
 			# print("after y2")
 			for j in range(len(est_kwargs)):
-				if j == 0:
+				# if j == 0:
+				if ests[j].__name__ == 'better_test_est_split':
 					est_kwargs[j] = {**est_kwargs[j], 
 									 **{'tr_idx': tr_idx,
 									 	'y': y,
@@ -193,6 +227,8 @@ class ErrorComparer(object):
 					est_kwargs[j].pop('Chol_s',None)
 					est_kwargs[j].pop('tr_idx',None)
 
+			# print(ests)
+			# print([e.keys() for e in est_kwargs])
 			for err, est, est_kwarg in zip(errs, ests, est_kwargs):
 				err[i] = est(**est_kwarg)
 
