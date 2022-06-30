@@ -62,7 +62,8 @@ class BlurredForest(RandomForestRegressor):
 		self.X_tr_ = X
 		self.y_refit_ = y
 		super().fit(X,y,sample_weight=sample_weight, chol_eps=chol_eps, idx_tr=idx_tr)
-		self.w_refit_ = [y + eps for eps in self.eps_]
+		if self.bootstrap_type == 'blur':
+			self.w_refit_ = [y + eps for eps in self.eps_]
 
 		return self
 

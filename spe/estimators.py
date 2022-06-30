@@ -140,6 +140,7 @@ def better_test_est_split(
 	# chol=None,
 	**kwargs,
 	):
+	# print("Chol_t", Chol_t)
 
 	X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
@@ -155,6 +156,9 @@ def better_test_est_split(
 		w_tr = w[tr_idx]
 		model.fit(X_tr, w_tr, **kwargs)
 	else:
+		if model.__class__.__name__ == 'BlurredForest':
+			if 'chol_eps' in kwargs:
+				kwargs['chol_eps'] = kwargs['chol_eps'][tr_idx,:][:,tr_idx]
 		model.fit(X_tr, y_tr, **kwargs)
 
 	if full_refit is None or full_refit:

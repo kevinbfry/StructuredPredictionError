@@ -169,7 +169,8 @@ class ErrorComparer(object):
 					# if j == 0:
 					if ests[j].__name__ == 'better_test_est_split':
 						est_kwargs[j] = {**est_kwargs[j], 
-										 **{'X': X}}
+										 **{'X': X,
+									 		'Chol_t': Chol_t}}
 					else:
 						est_kwargs[j] = {**est_kwargs[j], 
 										 **{'X': X, 
