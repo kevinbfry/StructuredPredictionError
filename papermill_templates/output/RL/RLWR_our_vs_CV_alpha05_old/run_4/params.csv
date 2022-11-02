@@ -1,0 +1,2 @@
+,niter,n,p,s,k,lambd,alpha,delta,nboot,nk,nls,nn,xk,xls,xn
+4,100,400,500,30,10,1.0,0.05,0.0,100,matern,5.0,0.5,matern,5.0,0.5
