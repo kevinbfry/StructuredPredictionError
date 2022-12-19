@@ -3,12 +3,17 @@ import inspect
 
 import numpy as np
 
-from scipy.linalg import block_diag, sqrtm
+# from scipy.linalg import block_diag, sqrtm
+# from scipy.spatial.distance import squareform
+from scipy.spatial import distance_matrix
+
 from sklearn.linear_model import LinearRegression, Lasso
-from sklearn.model_selection import cross_validate, GroupKFold, KFold
-from sklearn.cluster import KMeans
-from sklearn.base import clone
-from sklearn.ensemble import RandomForestRegressor
+# from sklearn.model_selection import cross_validate, GroupKFold, KFold
+# from sklearn.cluster import KMeans
+# from sklearn.base import clone
+# from sklearn.ensemble import RandomForestRegressor
+
+import skgstat as skg
 
 from .relaxed_lasso import RelaxedLasso, BaggedRelaxedLasso
 from .estimators import (
@@ -37,7 +42,7 @@ from .data_generation import gen_rbf_X, create_clus_split
 class ErrorComparer(object):
     DATA_ARGS = ["X", "y", "y2", "tr_idx", "Chol_t", "Chol_s"]
     BAGCV_METHODS = ["bag_kfoldcv", "bag_kmeanscv"]
-    CV_METHODS = ["kfoldcv", "kmeanscv"] + BAGCV_METHODS
+    CV_METHODS = ["kfoldcv", "kmeanscv", 'timeseriescv'] + BAGCV_METHODS
     SPCV_METHODS = ["bag_kmeanscv", "kmeanscv"]
 
     def _gen_X_beta(self, n, p, s):
@@ -48,8 +53,11 @@ class ErrorComparer(object):
 
         return X, beta
 
-    def _gen_mu_sigma(self, X, beta, snr):
-        mu = X @ beta
+    def _gen_mu_sigma(self, X, beta, snr, const_mu=False):
+        if const_mu:
+            mu = np.ones(X.shape[0])*beta.sum()*5
+        else:
+            mu = X @ beta
         # sigma = 3.
         sigma = np.sqrt(np.var(mu) / snr)
         return mu, sigma
@@ -75,24 +83,65 @@ class ErrorComparer(object):
 
         return Chol_t, Chol_s, Cov_st
 
-    def _gen_ys(self, mu, Chol_t, Chol_s, sigma=1.0, Cov_st=None, delta=None):
+    def _gen_ys(self, mu, Chol_t, Chol_s, sigma=1.0, Cov_st=None, delta=1.):
         n = len(mu)
-        if delta is None:
+        if Cov_st is None:
             eps = Chol_t @ np.random.randn(n)
             eps2 = Chol_s @ np.random.randn(n)
         else:
-            shared_eps = np.linalg.cholesky(Cov_st) @ np.random.randn(n)
-            eps = shared_eps + np.sqrt(1 - delta) * sigma * np.random.randn(n)
-            eps2 = shared_eps + np.sqrt(1 - delta) * sigma * np.random.randn(n)
+            Sigma_t = Chol_t @ Chol_t.T
+            Sigma_s = Chol_s @ Chol_s.T
+            full_Cov = np.vstack((
+                np.hstack((Sigma_t, Cov_st)),
+                np.hstack((Cov_st, Sigma_s))
+            ))
+            Chol_f = np.linalg.cholesky(full_Cov)
 
+            full_eps = Chol_f @ np.random.randn(2*n)
+            eps = full_eps[:n]
+            eps2 = full_eps[n:]
+
+            # shared_eps = np.linalg.cholesky(Cov_st) @ np.random.randn(n)
+            # eps = shared_eps + np.sqrt(1 - delta) * sigma * np.random.randn(n)
+            # eps2 = shared_eps + np.sqrt(1 - delta) * sigma * np.random.randn(n)
+        
         y = mu + eps
         y2 = mu + eps2
 
         return y, y2
 
     def _get_train(self, X, y, coord, tr_idx):
-        return X[tr_idx, :], y[tr_idx], coord[tr_idx, :]
+        return X[tr_idx, :], y[tr_idx], coord[tr_idx, :] if len(coord.shape) == 2 else coord[tr_idx]
 
+    def _est_Sigma(
+        self,
+        X_tr, 
+        y_tr, 
+        locs_tr,
+        locs, ## TODO: only needed now to work with how _forest.py eps variable is processed. should fix and then remove this too
+        est_sigma_model, 
+    ):
+        n = locs.shape[0]
+
+        if est_sigma_model is None:
+            raise ValueError("Must provide est_simga_model")
+
+        est_sigma_model.fit(X_tr, y_tr)
+        resids =  y_tr - est_sigma_model.predict(X_tr)
+
+        V = skg.Variogram(locs_tr, resids, model='matern')
+        
+        fitted_vm = V.fitted_model
+        full_distance = distance_matrix(locs, locs)
+        semivar = fitted_vm(full_distance.flatten()).reshape((n,n))
+
+        K0 = V.parameters[1] ## use sill as estimate of variance
+        est_Sigma_t = K0*np.ones_like(semivar) - semivar
+        est_Chol_t = np.linalg.cholesky(est_Sigma_t)
+
+        return est_Chol_t
+
+    ## TODO: cleanup, compartmentalize
     def compare(
         self,
         models,
@@ -113,9 +162,13 @@ class ErrorComparer(object):
         tr_idx=None,
         fair=False,
         tr_frac=0.6,
+        est_sigma=False,
+        est_sigma_model=None,
+        const_mu=False,
         # test_kwargs={},
         **kwargs,
     ):
+        # print("NEW NEW")
 
         if len(ests) != len(est_kwargs):
             raise ValueError("ests must be same length as est_kwargs")
@@ -145,23 +198,37 @@ class ErrorComparer(object):
         Chol_t_orig = Chol_t
         Chol_s_orig = Chol_s
         Cov_st_orig = Cov_st
+
         if not gen_beta:
-            mu, sigma = self._gen_mu_sigma(X, beta, snr)
+            mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
             Chol_t, Chol_s, Cov_st = self._preprocess_chol(
                 Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
             )
-            for j in range(len(est_kwargs)):
-                # if j == 0:
-                if ests[j].__name__ == "better_test_est_split":
-                    est_kwargs[j] = {**est_kwargs[j], **{"X": X, "Chol_t": Chol_t}}
-                else:
-                    est_kwargs[j] = {
-                        **est_kwargs[j],
-                        **{"X": X, "Chol_t": Chol_t, "Chol_s": Chol_s},
-                    }
-                    if delta is not None:
-                        if ests[j].__name__ not in self.CV_METHODS:
-                            est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": Cov_st}}
+
+            # if est_sigma:
+            #     est_Chol_t = self._est_Sigma(X, y, coord, est_sigma_model)
+            #     if Chol_s is not None:
+            #         raise ValueError("est_sigma not implemented for Chol_s != None")
+            #     if Cov_st is not None:
+            #         raise ValueError("est_sigma not implemented for Cov_st != None")
+            #     est_Chol_s = est_Chol_t
+            # else:
+            #     est_Chol_t = Chol_t
+            #     est_Chol_s = Chol_s
+            #     est_Cov_st = Cov_st
+
+            # for j in range(len(est_kwargs)):
+            #     # if j == 0:
+            #     if ests[j].__name__ == "better_test_est_split":
+            #         est_kwargs[j] = {**est_kwargs[j], **{"X": X, "Chol_t": est_Chol_t}}
+            #     else:
+            #         est_kwargs[j] = {
+            #             **est_kwargs[j],
+            #             **{"X": X, "Chol_t": est_Chol_t, "Chol_s": est_Chol_s},
+            #         }
+            #         if delta is not None:
+            #             if ests[j].__name__ not in self.CV_METHODS:
+            #                 est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
                 # print(est_kwargs[j].keys())
 
         for i in np.arange(niter):
@@ -171,22 +238,23 @@ class ErrorComparer(object):
 
             if gen_beta:
                 X, beta = self._gen_X_beta(n, p, s)
-                mu, sigma = self._gen_mu_sigma(X, beta, snr)
+                mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
                 Chol_t, Chol_s, Cov_st = self._preprocess_chol(
                     Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
                 )
-                for j in range(len(est_kwargs)):
-                    # if j == 0:
-                    if ests[j].__name__ == "better_test_est_split":
-                        est_kwargs[j] = {**est_kwargs[j], **{"X": X, "Chol_t": Chol_t}}
-                    else:
-                        est_kwargs[j] = {
-                            **est_kwargs[j],
-                            **{"X": X, "Chol_t": Chol_t, "Chol_s": Chol_s},
-                        }
-                        if delta is not None:
-                            if ests[j].__name__ not in self.CV_METHODS:
-                                est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": Cov_st}}
+
+                # for j in range(len(est_kwargs)):
+                #     # if j == 0:
+                #     if ests[j].__name__ == "better_test_est_split":
+                #         est_kwargs[j] = {**est_kwargs[j], **{"X": X, "Chol_t": est_Chol_t}}
+                #     else:
+                #         est_kwargs[j] = {
+                #             **est_kwargs[j],
+                #             **{"X": X, "Chol_t": est_Chol_t, "Chol_s": est_Chol_s},
+                #         }
+                #         if not (delta is None):
+                #             if ests[j].__name__ not in self.CV_METHODS:
+                #                 est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
 
             if tr_idx is None:
                 if fair:
@@ -206,22 +274,64 @@ class ErrorComparer(object):
             y, y2 = self._gen_ys(
                 mu, Chol_t, Chol_s, sigma=sigma, Cov_st=Cov_st, delta=delta
             )
-            # print("after y2")
-            for j in range(len(est_kwargs)):
-                # if j == 0:
-                if ests[j].__name__ == "better_test_est_split":
-                    est_kwargs[j] = {
-                        **est_kwargs[j],
-                        **{"tr_idx": tr_idx, "y": y, "y2": y2},
-                    }
-                else:
-                    est_kwargs[j] = {**est_kwargs[j], **{"tr_idx": tr_idx, "y": y}}
 
-                # print(est_kwargs[j].keys())
+            # # print("after y2")
+            # for j in range(len(est_kwargs)):
+            #     # if j == 0:
+            #     if ests[j].__name__ == "better_test_est_split":
+            #         est_kwargs[j] = {
+            #             **est_kwargs[j],
+            #             **{"tr_idx": tr_idx, "y": y, "y2": y2},
+            #         }
+            #     else:
+            #         est_kwargs[j] = {**est_kwargs[j], **{"tr_idx": tr_idx, "y": y}}
+
+            #     # print(est_kwargs[j].keys())
 
             if not fair:
                 X_tr, y_tr, coord_tr = self._get_train(X, y, coord, tr_idx)
                 cvChol_t = Chol_t[tr_idx, :][:, tr_idx]
+
+            if est_sigma:
+                est_Chol_t = self._est_Sigma(X_tr, y_tr, coord_tr, coord, est_sigma_model)
+                if Chol_s_orig is not None:
+                    raise ValueError("est_sigma=True not implemented for Chol_s != None")
+                if Cov_st_orig is not None:
+                    raise ValueError("est_sigma=True not implemented for Cov_st != None")
+                est_Chol_s = est_Chol_t
+            else:
+                est_Chol_t = Chol_t
+                est_Chol_s = Chol_s
+                est_Cov_st = Cov_st
+            
+            for j in range(len(est_kwargs)):
+                # if j == 0:
+                if ests[j].__name__ in ["better_test_est_split", "ts_test_est_split"]:
+                    est_kwargs[j] = {**est_kwargs[j], **{
+                            "X": X, 
+                            "Chol_t": est_Chol_t, 
+                            "tr_idx": tr_idx, 
+                            "y": y, 
+                            "y2": y2
+                        }
+                    }
+                else:
+                    est_kwargs[j] = {
+                        **est_kwargs[j],
+                        **{"X": X, 
+                            "Chol_t": est_Chol_t, 
+                            "Chol_s": est_Chol_s, 
+                            "tr_idx": tr_idx, 
+                            "y": y
+                        },
+                    }
+                    if not (delta is None):
+                        if ests[j].__name__ not in self.CV_METHODS:
+                            est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
+
+                if est_sigma and ests[j].__name__ == 'cp_rf_train_test':
+                    est_kwargs[j]['chol_eps'] = est_Chol_t
+
             for j, est in enumerate(ests):
                 if est.__name__ in self.CV_METHODS:
                     if fair:
@@ -266,17 +376,17 @@ class ErrorComparer(object):
             LinearRegression(fit_intercept=False),
             [better_test_est_split, kfoldcv, kmeanscv, cp_linear_train_test],
             [{}, {"k": k}, {"k": k}, {}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             tr_frac=tr_frac,
             fair=False,
             **{},
@@ -301,17 +411,17 @@ class ErrorComparer(object):
             LinearRegression(fit_intercept=False),
             [better_test_est_split, kfoldcv, kmeanscv, cp_linear_train_test],
             [{}, {"k": k}, {"k": k}, {}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             fair=True,
             **{},
         )
@@ -338,17 +448,17 @@ class ErrorComparer(object):
             RelaxedLasso(lambd=lambd),
             [better_test_est_split, kfoldcv, kmeanscv, cp_relaxed_lasso_train_test],
             [{}, {"k": k}, {"k": k}, {"alpha": alpha, "use_trace_corr": True}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             tr_frac=tr_frac,
             fair=False,
         )
@@ -374,17 +484,17 @@ class ErrorComparer(object):
             RelaxedLasso(lambd=lambd),
             [better_test_est_split, kfoldcv, kmeanscv, cp_relaxed_lasso_train_test],
             [{}, {"k": k}, {"k": k}, {"alpha": alpha, "use_trace_corr": True}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             fair=True,
         )
 
@@ -414,17 +524,17 @@ class ErrorComparer(object):
             ),
             [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
             [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             tr_frac=tr_frac,
             fair=False,
         )
@@ -454,17 +564,17 @@ class ErrorComparer(object):
             ),
             [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
             [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             fair=True,
         )
 
@@ -491,17 +601,17 @@ class ErrorComparer(object):
             BlurredForest(n_estimators=n_estimators),
             [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
             [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             tr_frac=tr_frac,
             fair=False,
             **kwargs,
@@ -529,21 +639,23 @@ class ErrorComparer(object):
             BlurredForest(n_estimators=n_estimators),
             [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
             [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-            niter,
-            n,
-            p,
-            s,
-            snr,
-            X,
-            beta,
-            coord,
-            Chol_t,
-            Chol_s,
-            tr_idx,
+            niter=niter,
+            n=n,
+            p=p,
+            s=s,
+            snr=snr,
+            X=X,
+            beta=beta,
+            coord=coord,
+            Chol_t=Chol_t,
+            Chol_s=Chol_s,
+            tr_idx=tr_idx,
             fair=True,
             **kwargs,
         )
 
+    ## TODO: write new version of this that calls better_test_est_split
+    ##       and calls compare(). 
     def compareGLSFTrTs(
         self,
         niter=100,
@@ -559,7 +671,9 @@ class ErrorComparer(object):
         max_depth=4,
         n_estimators=5,
         tr_idx=None,
+        tr_frac=.6,
         k=10,
+        const_mu=False,
         **kwargs,
     ):
 
@@ -587,7 +701,7 @@ class ErrorComparer(object):
         Chol_s_orig = Chol_s
 
         if not gen_beta:
-            mu, sigma = self._gen_mu_sigma(X, beta, snr)
+            mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
 
             Chol_t, Chol_s, _ = self._preprocess_chol(
                 Chol_t_orig, Chol_s_orig, sigma, n
@@ -601,19 +715,19 @@ class ErrorComparer(object):
 
             if gen_beta:
                 X, beta = self._gen_X_beta(n, p, s)
-                mu, sigma = self._gen_mu_sigma(X, beta, snr)
+                mu, sigma = self._gen_mu_sigma(X, beta, snr,const_mu=const_mu)
                 Chol_t, Chol_s = self._preprocess_chol(
                     Chol_t_orig, Chol_s_orig, sigma, n
                 )
 
                 kwargs["chol_eps"] = Chol_t
 
-            tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)))
+            tr_idx = create_clus_split(int(np.sqrt(n)), int(np.sqrt(n)), tr_frac=tr_frac)
             # tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
             # tr_idx = np.zeros(n).astype(bool)
             # tr_idx[tr_samples] = True
             # ts_idx = (1 - tr_idx).astype(bool)
-            kwargs["idx_tr"] = tr_idx
+            # kwargs["idx_tr"] = tr_idx
             if i == 0:
                 print(tr_idx.mean())
 
@@ -629,6 +743,7 @@ class ErrorComparer(object):
 
             self.test_err[i] = test_est(
                 model=model, X=X, y=y, y2=y2, tr_idx=tr_idx, **kwargs
+                # model=model, X=X, y=y, y2=y2, **kwargs
             )
 
             self.bagg_err[i], self.glsf_err[i] = bagg_est(
@@ -676,6 +791,7 @@ class ErrorComparer(object):
         n_estimators=5,
         tr_idx=None,
         k=10,
+        const_mu=False,
         **kwargs,
     ):
 
@@ -703,7 +819,7 @@ class ErrorComparer(object):
         Chol_s_orig = Chol_s
 
         if not gen_beta:
-            mu, sigma = self._gen_mu_sigma(X, beta, snr)
+            mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
 
             Chol_t, Chol_s = self._preprocess_chol(Chol_t_orig, Chol_s_orig, sigma, n)
 
@@ -715,7 +831,7 @@ class ErrorComparer(object):
 
             if gen_beta:
                 X, beta = self._gen_X_beta(n, p, s)
-                mu, sigma = self._gen_mu_sigma(X, beta, snr)
+                mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
                 Chol_t, Chol_s = self._preprocess_chol(
                     Chol_t_orig, Chol_s_orig, sigma, n
                 )

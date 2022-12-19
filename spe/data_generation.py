@@ -46,7 +46,10 @@ def gen_cov_mat(
     c_y,
     kernel,
 ):
-    locs = np.stack([c_x, c_y]).T
+    if c_y is not None:
+        locs = np.stack([c_x, c_y]).T
+    else:
+        locs = np.atleast_2d(c_x).T
     return kernel(locs)
 
 

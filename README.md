@@ -11,7 +11,7 @@ Can be installed via `poetry` (recommended to install within a virtual environme
 ```
 conda create --name spe_env
 conda activate spe_env
-pip install poetry
+conda install poetry
 poetry install
 ```
 
