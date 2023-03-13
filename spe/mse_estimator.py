@@ -53,13 +53,23 @@ class ErrorComparer(object):
 
         return X, beta
 
-    def _gen_mu_sigma(self, X, beta, snr, const_mu=False):
-        if const_mu:
+    def _gen_mu_sigma(self, X, beta, snr, const_mu=False, friedman_mu=False, sigma=None):
+        if friedman_mu:
+            assert(X.shape[1] == 5)
+            # (10 sin(πx1x2)+ 20(x3 −0.5)2 + 10x4 + 5x5)/6
+            mu = (
+                10 * np.sin(X[:,0]*X[:,1]*np.pi) +
+                20 * (X[:,2] - 0.5)**2 +
+                10 * X[:,3] + 5 * X[:,4]
+            ) / 6.
+        elif const_mu:
             mu = np.ones(X.shape[0])*beta.sum()*5
         else:
             mu = X @ beta
-        # sigma = 3.
-        sigma = np.sqrt(np.var(mu) / snr)
+
+        if sigma is None:
+            sigma = np.sqrt(np.var(mu) / snr)
+
         return mu, sigma
 
     def _preprocess_X_beta(self, X, beta, n, p):
@@ -165,6 +175,8 @@ class ErrorComparer(object):
         est_sigma=False,
         est_sigma_model=None,
         const_mu=False,
+        friedman_mu=False,
+        sigma=None,
         # test_kwargs={},
         **kwargs,
     ):
@@ -200,7 +212,7 @@ class ErrorComparer(object):
         Cov_st_orig = Cov_st
 
         if not gen_beta:
-            mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
+            mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=sigma)
             Chol_t, Chol_s, Cov_st = self._preprocess_chol(
                 Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
             )
@@ -238,7 +250,7 @@ class ErrorComparer(object):
 
             if gen_beta:
                 X, beta = self._gen_X_beta(n, p, s)
-                mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu)
+                mu, sigma = self._gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=sigma)
                 Chol_t, Chol_s, Cov_st = self._preprocess_chol(
                     Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
                 )

@@ -194,7 +194,26 @@ def better_test_est_split(
         # preds = model.predict(X_ts, full_refit=full_refit, chol=chol)
     else:
         ## TODO: all the conditional stuff I have for full refit
-        preds = model.predict(X_ts)
+        if model.__class__.__name__ == "BlurredForest":
+            if gls is None or not gls:
+                # print("gls None", gls)
+                preds = model.predict(X_ts, full_refit=full_refit)
+            else:
+                # print("gls not None", gls)
+                Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
+                    (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
+                )).T
+                # print("gls", gls)
+                # print("Chol", Chol_t_tr)
+                # print("Sigma", Chol_t_tr @ Chol_t_tr.T)
+                preds = model.predict(
+                    X_ts, 
+                    full_refit=full_refit, 
+                    Chol=Chol_t_inv_tr
+                )
+        else:
+            preds = model.predict(X_ts)
+
 
     sse = np.sum((y2_ts - preds) ** 2)
     return sse / n_ts

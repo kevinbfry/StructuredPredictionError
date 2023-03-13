@@ -110,10 +110,19 @@ class BlurredForest(RandomForestRegressor):
             # ols_Ps = self.get_linear_smoother(self.X_tr_, X, Chol=None)
             # print("asdfsdfds")
             # assert(np.allclose(Ps, ols_Ps))
-            if full_refit:
-                preds = [P @ self.y_refit_ for P in Ps]
+            if self.bootstrap_type == "blur":
+                if full_refit:
+                    preds = [P @ self.y_refit_ for P in Ps]
+                else:
+                    preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
             else:
-                preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
+                if full_refit:
+                    preds = [P @ self.y_refit_ for P in Ps]
+                else:
+                    if Chol is None:
+                        return self.predict(X)
+                    else:
+                        raise NotImplementedError("Not yet implemented for RF with GLS and W refit")
             pred = np.mean(preds, axis=0)
             return pred
         else:
