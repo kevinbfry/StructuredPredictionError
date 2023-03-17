@@ -15,8 +15,8 @@ from sklearn.linear_model import LinearRegression, Lasso
 
 import skgstat as skg
 
-from .relaxed_lasso import RelaxedLasso, BaggedRelaxedLasso
-from .estimators import (
+from spe.relaxed_lasso import RelaxedLasso, BaggedRelaxedLasso
+from spe.estimators import (
     kfoldcv,
     kmeanscv,
     test_set_estimator,
@@ -34,9 +34,9 @@ from .estimators import (
     bag_kfoldcv,
     bag_kmeanscv,
 )
-from .tree import Tree
-from .forest import BlurredForest
-from .data_generation import gen_rbf_X, create_clus_split
+from ..spe.tree import Tree
+from ..spe.forest import BlurredForest
+from ..spe.data_generation import gen_rbf_X, create_clus_split
 
 
 class ErrorComparer(object):
