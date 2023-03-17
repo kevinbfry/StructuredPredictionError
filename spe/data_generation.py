@@ -84,52 +84,6 @@ def _gen_X(n, p, cov, nspikes=None):
     return X
 
 
-# def create_clus_split(
-# 	nx,
-# 	ny,
-# 	tr_frac,
-# 	n_centers=15,
-# 	):
-# 	xv, yv = np.meshgrid(np.arange(nx), np.arange(ny))
-# 	pts = np.stack([xv.ravel(), yv.ravel()]).T
-# 	n = nx*ny
-
-# 	if n_centers is None or n_centers == 'log':
-# 		n_centers = 2*int(np.log2(n))
-# 	elif n_centers == 'sqrt':
-# 		n_centers = int(np.sqrt(n))
-
-# 	ctr = np.random.choice(pts.shape[0], size=n_centers, replace=True)
-# 	ctr = pts[ctr]
-# 	# print("centers")
-# 	# print(ctr)
-# 	# print("------------------------")
-
-# 	tr_idx = np.vstack([[pt + np.array((1.25*np.random.randn(2)).astype(int)) for _ in np.arange(int(3.5*n/n_centers))] for pt in ctr])
-
-# 	# n_sample = int(tr_frac*n)
-# 	# tr_idx = np.zeros((n_sample,2), dtype=int)
-# 	# tr_idx[:n_centers,:] = ctr
-# 	# for i in np.arange(n_centers, n_sample):
-# 	# 	j = int(i % n_centers)
-# 	# 	while True:
-# 	# 		prop_pt = pts[j] + np.array(2.5*np.random.randn(2)).astype(int)
-# 	# 		# print(prop_pt)
-# 	# 		if prop_pt.tolist() not in tr_idx.tolist():
-# 	# 			tr_idx[i,:] = prop_pt
-# 	# 			break
-
-# 	tr_idx = np.maximum(0, tr_idx)
-# 	tr_idx[:,0] = cx = np.minimum(nx-1, tr_idx[:,0])
-# 	tr_idx[:,1] = cy = np.minimum(ny-1, tr_idx[:,1])
-# 	tr_idx = np.unique(np.ravel_multi_index(tr_idx.T, (nx,ny)))
-
-# 	tr_bool = np.zeros(n).astype(bool)
-# 	tr_bool[tr_idx] = True
-
-# 	return tr_bool
-
-
 ### this samples grid, then uniform within grid.
 def create_clus_split(
     nx,
