@@ -34,9 +34,9 @@ from spe.estimators import (
     bag_kfoldcv,
     bag_kmeanscv,
 )
-from ..spe.tree import Tree
-from ..spe.forest import BlurredForest
-from ..spe.data_generation import gen_rbf_X, create_clus_split
+from spe.tree import Tree
+from spe.forest import BlurredForest
+from spe.data_generation import gen_rbf_X, create_clus_split
 
 
 class ErrorComparer(object):

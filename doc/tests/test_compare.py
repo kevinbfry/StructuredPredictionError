@@ -3,7 +3,7 @@ from sklearn.linear_model import LinearRegression
 
 from spe.relaxed_lasso import BaggedRelaxedLasso, RelaxedLasso
 from spe.forest import BlurredForest
-from spe.mse_estimator import ErrorComparer
+from .mse_estimator import ErrorComparer
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
