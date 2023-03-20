@@ -1,5 +1,5 @@
 import numpy as np
-from .mse_estimator import ErrorComparer
+from ..mse_estimator import ErrorComparer
 
 
 def test_linear(n=100):
