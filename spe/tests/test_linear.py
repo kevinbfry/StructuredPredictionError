@@ -1,7 +1,7 @@
 import numpy as np
-import sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression
 
-from ..estimators import cp_linear_train_test
+from spe.estimators import cp_linear_train_test
 
 ## simple simple execution test
 def test_lin(
