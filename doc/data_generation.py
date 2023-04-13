@@ -91,6 +91,8 @@ def create_clus_split(
     tr_frac,
     ngrid=5,
 ):
+    ngrid = int(np.amin([nx/2, ny/2, ngrid])) ## a grid square must have at least 4 points
+
     xv, yv = np.meshgrid(np.arange(nx), np.arange(ny))
     pts = np.stack([xv.ravel(), yv.ravel()]).T
     n = nx * ny

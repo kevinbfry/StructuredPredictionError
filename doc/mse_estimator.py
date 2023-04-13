@@ -15,6 +15,8 @@ from sklearn.linear_model import LinearRegression, Lasso
 
 import skgstat as skg
 
+from tqdm import tqdm
+
 from spe.relaxed_lasso import RelaxedLasso, BaggedRelaxedLasso
 from spe.estimators import (
     kfoldcv,
@@ -36,7 +38,7 @@ from spe.estimators import (
 )
 from spe.tree import Tree
 from spe.forest import BlurredForest
-from data_generation import create_clus_split ## TODO: gen_rbf_X never used, only imported from here by notebooks. should data_generation not be in package?
+from .data_generation import create_clus_split, gen_matern_X, gen_rbf_X ## TODO: gen_rbf_X never used, only imported from here by notebooks. should data_generation not be in package?
 
 
 class ErrorComparer(object):
@@ -45,8 +47,14 @@ class ErrorComparer(object):
     CV_METHODS = ["kfoldcv", "kmeanscv", 'timeseriescv'] + BAGCV_METHODS
     SPCV_METHODS = ["bag_kmeanscv", "kmeanscv"]
 
-    def gen_X_beta(self, n, p, s):
-        X = np.random.randn(n, p)
+    def gen_X_beta(self, n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):
+        # X = np.random.randn(n, p)
+        if X_kernel == 'rbf':
+            X = gen_rbf_X(c_x, c_y, p)
+        elif X_kernel == 'matern':
+            X = gen_matern_X(c_x, c_y, p, length_scale=ls, nu=nu)
+        else:
+            X = np.random.randn(n,p)
         beta = np.zeros(p)
         idx = np.random.choice(p, size=s)
         beta[idx] = np.random.uniform(-1, 1, size=s)
@@ -74,7 +82,7 @@ class ErrorComparer(object):
 
     def preprocess_X_beta(self, X, beta, n, p, friedman_mu=False, const_mu=False):
         gen_beta = X is None or (beta is None and (not friedman_mu and not const_mu))
-        if not X is None:
+        if X is not None:
             n, p = X.shape
         return gen_beta, n, p
 
@@ -98,6 +106,10 @@ class ErrorComparer(object):
         if Cov_st is None:
             eps = Chol_t @ np.random.randn(n)
             eps2 = Chol_s @ np.random.randn(n)
+            # Sigma_t = Chol_t @ Chol_t.T
+            # Sigma_s = Chol_s @ Chol_s.T
+            # eps = np.random.multivariate_normal(np.zeros(n),Sigma_t)
+            # eps2 = np.random.multivariate_normal(np.zeros(n),Sigma_s)
         else:
             Sigma_t = Chol_t @ Chol_t.T
             Sigma_s = Chol_s @ Chol_s.T
@@ -159,11 +171,14 @@ class ErrorComparer(object):
         s=5,
         snr=0.4,
         X=None,
+        X_kernel=None,
+        X_ls=None,
+        X_nu=None,
         beta=None,
         coord=None,
-        Chol_t=None,
-        Chol_s=None,
-        Cov_st=None,
+        Chol_y=None,
+        Chol_ystar=None,
+        Cov_y_ystar=None,
         delta=None,
         tr_idx=None,
         fair=False,
@@ -172,11 +187,15 @@ class ErrorComparer(object):
         est_sigma_model=None,
         const_mu=False,
         friedman_mu=False,
-        sigma=None,
+        noise_sigma=None,
         # test_kwargs={},
         **kwargs,
     ):
         # print("NEW NEW")
+
+        self.Chol_y = np.copy(Chol_y) if Chol_y is not None else None
+        self.Chol_ystar = np.copy(Chol_ystar) if Chol_ystar is not None else None
+        self.Cov_y_ystar = np.copy(Cov_y_ystar) if Cov_y_ystar is not None else None
 
         if len(ests) != len(est_kwargs):
             raise ValueError("ests must be same length as est_kwargs")
@@ -203,25 +222,28 @@ class ErrorComparer(object):
 
         gen_beta, n, p = self.preprocess_X_beta(X, beta, n, p, friedman_mu, const_mu)
 
-        Chol_t_orig = Chol_t
-        Chol_s_orig = Chol_s
-        Cov_st_orig = Cov_st
+        # Chol_t_orig = np.copy(Chol_y)
+        # Chol_s_orig = np.copy(Chol_ystar) if Chol_ystar is not None else None
+        # Cov_st_orig = np.copy(Cov_y_ystar) if Cov_y_ystar is not None else None
 
         if not gen_beta:
-            mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=sigma)
+            mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
             Chol_t, Chol_s, Cov_st = self.preprocess_chol(
-                Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
+                # Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
+                self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
             )
 
-        for i in np.arange(niter):
-            if i % 10 == 0:
-                print(i)
+        # for i in np.arange(niter):
+        for i in tqdm(range(niter)):
+            # if i % 10 == 0:
+            #     print(i)
 
             if gen_beta:
-                X, beta = self.gen_X_beta(n, p, s)
-                mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=sigma)
+                X, beta = self.gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
+                mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
                 Chol_t, Chol_s, Cov_st = self.preprocess_chol(
-                    Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
+                    # Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
+                    self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
                 )
 
             if tr_idx is None:
@@ -236,12 +258,13 @@ class ErrorComparer(object):
                     tr_idx = create_clus_split(
                         int(np.sqrt(n)), int(np.sqrt(n)), tr_frac
                     )
-            if i == 0:
-                print(tr_idx.mean())
+            # if i == 0:
+            #     print(tr_idx.mean())
 
             y, y2 = self.gen_ys(
                 mu, Chol_t, Chol_s, sigma=sigma, Cov_st=Cov_st, delta=delta
             )
+            # print("y max", np.fabs(y).max(), "y2 max", np.fabs(y2).max())
 
             if not fair:
                 X_tr, y_tr, coord_tr = self.get_train(X, y, coord, tr_idx)
@@ -249,15 +272,17 @@ class ErrorComparer(object):
 
             if est_sigma:
                 est_Chol_t = self.est_Sigma(X_tr, y_tr, coord_tr, coord, est_sigma_model)
-                if Chol_s_orig is not None:
+                # if Chol_s_orig is not None:
+                if self.Chol_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Chol_s != None")
-                if Cov_st_orig is not None:
+                # if Cov_st_orig is not None:
+                if self.Cov_y_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Cov_st != None")
                 est_Chol_s = est_Chol_t
             else:
-                est_Chol_t = Chol_t
-                est_Chol_s = Chol_s
-                est_Cov_st = Cov_st
+                est_Chol_t = np.copy(Chol_t)
+                est_Chol_s = np.copy(Chol_s)
+                est_Cov_st = np.copy(Cov_st)
             
             for j in range(len(est_kwargs)):
                 if ests[j].__name__ in ["better_test_est_split", "ts_test_est_split"]:
@@ -616,4 +641,3 @@ class ErrorComparer(object):
 
 
 
-    

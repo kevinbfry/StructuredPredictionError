@@ -83,7 +83,7 @@ def _blur(y, Chol_eps, proj_t_eps=None):
         wp = y - regress_t_eps
 
         return w, wp, eps, regress_t_eps
-    ## TODO
+    
     return w, eps
 
 
@@ -97,8 +97,6 @@ def _get_covs(Chol_t, Chol_s, alpha=1.0):
 
     same_cov = Chol_s is None
     if same_cov:
-        # Chol_s = np.zeros_like(Chol_t)
-        # Sigma_s = np.zeros_like(Sigma_t)
         Chol_s = Chol_t
         Sigma_s = Sigma_t
     else:
@@ -117,9 +115,14 @@ def split_data(
     tr_idx,
 ):
 
-    ts_idx = 1 - tr_idx
+    tr_idx = tr_idx.astype(bool)
+    ts_idx = ~tr_idx#1 - tr_idx
     if ts_idx.sum() == 0:
         ts_idx = tr_idx
+    else:
+        assert(np.sum(tr_idx * ts_idx) == 0)
+        assert(np.sum(tr_idx + ts_idx) == X.shape[0])
+
     tr_idx = tr_idx.astype(bool)
     ts_idx = ts_idx.astype(bool)
 
@@ -148,8 +151,6 @@ def better_test_est_split(
     # chol=None,
     **kwargs,
 ):
-    # print("Chol_t", Chol_t)
-
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
@@ -170,8 +171,13 @@ def better_test_est_split(
                 kwargs["chol_eps"] = kwargs["chol_eps"][tr_idx, :][:, tr_idx]
         model.fit(X_tr, y_tr, **kwargs)
 
+    # print(model.__class__.__name__, full_refit, gls)
+    # print(full_refit is None, full_refit, full_refit is None or full_refit)
+
     if full_refit is None or full_refit:
-        if model.__class__.__name__ == "RelaxedLasso":
+        # print(model.__class__.__name__, full_refit, gls)
+        ## TODO: change to isinstance(LinearSelector)
+        if model.__class__.__name__ in ["Tree", "RelaxedLasso"]:
             P = model.get_linear_smoother(X_tr, X_ts)
             preds = P @ y_tr
         else:
@@ -212,11 +218,13 @@ def better_test_est_split(
                     Chol=Chol_t_inv_tr
                 )
         else:
+            # print("using model predict function")
             preds = model.predict(X_ts)
 
 
-    sse = np.sum((y2_ts - preds) ** 2)
-    return sse / n_ts
+    # sse = np.sum((y2_ts - preds) ** 2)
+    # return sse / n_ts
+    return np.mean((y2_ts - preds)**2)
 
 
 # ## \| Y^b_1 - g(Y^b_2) \|_2^2
@@ -729,10 +737,21 @@ def cp_adaptive_smoother_train_test(
     full_refit=True,
     use_trace_corr=True,
 ):
-
+    # print("check", Chol_t is not None, np.all(Chol_s == Chol_t), Cov_st, alpha, full_refit, use_trace_corr)
     X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+    # n, p = X.shape
 
     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+    # n_tr = tr_idx.sum()
+    # n_ts = n - n_tr
+    # if n_ts == 0:
+    #     ts_idx = tr_idx
+    # else:
+    #     ts_idx = ~tr_idx
+    # X_tr = X[tr_idx,:]
+    # X_ts = X[ts_idx,:]
+    # y_tr = y[tr_idx]
+    # y_ts = y[ts_idx]
 
     if Cov_st is None:
         Cov_st = np.zeros((n, n))
@@ -740,75 +759,81 @@ def cp_adaptive_smoother_train_test(
     Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
         Chol_t, Chol_s, alpha=alpha
     )
+    # Chol_s = Chol_t
+    # Sigma_t = Chol_t @ Chol_t.T
+    # Sigma_s = Sigma_t
+    # Chol_eps = np.sqrt(alpha) * Chol_t
+    # proj_t_eps = np.eye(n) / alpha
 
     Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
         Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
     )
 
-    Sigma_w = (1 + alpha) * Sigma_t
-    # Gamma = Cov_st @ np.linalg.inv(Sigma_t)
-    Gamma = Cov_st @ np.linalg.inv(Sigma_w)
-    # assert(np.allclose(np.diag(Gamma), .25*np.ones(n)))
-    IMGamma = np.eye(n) - Gamma
-    IMGamma_ts = IMGamma[ts_idx, :][:, ts_idx]
+    # Sigma_w = (1 + alpha) * Sigma_t
+    # # Gamma = Cov_st @ np.linalg.inv(Sigma_t)
+    # Gamma = Cov_st @ np.linalg.inv(Sigma_w)
+    # # assert(np.allclose(np.diag(Gamma), .25*np.ones(n)))
+    # IMGamma = np.eye(n) - Gamma
+    # IMGamma_ts = IMGamma[ts_idx, :][:, ts_idx]
 
-    Cov_N = Sigma_s - Gamma @ Cov_st.T
-    Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
+    # Cov_N = Sigma_s - Gamma @ Cov_st.T
+    # Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
 
-    Cov_wp = (1 + 1 / alpha) * Sigma_t
-    IMGamma_ts_f = IMGamma[ts_idx, :]
-    Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
-    # Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
-    Cov_Np_ts = IMGamma_ts_f @ Cov_wp @ IMGamma_ts_f.T
+    # Cov_wp = (1 + 1 / alpha) * Sigma_t
+    # IMGamma_ts_f = IMGamma[ts_idx, :]
+    # Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
+    # # Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
+    # Cov_Np_ts = IMGamma_ts_f @ Cov_wp @ IMGamma_ts_f.T
 
     boot_ests = np.zeros(nboot)
+    correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    # Sigma_wp = (1 + 1/alpha) * Sigma_t
+    # correction = Sigma_s[ts_idx,ts_idx].mean() - Sigma_wp[ts_idx,ts_idx].mean()
+    # print(correction, n_ts)
     for i in range(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+        # assert(0==1)
+        # w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+        eps = Chol_eps @ np.random.randn(n)
+        w = y + eps
+        # regress_t_eps = proj_t_eps @ eps
+        wp = y - proj_t_eps @ eps
         w_tr = w[tr_idx]
         wp_ts = wp[ts_idx]
 
         model.fit(X_tr, w_tr)
 
-        P = model.get_linear_smoother(X_tr, X_ts)
+        P = model.get_linear_smoother(X, tr_idx, ts_idx)#, X_ts)
+        assert(np.allclose(P @ w_tr, model.predict(X_ts)))
+
+        # if full_refit:
+        #     correction = 2 * np.diag(Cov_tr_ts @ P).mean()
+        # else:
+        #     correction = 0
+
+        # if use_trace_corr:
+        #     correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()) / n_ts
+        #     # correction += - 1/alpha * Sigma_s[ts_idx,ts_idx].mean()
+        #     # correction += np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+        # else:
+        #     correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()) / n_ts - (
+        #         regress_t_eps[ts_idx] ** 2
+        #     ).mean()
+
+        # assert(0==1)
 
         if full_refit:
-            # correction = 2*np.diag(Cov_tr_ts @ P).sum()
-            correction = 2 * np.diag(Cov_tr_ts @ P).mean()
+            boot_ests[i] = np.mean((wp_ts - P @ y_tr) ** 2)# + correction
         else:
-            correction = 0
+            # print((P @ w_tr).shape, wp_ts.shape)
+            boot_ests[i] = np.mean((wp_ts - P @ w_tr) ** 2)# + correction
 
-        if use_trace_corr:
-            # correction += 0
-            # correction = np.diag(Cov_s_ts).sum() \
-            # 				- np.diag(Cov_wp_ts).sum()
-            correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()) / n_ts
-        else:
-            # correction = np.diag(Cov_s_ts).sum() \
-            # 				- np.diag(Cov_t_ts).sum() \
-            # 				- (regress_t_eps[ts_idx]**2).sum()
-            correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()) / n_ts - (
-                regress_t_eps[ts_idx] ** 2
-            ).mean()
-            # correction -= (regress_t_eps[ts_idx]**2).sum()
-            # correction -= (regress_t_eps[ts_idx]**2).mean()
-
-        if full_refit:
-            # boot_ests[i] = np.sum((wp_ts - P @ y_tr)**2) + correction
-            boot_ests[i] = np.mean((wp_ts - P @ y_tr) ** 2) + correction
-        else:
-            # boot_ests[i] = np.sum((wp_ts - P @ w_tr)**2) + correction
-            boot_ests[i] = np.mean((wp_ts - P @ w_tr) ** 2) + correction
-
-    # if use_trace_corr:
-    # 	iter_indep_correction = (np.diag(Cov_s_ts).sum()
-    # 							- np.diag(Cov_wp_ts).sum()) / n_ts
-    # else:
-    # 	iter_indep_correction = (np.diag(Cov_s_ts).sum()
-    # 							- np.diag(Cov_t_ts).sum()) / n_ts
-    # iter_indep_correction = 0
-
-    # return boot_ests.mean() / n_ts + iter_indep_correction #, model
-    return boot_ests.mean()  # + iter_indep_correction #, model
+        # if boot_ests[i] < np.fabs(correction):
+        #     print("less than 0")
+        # if i == 0:
+        # print(np.mean((wp_ts - P @ w_tr) ** 2))
+        # print(np.mean((wp_ts - P @ y_tr) ** 2))
+            
+    return boot_ests.mean() + correction
 
 
 def cp_relaxed_lasso_train_test(
@@ -962,7 +987,7 @@ def cp_rf_train_test(
 
     model.fit(X_tr, y_tr, **kwargs)
 
-    Ps = model.get_linear_smoother(X_tr, X_ts)
+    Ps = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
     eps = model.eps_
 
     Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
@@ -977,7 +1002,8 @@ def cp_rf_train_test(
 
     if ret_gls:
         P_gls_s = model.get_linear_smoother(
-            X_tr, X_ts, Chol=np.linalg.inv(np.linalg.cholesky(Sigma_t[tr_idx, :][:, tr_idx])).T
+            # X_tr, X_ts, Chol=np.linalg.inv(np.linalg.cholesky(Sigma_t[tr_idx, :][:, tr_idx])).T
+            X, tr_idx, ts_idx, Chol=np.linalg.inv(np.linalg.cholesky(Sigma_t[tr_idx, :][:, tr_idx])).T
         )
         tree_gls_ests = np.zeros(n_trees)
         yhats_gls = np.zeros((n_ts, n_trees))

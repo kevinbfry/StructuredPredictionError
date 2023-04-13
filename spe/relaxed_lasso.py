@@ -4,6 +4,8 @@ from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.ensemble import BaggingRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from .tree import LinearSelector
 
@@ -79,26 +81,29 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             selection,
         )
 
-        self.lassom = Lasso(
-            alpha=lambd,
-            fit_intercept=fit_intercept,
-            normalize=normalize,
-            precompute=precompute,
-            copy_X=copy_X,
-            max_iter=max_iter,
-            tol=tol,
-            warm_start=warm_start,
-            positive=positive,
-            random_state=random_state,
-            selection=selection,
-        )
+        self.lassom = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', Lasso(
+                alpha=lambd,
+                fit_intercept=fit_intercept,
+                normalize=normalize,
+                precompute=precompute,
+                copy_X=copy_X,
+                max_iter=max_iter,
+                tol=tol,
+                warm_start=warm_start,
+                positive=positive,
+                random_state=random_state,
+                selection=selection,
+            ))
+        ])
 
         self.linm = LinearRegression(
             fit_intercept=fit_intercept, copy_X=copy_X, positive=positive
         )
 
     def get_group_X(self, X):
-        check_is_fitted(self)
+        # check_is_fitted(self)
 
         E = self.E_
         if E.shape[0] != 0:
@@ -108,17 +113,17 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
         return XE
 
-    def get_linear_smoother(self, X, X_pred=None):
-        XE = self.get_group_X(X)
-        if not np.any(XE):
+    def get_linear_smoother(self, X, tr_idx, ts_idx):# X_pred=None):
+        X_tr = X[tr_idx,:]
+        X_ts = X[ts_idx,:]
+        XE_tr = self.get_group_X(X_tr)
+        if not np.any(XE_tr):
             print("zeros")
-            return np.zeros((X_pred.shape[0], X.shape[0]))
-        if X_pred is None:
-            XE_pred = XE
-        else:
-            XE_pred = self.get_group_X(X_pred)
+            return np.zeros((X_ts.shape[0], X_tr.shape[0]))
+        
+        XE_ts = self.get_group_X(X_ts)
         # return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
-        return XE_pred @ np.linalg.pinv(XE)
+        return XE_ts @ np.linalg.pinv(XE_tr)
 
     def fit(self, X, lasso_y, lin_y=None, sample_weight=None, check_input=True):
 
@@ -126,10 +131,15 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             lin_y = lasso_y.copy()
 
         self.lassom.fit(
-            X, lasso_y, sample_weight=sample_weight, check_input=check_input
+            X, 
+            lasso_y, 
+            model__sample_weight=sample_weight, 
+            model__check_input=check_input,
         )
 
-        self.E_ = E = np.where(self.lassom.coef_ != 0)[0]
+        self.E_ = E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
+        # print("n selected", self.E_.shape[0])
+        # self.E_ = E = np.array([0,1,2]) if np.sign(lasso_y - lasso_y.mean()).sum() > 0 else np.array([3,4,5])
 
         self.fit_linear(X, lin_y, sample_weight=sample_weight)
 
