@@ -178,26 +178,31 @@ def better_test_est_split(
         # print(model.__class__.__name__, full_refit, gls)
         ## TODO: change to isinstance(LinearSelector)
         if model.__class__.__name__ in ["Tree", "RelaxedLasso"]:
-            P = model.get_linear_smoother(X_tr, X_ts)
+            P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
             preds = P @ y_tr
         else:
-            if gls is None or not gls:
-                # print("gls None", gls)
-                preds = model.predict(X_ts, full_refit=full_refit)
-            else:
-                # print("gls not None", gls)
-                Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
-                    (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
-                )).T
-                # print("gls", gls)
-                # print("Chol", Chol_t_tr)
-                # print("Sigma", Chol_t_tr @ Chol_t_tr.T)
-                preds = model.predict(
-                    X_ts, 
-                    full_refit=full_refit, 
-                    Chol=Chol_t_inv_tr
-                )
-        # preds = model.predict(X_ts, full_refit=full_refit, chol=chol)
+            # if gls is None or not gls:
+            #     # print("gls None", gls)
+            #     preds = model.predict(X_ts, full_refit=full_refit)
+            # else:
+            #     # print("gls not None", gls)
+            #     Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
+            #         (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
+            #     )).T
+            #     # print("gls", gls)
+            #     # print("Chol", Chol_t_tr)
+            #     # print("Sigma", Chol_t_tr @ Chol_t_tr.T)
+            #     preds = model.predict(
+            #         X_ts, 
+            #         full_refit=full_refit, 
+            #         Chol=Chol_t_inv_tr
+            #     )
+        
+            chol = None if not gls else np.linalg.inv(np.linalg.cholesky(
+                                            (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
+                                        )).T
+            preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit, Chol=chol)
+
     else:
         ## TODO: all the conditional stuff I have for full refit
         if model.__class__.__name__ == "BlurredForest":
@@ -307,7 +312,7 @@ def ts_test_est_split(
 
     if full_refit is None or full_refit:
         if model.__class__.__name__ == "RelaxedLasso":
-            P = model.get_linear_smoother(X_tr, X_ts)
+            P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
             preds = P @ y_tr
         else:
             if gls is None or not gls:
@@ -494,6 +499,10 @@ def cp_general_train_test(
         Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
     )
 
+    if use_trace_corr:
+        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    else:
+        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
     boot_ests = np.zeros(nboot)
     for i in range(nboot):
         w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
@@ -503,32 +512,13 @@ def cp_general_train_test(
         model.fit(X_tr, w_tr)
 
         if use_trace_corr:
-            # correction += 0
-            # correction = np.diag(Cov_s_ts).sum() \
-            # 				- np.diag(Cov_wp_ts).sum()
-            correction = (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()) / n_ts
+            iter_correction = 0
         else:
-            # correction = np.diag(Cov_s_ts).sum() \
-            # 				- np.diag(Cov_t_ts).sum() \
-            # 				- (regress_t_eps[ts_idx]**2).sum()
-            correction = (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()) / n_ts - (
-                regress_t_eps[ts_idx] ** 2
-            ).mean()
-            # correction -= (regress_t_eps[ts_idx]**2).sum()
-            # correction -= (regress_t_eps[ts_idx]**2).mean()
+            iter_correction = -(regress_t_eps[ts_idx] ** 2).mean()
 
-        # boot_ests[i] = np.sum((wp_ts - model.predict(X_ts))**2) + correction
-        boot_ests[i] = np.mean((wp_ts - model.predict(X_ts)) ** 2) + correction
+        boot_ests[i] = np.mean((wp_ts - model.predict(X_ts)) ** 2) + iter_correction
 
-    # if use_trace_corr:
-    # 	iter_indep_correction = (np.diag(Cov_s_ts).sum()
-    # 							- np.diag(Cov_wp_ts).sum()) / n_ts
-    # else:
-    # 	iter_indep_correction = (np.diag(Cov_s_ts).sum()
-    # 							- np.diag(Cov_t_ts).sum()) / n_ts
-
-    # return boot_ests.mean() / n_ts + iter_indep_correction#, model
-    return boot_ests.mean()  # + iter_indep_correction#, model
+    return boot_ests.mean() + noise_correction
 
 
 def cp_corr_general_train_test(
@@ -543,86 +533,7 @@ def cp_corr_general_train_test(
     alpha=1.0,
     use_trace_corr=True,
 ):
-
-    X, y, _, n, p = _preprocess_X_y_model(X, y, None)
-
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-
-    if Cov_st is None:
-        Cov_st = np.zeros((n, n))
-
-    Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
-        Chol_t, Chol_s, alpha=alpha
-    )
-
-    Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
-        Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
-    )
-
-    Sigma_w = (1 + alpha) * Sigma_t
-    # Gamma = Cov_st @ np.linalg.inv(Sigma_t)
-    Gamma = Cov_st @ np.linalg.inv(Sigma_w)
-    # assert(np.allclose(np.diag(Gamma), .25*np.ones(n)))
-    IMGamma = np.eye(n) - Gamma
-    IMGamma_ts = IMGamma[ts_idx, :][:, ts_idx]
-
-    Cov_N = Sigma_s - Gamma @ Cov_st.T
-    Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
-
-    Cov_wp = (1 + 1 / alpha) * Sigma_t
-    IMGamma_ts_f = IMGamma[ts_idx, :]
-    Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
-    # Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
-    Cov_Np_ts = IMGamma_ts_f @ Cov_wp @ IMGamma_ts_f.T
-
-    boot_ests = np.zeros(nboot)
-    for i in range(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-        w_tr = w[tr_idx]
-        wp_ts = wp[ts_idx]
-
-        model.fit(X_tr, w_tr)
-
-        # if use_trace_corr:
-        # 	correction = (np.diag(Cov_N_ts).sum() \
-        # 					- np.diag(Cov_Np_ts).sum()) / n_ts
-        # else:
-        # 	Cov_IMGy = IMGamma @ Sigma_t @ IMGamma.T
-        # 	Cov_IMGy_ts = Cov_IMGy[ts_idx,:][:,ts_idx]
-        # 	regress_t_eps = IMGamma @ eps
-        # 	correction = (np.diag(Cov_N_ts).sum()
-        # 					- np.diag(Cov_IMGy_ts).sum()) / n_ts \
-        # 					- (regress_t_eps[ts_idx]**2).mean()
-
-        Np_ts = IMGamma_ts_f @ wp
-        # print((wp_ts - (Np_ts + Gamma[ts_idx,:] @ wp)).mean())
-        # print(correction)
-        # print((Np_ts - model.predict(X_ts) + Gamma[ts_idx,:] @ w).shape)
-        boot_ests[i] = np.mean(
-            (Np_ts - model.predict(X_ts) + Gamma[ts_idx, :] @ w) ** 2
-        )  # + correction
-
-    return (
-        boot_ests.mean() + (np.diag(Cov_N_ts).sum() - np.diag(Cov_Np_ts).sum()) / n_ts
-    )  # + iter_indep_correction#, model
-
-
-def cp_corr_adaptive_smoother_train_test(
-    model,
-    X,
-    y,
-    tr_idx,
-    true_tr_idx=None,
-    ts_idx=None,
-    Chol_t=None,
-    Chol_s=None,
-    Cov_st=None,
-    nboot=100,
-    alpha=1.0,
-    full_refit=True,
-    use_trace_corr=True,
-):
-
+    
     X, y, _, n, p = _preprocess_X_y_model(X, y, None)
 
     if true_tr_idx is not None:
@@ -665,6 +576,84 @@ def cp_corr_adaptive_smoother_train_test(
     # Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
     Cov_Np_ts = IMGamma_ts_f @ Cov_wp @ IMGamma_ts_f.T
 
+    if use_trace_corr:
+        noise_correction = np.diag(Cov_N_ts).mean() - np.diag(Cov_Np_ts).mean()
+    boot_ests = np.zeros(nboot)
+    for i in range(nboot):
+        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+        w_tr = w[tr_idx]
+        wp_ts = wp[ts_idx]
+
+        model.fit(X_tr, w_tr)
+        
+        if use_trace_corr:
+            iter_correction = 0
+        else:
+            iter_correction = - ((IMGamma.T @ regress_t_eps)[ts_idx]**2).mean()
+
+        Np_ts = IMGamma_ts_f @ wp
+
+        boot_ests[i] = np.mean(
+            (Np_ts - model.predict(X_ts) + Gamma[ts_idx, :] @ w) ** 2
+        )
+
+        boot_ests[i] += iter_correction
+
+    return boot_ests.mean() + noise_correction
+
+
+def cp_corr_adaptive_smoother_train_test(
+    model,
+    X,
+    y,
+    tr_idx,
+    Chol_t=None,
+    Chol_s=None,
+    Cov_st=None,
+    nboot=100,
+    alpha=1.0,
+    full_refit=True,
+    use_trace_corr=True,
+):
+
+    X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+
+    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+
+    if Cov_st is None:
+        Cov_st = np.zeros((n, n))
+
+    Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
+        Chol_t, Chol_s, alpha=alpha
+    )
+
+    Sigma_w = (1 + alpha) * Sigma_t
+    if full_refit:
+        Gamma = Cov_st @ np.linalg.inv(Sigma_t)
+    else:
+        Gamma = Cov_st @ np.linalg.inv(Sigma_w)
+    Gamma_ts = Gamma[ts_idx,:]
+    IMGamma = np.eye(n) - Gamma
+    IMGamma_ts = IMGamma[ts_idx, :][:, ts_idx]
+
+    if full_refit:
+        Cov_N = Sigma_s - Gamma @ Sigma_t @ Gamma.T
+    else:
+        Cov_N = Sigma_s - Gamma @ Sigma_w @ Gamma.T
+
+    assert(np.allclose(Cov_N, Sigma_s - Gamma @ Cov_st.T))
+
+    Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
+
+    Cov_wp = (1 + 1 / alpha) * Sigma_t
+    IMGamma_ts_f = IMGamma[ts_idx, :]
+    Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
+    Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]    
+
+    if use_trace_corr:
+        noise_correction = np.diag(Cov_N_ts).mean() - np.diag(Cov_Np_ts).mean()
+    else:
+        noise_correction = np.diag(Cov_N_ts).mean() - np.diag(IMGamma_ts_f @ Sigma_t @ IMGamma_ts_f.T).mean()
     boot_ests = np.zeros(nboot)
     for i in range(nboot):
         w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
@@ -673,56 +662,31 @@ def cp_corr_adaptive_smoother_train_test(
 
         model.fit(X_tr, w_tr)
 
-        P = model.get_linear_smoother(X_tr, X_ts)
+        P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
 
         if full_refit:
-            # correction = 2*np.diag(Cov_tr_ts @ P).sum()
-            # correction = 2 * np.diag(Cov_tr_ts @ P).mean()
-
-            # raise NotImplementedError("Not implemented with full refit yet")
-            correction = 2 * np.diag(Cov_tr_ts @ (IMGamma_ts_f.T @ (P - Gamma_tr_ts)))
+            iter_correction = 2 * np.diag(Sigma_t @ (IMGamma_ts_f.T @ (P - Gamma_ts))).mean()
         else:
-            correction = 0
+            iter_correction = 0
 
-        if use_trace_corr:
-            # correction += 0
-            # correction = np.diag(Cov_s_ts).sum() \
-            # 				- np.diag(Cov_wp_ts).sum()
-            # correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()) / n_ts
-            
-            correction += (np.diag(Cov_N_ts).sum() - np.diag(Cov_Np_ts).sum()) / n_ts
-        else:
-            # correction = np.diag(Cov_s_ts).sum() \
-            # 				- np.diag(Cov_t_ts).sum() \
-            # 				- (regress_t_eps[ts_idx]**2).sum()
-            # correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()) / n_ts - (
-            #     regress_t_eps[ts_idx] ** 2
-            # ).mean()
-
-            # correction -= (regress_t_eps[ts_idx]**2).sum()
-            # correction -= (regress_t_eps[ts_idx]**2).mean()
-
-            raise NotImplementedError("Not implemented with random correction yet")
+        if not use_trace_corr:
+            iter_correction -= ((IMGamma.T @ regress_t_eps)[ts_idx]**2).mean()
 
         Np_ts = IMGamma_ts_f @ wp
 
         if full_refit:
-            # boot_ests[i] = np.sum((wp_ts - P @ y_tr)**2) + correction
-            # boot_ests[i] = np.mean((wp_ts - P @ y_tr) ** 2) + correction
             boot_ests[i] = np.mean(
-                (Np_ts - model.predict(X_ts) + Gamma[ts_idx, :] @ y) ** 2
+                (Np_ts - P @ y_tr + Gamma_ts @ y)**2
             )
         else:
-            # boot_ests[i] = np.sum((wp_ts - P @ w_tr)**2) + correction
-            # boot_ests[i] = np.mean((wp_ts - P @ w_tr) ** 2) + correction
             boot_ests[i] = np.mean(
-                (Np_ts - model.predict(X_ts) + Gamma[ts_idx, :] @ w) ** 2
+                (Np_ts - P @ w_tr + Gamma_ts @ w) ** 2
             )
 
-        boot_ests[i] += correction
+        boot_ests[i] += iter_correction
 
 
-    return boot_ests.mean()
+    return boot_ests.mean() + noise_correction
 
 def cp_adaptive_smoother_train_test(
     model,
@@ -786,17 +750,20 @@ def cp_adaptive_smoother_train_test(
     # Cov_Np_ts = IMGamma_ts_f @ Cov_wp @ IMGamma_ts_f.T
 
     boot_ests = np.zeros(nboot)
-    correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    if use_trace_corr:
+        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    else:
+        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
     # Sigma_wp = (1 + 1/alpha) * Sigma_t
     # correction = Sigma_s[ts_idx,ts_idx].mean() - Sigma_wp[ts_idx,ts_idx].mean()
     # print(correction, n_ts)
     for i in range(nboot):
         # assert(0==1)
-        # w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-        eps = Chol_eps @ np.random.randn(n)
-        w = y + eps
+        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+        # eps = Chol_eps @ np.random.randn(n)
+        # w = y + eps
         # regress_t_eps = proj_t_eps @ eps
-        wp = y - proj_t_eps @ eps
+        # wp = y - proj_t_eps @ eps
         w_tr = w[tr_idx]
         wp_ts = wp[ts_idx]
 
@@ -805,27 +772,21 @@ def cp_adaptive_smoother_train_test(
         P = model.get_linear_smoother(X, tr_idx, ts_idx)#, X_ts)
         assert(np.allclose(P @ w_tr, model.predict(X_ts)))
 
-        # if full_refit:
-        #     correction = 2 * np.diag(Cov_tr_ts @ P).mean()
-        # else:
-        #     correction = 0
+        if full_refit:
+            iter_correction = 2 * np.diag(Cov_tr_ts @ P).mean()
+        else:
+            iter_correction = 0
 
-        # if use_trace_corr:
-        #     correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()) / n_ts
-        #     # correction += - 1/alpha * Sigma_s[ts_idx,ts_idx].mean()
-        #     # correction += np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
-        # else:
-        #     correction += (np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()) / n_ts - (
-        #         regress_t_eps[ts_idx] ** 2
-        #     ).mean()
+        if not use_trace_corr:
+            iter_correction -= (regress_t_eps[ts_idx] ** 2).mean()
 
         # assert(0==1)
 
         if full_refit:
-            boot_ests[i] = np.mean((wp_ts - P @ y_tr) ** 2)# + correction
+            boot_ests[i] = np.mean((wp_ts - P @ y_tr) ** 2) + iter_correction
         else:
             # print((P @ w_tr).shape, wp_ts.shape)
-            boot_ests[i] = np.mean((wp_ts - P @ w_tr) ** 2)# + correction
+            boot_ests[i] = np.mean((wp_ts - P @ w_tr) ** 2) + iter_correction
 
         # if boot_ests[i] < np.fabs(correction):
         #     print("less than 0")
@@ -833,7 +794,7 @@ def cp_adaptive_smoother_train_test(
         # print(np.mean((wp_ts - P @ w_tr) ** 2))
         # print(np.mean((wp_ts - P @ y_tr) ** 2))
             
-    return boot_ests.mean() + correction
+    return boot_ests.mean() + noise_correction
 
 
 def cp_relaxed_lasso_train_test(
@@ -911,7 +872,7 @@ def cp_bagged_train_test(
 
     model.fit(X_tr, y_tr, **kwargs)
 
-    Ps = model.get_linear_smoother(X_tr, X_ts)
+    Ps = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
     eps = model.eps_
 
     Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
@@ -1106,370 +1067,370 @@ def cb_isotropic(
     return boot_ests.mean() / n + (sigma**2) * (alpha - (1 + alpha) * est_risk), model
 
 
-def cb(
-    X,
-    y,
-    Chol_t=None,
-    Chol_eps=None,
-    Theta_p=None,
-    nboot=100,
-    model=LinearRegression(),
-    est_risk=True,
-):
+# def cb(
+#     X,
+#     y,
+#     Chol_t=None,
+#     Chol_eps=None,
+#     Theta_p=None,
+#     nboot=100,
+#     model=LinearRegression(),
+#     est_risk=True,
+# ):
 
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+#     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-    (
-        Chol_t,
-        Sigma_t,
-        Chol_eps,
-        Sigma_eps,
-        Prec_eps,
-        proj_t_eps,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        Aperp,
-    ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
+#     (
+#         Chol_t,
+#         Sigma_t,
+#         Chol_eps,
+#         Sigma_eps,
+#         Prec_eps,
+#         proj_t_eps,
+#         Theta_p,
+#         Chol_p,
+#         Sigma_t_Theta_p,
+#         Aperp,
+#     ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
 
-    Sigma_eps_Theta_p = Sigma_eps @ Theta_p
+#     Sigma_eps_Theta_p = Sigma_eps @ Theta_p
 
-    boot_ests = np.zeros(nboot)
+#     boot_ests = np.zeros(nboot)
 
-    for b in np.arange(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+#     for b in np.arange(nboot):
+#         w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
-        model.fit(X, w)
-        yhat = model.predict(X)
+#         model.fit(X, w)
+#         yhat = model.predict(X)
 
-        # boot_ests[b] = np.sum((wp - yhat)**2) - (regress_t_eps.T.dot(Theta_p @ regress_t_eps)).sum()
-        boot_ests[b] = np.sum((Chol_p @ (wp - yhat)) ** 2) - np.sum(
-            (Chol_p @ regress_t_eps) ** 2
-        )
+#         # boot_ests[b] = np.sum((wp - yhat)**2) - (regress_t_eps.T.dot(Theta_p @ regress_t_eps)).sum()
+#         boot_ests[b] = np.sum((Chol_p @ (wp - yhat)) ** 2) - np.sum(
+#             (Chol_p @ regress_t_eps) ** 2
+#         )
 
-    return (
-        boot_ests.mean()
-        - np.diag(Sigma_t_Theta_p).sum() * est_risk
-        + np.diag(Sigma_eps_Theta_p).sum() * (1 - est_risk)
-    ) / n, model
-
-
-def blur_linear(
-    X,
-    y,
-    Chol_t=None,
-    Chol_eps=None,
-    Theta_p=None,
-    Theta_e=None,
-    alpha=None,
-    nboot=100,
-    model=LinearRegression(),
-    est_risk=True,
-):
-
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
-
-    (
-        Chol_t,
-        Sigma_t,
-        Chol_eps,
-        Sigma_eps,
-        Prec_eps,
-        proj_t_eps,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        Aperp,
-    ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
-
-    # Theta_e = Prec_eps
-    # Chol_e = np.linalg.cholesky(Theta_e)
-    if Theta_e is not None:
-        Chol_e = np.linalg.cholesky(Theta_e)
-    else:
-        Theta_e = Prec_eps
-        Chol_e = np.linalg.cholesky(Theta_e)
-        # Theta_e = np.eye(n)
-        # Chol_e = np.eye(n)
-    X_e = Chol_e.T @ X
-
-    # P = X @ np.linalg.inv(X.T @ X) @ X.T
-    P = X @ np.linalg.inv(X_e.T @ X_e) @ X.T @ Theta_e
-
-    boot_ests = np.zeros(nboot)
-
-    # assert(np.allclose(Sigma_t_Theta_p, np.eye(n)))
-    # assert(np.allclose(np.linalg.inv(Theta_p),Sigma_t))
-    # assert(np.allclose(proj_t_eps, np.eye(n) / alpha))
-    # assert(np.allclose(Sigma_eps @ Theta_p, np.eye(n) * alpha))
-    # assert(np.allclose(proj_t_eps @ Sigma_t_Theta_p, np.eye(n) / alpha))
-    # assert(np.allclose(P @ Sigma_eps @ P.T @ Theta_p, Sigma_eps @ Theta_p))
-    # assert(np.allclose(P @ Sigma_eps @ P.T @ Theta_p, np.eye(n)*alpha))
-
-    for b in np.arange(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-
-        model.fit(X_e, Chol_e.T @ w)
-        # model.fit(X, w)
-        yhat = model.predict(X)
-        # yhat2 = P @ w
-        # assert(np.allclose(yhat, yhat2))
-
-        # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) - np.sum((P @ eps)**2)
-        # boot_ests[b] = np.sum((wp - yhat)**2) \
-        # 				- np.diag(proj_t_eps @ Sigma_t).sum() \
-        # 				- np.diag(P @ Sigma_eps @ P.T).sum()
-
-        # boot_ests[b] = np.sum((Chol_p@(wp - yhat))**2) - np.sum((Chol_p@regress_t_eps)**2) - np.sum((Chol_p @ P @ eps)**2)
-        # boot_ests[b] = np.sum((wp - yhat).T.dot(Theta_p.dot((wp - yhat)))) \
-        # 				- np.sum(regress_t_eps.T.dot(Theta_p.dot(regress_t_eps))) \
-        # 				- np.sum((P @ eps).T.dot(Theta_p.dot(P @ eps)))
-
-        boot_ests[b] = np.sum((wp - yhat).T.dot(Theta_p.dot((wp - yhat))))
-
-    # print(np.diag(Sigma_t_Theta_p).sum())
-    return (
-        boot_ests.mean()
-        - np.diag(proj_t_eps @ Sigma_t_Theta_p).sum()
-        - np.diag(P @ Sigma_eps @ P.T @ Theta_p).sum()
-        - np.diag(Sigma_t_Theta_p).sum() * est_risk
-    ) / n, model
-    # return (boot_ests.mean() - np.diag(Sigma_t).sum()*est_risk) / n, model
+#     return (
+#         boot_ests.mean()
+#         - np.diag(Sigma_t_Theta_p).sum() * est_risk
+#         + np.diag(Sigma_eps_Theta_p).sum() * (1 - est_risk)
+#     ) / n, model
 
 
-def _compute_correction(
-    y,
-    w,
-    wp,
-    P,
-    Aperp,
-    regress_t_eps,
-    Theta_p,
-    Chol_p,
-    Sigma_t_Theta_p,
-    proj_t_eps,
-    full_rand,
-    use_expectation,
-    est_risk,
-):
-    yhat = P @ y if full_rand else P @ w
-    PAperp = P @ Aperp
-    Theta_p_PAperp = Theta_p @ PAperp
-    # print(Sigma_t_Theta_p)
-    # print(proj_t_eps)
+# def blur_linear(
+#     X,
+#     y,
+#     Chol_t=None,
+#     Chol_eps=None,
+#     Theta_p=None,
+#     Theta_e=None,
+#     alpha=None,
+#     nboot=100,
+#     model=LinearRegression(),
+#     est_risk=True,
+# ):
 
-    if use_expectation:
-        # boot_est = np.sum((wp - yhat)**2)
-        boot_est = np.sum((Chol_p @ (wp - yhat)) ** 2)
-    else:
-        boot_est = np.sum((Chol_p @ (wp - yhat)) ** 2) - np.sum(
-            (Chol_p @ regress_t_eps) ** 2
-        )
-        if full_rand:
-            boot_est += 2 * regress_t_eps.T.dot(Theta_p_PAperp.dot(regress_t_eps))
+#     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-    expectation_correction = 0.0
-    if full_rand:
-        expectation_correction += 2 * np.diag(Sigma_t_Theta_p @ PAperp).sum()
-    if use_expectation:
-        t_epsinv_t = proj_t_eps @ Sigma_t_Theta_p
-        # print(t_epsinv_t)
-        expectation_correction -= np.diag(t_epsinv_t).sum()
-        if full_rand:
-            expectation_correction += 2 * np.diag(t_epsinv_t @ PAperp).sum()
+#     (
+#         Chol_t,
+#         Sigma_t,
+#         Chol_eps,
+#         Sigma_eps,
+#         Prec_eps,
+#         proj_t_eps,
+#         Theta_p,
+#         Chol_p,
+#         Sigma_t_Theta_p,
+#         Aperp,
+#     ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
 
-    return (
-        boot_est + expectation_correction - np.diag(Sigma_t_Theta_p).sum() * est_risk,
-        yhat,
-    )
+#     # Theta_e = Prec_eps
+#     # Chol_e = np.linalg.cholesky(Theta_e)
+#     if Theta_e is not None:
+#         Chol_e = np.linalg.cholesky(Theta_e)
+#     else:
+#         Theta_e = Prec_eps
+#         Chol_e = np.linalg.cholesky(Theta_e)
+#         # Theta_e = np.eye(n)
+#         # Chol_e = np.eye(n)
+#     X_e = Chol_e.T @ X
 
+#     # P = X @ np.linalg.inv(X.T @ X) @ X.T
+#     P = X @ np.linalg.inv(X_e.T @ X_e) @ X.T @ Theta_e
 
-def blur_linear_selector(
-    X,
-    y,
-    Chol_t=None,
-    Chol_eps=None,
-    Theta_p=None,
-    Theta_e=None,
-    model=RelaxedLasso(),
-    rand_type="full",
-    use_expectation=False,
-    est_risk=True,
-):
+#     boot_ests = np.zeros(nboot)
 
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+#     # assert(np.allclose(Sigma_t_Theta_p, np.eye(n)))
+#     # assert(np.allclose(np.linalg.inv(Theta_p),Sigma_t))
+#     # assert(np.allclose(proj_t_eps, np.eye(n) / alpha))
+#     # assert(np.allclose(Sigma_eps @ Theta_p, np.eye(n) * alpha))
+#     # assert(np.allclose(proj_t_eps @ Sigma_t_Theta_p, np.eye(n) / alpha))
+#     # assert(np.allclose(P @ Sigma_eps @ P.T @ Theta_p, Sigma_eps @ Theta_p))
+#     # assert(np.allclose(P @ Sigma_eps @ P.T @ Theta_p, np.eye(n)*alpha))
 
-    full_rand = _get_rand_bool(rand_type)
+#     for b in np.arange(nboot):
+#         w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
-    (
-        Chol_t,
-        Sigma_t,
-        Chol_eps,
-        Sigma_eps,
-        Prec_eps,
-        proj_t_eps,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        Aperp,
-    ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
+#         model.fit(X_e, Chol_e.T @ w)
+#         # model.fit(X, w)
+#         yhat = model.predict(X)
+#         # yhat2 = P @ w
+#         # assert(np.allclose(yhat, yhat2))
 
-    w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+#         # boot_ests[b] = np.sum((wp - yhat)**2) - np.sum(regress_t_eps**2) - np.sum((P @ eps)**2)
+#         # boot_ests[b] = np.sum((wp - yhat)**2) \
+#         # 				- np.diag(proj_t_eps @ Sigma_t).sum() \
+#         # 				- np.diag(P @ Sigma_eps @ P.T).sum()
 
-    if Theta_e is not None:
-        Chol_e = np.linalg.cholesky(Theta_e)
-    else:
-        # Theta_e = Prec_eps
-        # Chol_e = np.linalg.cholesky(Theta_e)
-        Chol_e = np.eye(n)
-    X_e = Chol_e.T @ X
+#         # boot_ests[b] = np.sum((Chol_p@(wp - yhat))**2) - np.sum((Chol_p@regress_t_eps)**2) - np.sum((Chol_p @ P @ eps)**2)
+#         # boot_ests[b] = np.sum((wp - yhat).T.dot(Theta_p.dot((wp - yhat)))) \
+#         # 				- np.sum(regress_t_eps.T.dot(Theta_p.dot(regress_t_eps))) \
+#         # 				- np.sum((P @ eps).T.dot(Theta_p.dot(P @ eps)))
 
-    # model.fit(X, w)
-    model.fit(X_e, Chol_e.T @ w)
+#         boot_ests[b] = np.sum((wp - yhat).T.dot(Theta_p.dot((wp - yhat))))
 
-    P = model.get_linear_smoother(X)
-
-    est, _ = _compute_correction(
-        y,
-        w,
-        wp,
-        P,
-        Aperp,
-        regress_t_eps,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        proj_t_eps,
-        full_rand,
-        use_expectation,
-        est_risk,
-    )
-
-    return est / n, model, w
+#     # print(np.diag(Sigma_t_Theta_p).sum())
+#     return (
+#         boot_ests.mean()
+#         - np.diag(proj_t_eps @ Sigma_t_Theta_p).sum()
+#         - np.diag(P @ Sigma_eps @ P.T @ Theta_p).sum()
+#         - np.diag(Sigma_t_Theta_p).sum() * est_risk
+#     ) / n, model
+#     # return (boot_ests.mean() - np.diag(Sigma_t).sum()*est_risk) / n, model
 
 
-def get_estimate_terms(
-    y,
-    P,
-    eps,
-    Sigma_t,
-    Theta_p,
-    Chol_p,
-    Sigma_t_Theta_p,
-    proj_t_eps,
-    Aperp,
-    full_rand,
-    use_expectation,
-    est_risk,
-):
-    n_est = len(P)
-    n = y.shape[0]
-    tree_ests = np.zeros(n_est)
-    ws = np.zeros((n, n_est))
-    yhats = np.zeros((n, n_est))
-    for i, (P_i, eps_i) in enumerate(zip(P, eps)):
-        eps_i = eps_i.ravel()
-        w = y + eps_i
-        regress_t_eps = proj_t_eps @ eps_i
-        wp = y - regress_t_eps
+# def _compute_correction(
+#     y,
+#     w,
+#     wp,
+#     P,
+#     Aperp,
+#     regress_t_eps,
+#     Theta_p,
+#     Chol_p,
+#     Sigma_t_Theta_p,
+#     proj_t_eps,
+#     full_rand,
+#     use_expectation,
+#     est_risk,
+# ):
+#     yhat = P @ y if full_rand else P @ w
+#     PAperp = P @ Aperp
+#     Theta_p_PAperp = Theta_p @ PAperp
+#     # print(Sigma_t_Theta_p)
+#     # print(proj_t_eps)
 
-        tree_ests[i], yhat = _compute_correction(
-            y,
-            w,
-            wp,
-            P_i,
-            Aperp,
-            regress_t_eps,
-            Theta_p,
-            Chol_p,
-            Sigma_t_Theta_p,
-            proj_t_eps,
-            full_rand,
-            use_expectation,
-            est_risk,
-        )
+#     if use_expectation:
+#         # boot_est = np.sum((wp - yhat)**2)
+#         boot_est = np.sum((Chol_p @ (wp - yhat)) ** 2)
+#     else:
+#         boot_est = np.sum((Chol_p @ (wp - yhat)) ** 2) - np.sum(
+#             (Chol_p @ regress_t_eps) ** 2
+#         )
+#         if full_rand:
+#             boot_est += 2 * regress_t_eps.T.dot(Theta_p_PAperp.dot(regress_t_eps))
 
-        ws[:, i] = w
-        yhats[:, i] = yhat
+#     expectation_correction = 0.0
+#     if full_rand:
+#         expectation_correction += 2 * np.diag(Sigma_t_Theta_p @ PAperp).sum()
+#     if use_expectation:
+#         t_epsinv_t = proj_t_eps @ Sigma_t_Theta_p
+#         # print(t_epsinv_t)
+#         expectation_correction -= np.diag(t_epsinv_t).sum()
+#         if full_rand:
+#             expectation_correction += 2 * np.diag(t_epsinv_t @ PAperp).sum()
 
-    centered_preds = yhats.mean(axis=1)[:, None] - yhats
-
-    return tree_ests, centered_preds, ws
+#     return (
+#         boot_est + expectation_correction - np.diag(Sigma_t_Theta_p).sum() * est_risk,
+#         yhat,
+#     )
 
 
-def blur_forest(
-    X,
-    y,
-    eps=None,
-    Chol_t=None,
-    Chol_eps=None,
-    Theta_p=None,
-    Theta_e=None,
-    model=BlurredForest(),
-    rand_type="full",
-    use_expectation=False,
-    est_risk=True,
-):
+# def blur_linear_selector(
+#     X,
+#     y,
+#     Chol_t=None,
+#     Chol_eps=None,
+#     Theta_p=None,
+#     Theta_e=None,
+#     model=RelaxedLasso(),
+#     rand_type="full",
+#     use_expectation=False,
+#     est_risk=True,
+# ):
 
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+#     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-    full_rand = _get_rand_bool(rand_type)
+#     full_rand = _get_rand_bool(rand_type)
 
-    (
-        Chol_t,
-        Sigma_t,
-        Chol_eps,
-        Sigma_eps,
-        Prec_eps,
-        proj_t_eps,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        Aperp,
-    ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
+#     (
+#         Chol_t,
+#         Sigma_t,
+#         Chol_eps,
+#         Sigma_eps,
+#         Prec_eps,
+#         proj_t_eps,
+#         Theta_p,
+#         Chol_p,
+#         Sigma_t_Theta_p,
+#         Aperp,
+#     ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
 
-    if Theta_e is not None:
-        Chol_e = np.linalg.cholesky(Theta_e)
-    else:
-        # Theta_e = Prec_eps
-        # Chol_e = np.linalg.cholesky(Theta_e)
-        Chol_e = np.eye(n)
-    X_e = Chol_e.T @ X
+#     w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
 
-    model.fit(X_e, y, chol_eps=Chol_eps, bootstrap_type="blur")
+#     if Theta_e is not None:
+#         Chol_e = np.linalg.cholesky(Theta_e)
+#     else:
+#         # Theta_e = Prec_eps
+#         # Chol_e = np.linalg.cholesky(Theta_e)
+#         Chol_e = np.eye(n)
+#     X_e = Chol_e.T @ X
 
-    P = model.get_linear_smoother(X)
-    if eps is None:
-        eps = model.eps_
-    else:
-        eps = [eps]
+#     # model.fit(X, w)
+#     model.fit(X_e, Chol_e.T @ w)
 
-    n_trees = len(P)
+#     P = model.get_linear_smoother(X)
 
-    tree_ests, centered_preds, ws = get_estimate_terms(
-        y,
-        P,
-        eps,
-        Sigma_t,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        proj_t_eps,
-        Aperp,
-        full_rand,
-        use_expectation,
-        est_risk,
-    )
-    return (
-        (
-            tree_ests.sum()
-            # - np.sum(centered_preds**2)) / (n * n_trees), model, ws
-            - np.sum((Chol_e @ centered_preds) ** 2)
-        )
-        / (n * n_trees),
-        model,
-        ws,
-    )
+#     est, _ = _compute_correction(
+#         y,
+#         w,
+#         wp,
+#         P,
+#         Aperp,
+#         regress_t_eps,
+#         Theta_p,
+#         Chol_p,
+#         Sigma_t_Theta_p,
+#         proj_t_eps,
+#         full_rand,
+#         use_expectation,
+#         est_risk,
+#     )
+
+#     return est / n, model, w
+
+
+# def get_estimate_terms(
+#     y,
+#     P,
+#     eps,
+#     Sigma_t,
+#     Theta_p,
+#     Chol_p,
+#     Sigma_t_Theta_p,
+#     proj_t_eps,
+#     Aperp,
+#     full_rand,
+#     use_expectation,
+#     est_risk,
+# ):
+#     n_est = len(P)
+#     n = y.shape[0]
+#     tree_ests = np.zeros(n_est)
+#     ws = np.zeros((n, n_est))
+#     yhats = np.zeros((n, n_est))
+#     for i, (P_i, eps_i) in enumerate(zip(P, eps)):
+#         eps_i = eps_i.ravel()
+#         w = y + eps_i
+#         regress_t_eps = proj_t_eps @ eps_i
+#         wp = y - regress_t_eps
+
+#         tree_ests[i], yhat = _compute_correction(
+#             y,
+#             w,
+#             wp,
+#             P_i,
+#             Aperp,
+#             regress_t_eps,
+#             Theta_p,
+#             Chol_p,
+#             Sigma_t_Theta_p,
+#             proj_t_eps,
+#             full_rand,
+#             use_expectation,
+#             est_risk,
+#         )
+
+#         ws[:, i] = w
+#         yhats[:, i] = yhat
+
+#     centered_preds = yhats.mean(axis=1)[:, None] - yhats
+
+#     return tree_ests, centered_preds, ws
+
+
+# def blur_forest(
+#     X,
+#     y,
+#     eps=None,
+#     Chol_t=None,
+#     Chol_eps=None,
+#     Theta_p=None,
+#     Theta_e=None,
+#     model=BlurredForest(),
+#     rand_type="full",
+#     use_expectation=False,
+#     est_risk=True,
+# ):
+
+#     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+
+#     full_rand = _get_rand_bool(rand_type)
+
+#     (
+#         Chol_t,
+#         Sigma_t,
+#         Chol_eps,
+#         Sigma_eps,
+#         Prec_eps,
+#         proj_t_eps,
+#         Theta_p,
+#         Chol_p,
+#         Sigma_t_Theta_p,
+#         Aperp,
+#     ) = _compute_matrices(n, Chol_t, Chol_eps, Theta_p)
+
+#     if Theta_e is not None:
+#         Chol_e = np.linalg.cholesky(Theta_e)
+#     else:
+#         # Theta_e = Prec_eps
+#         # Chol_e = np.linalg.cholesky(Theta_e)
+#         Chol_e = np.eye(n)
+#     X_e = Chol_e.T @ X
+
+#     model.fit(X_e, y, chol_eps=Chol_eps, bootstrap_type="blur")
+
+#     P = model.get_linear_smoother(X)
+#     if eps is None:
+#         eps = model.eps_
+#     else:
+#         eps = [eps]
+
+#     n_trees = len(P)
+
+#     tree_ests, centered_preds, ws = get_estimate_terms(
+#         y,
+#         P,
+#         eps,
+#         Sigma_t,
+#         Theta_p,
+#         Chol_p,
+#         Sigma_t_Theta_p,
+#         proj_t_eps,
+#         Aperp,
+#         full_rand,
+#         use_expectation,
+#         est_risk,
+#     )
+#     return (
+#         (
+#             tree_ests.sum()
+#             # - np.sum(centered_preds**2)) / (n * n_trees), model, ws
+#             - np.sum((Chol_e @ centered_preds) ** 2)
+#         )
+#         / (n * n_trees),
+#         model,
+#         ws,
+#     )
 
 
 def bag_kfoldcv(
@@ -1529,7 +1490,7 @@ def bag_kmeanscv(
     model = clone(model)
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-    groups = KMeans(n_clusters=k).fit(coord).labels_
+    groups = KMeans(n_init=10, n_clusters=k).fit(coord).labels_
     gkf = GroupKFold(k)
 
     err = []
@@ -1604,7 +1565,7 @@ def timeseriescv(model, X, y, k=10, min_train_size=0, max_train_size=None, gap=0
 
 def kmeanscv(model, X, y, coord, k=10, **kwargs):
 
-    groups = KMeans(n_clusters=k).fit(coord).labels_
+    groups = KMeans(n_init=10, n_clusters=k).fit(coord).labels_
     spcv_res = cross_validate(
         model,
         X,

@@ -21,14 +21,14 @@ from spe.relaxed_lasso import RelaxedLasso, BaggedRelaxedLasso
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
-    test_set_estimator,
-    cb,
-    cb_isotropic,
-    blur_linear,
-    blur_linear_selector,
-    blur_forest,
+    # test_set_estimator,
+    # cb,
+    # cb_isotropic,
+    # blur_linear,
+    # blur_linear_selector,
+    # blur_forest,
     cp_linear_train_test,
-    test_est_split,
+    # test_est_split,
     cp_relaxed_lasso_train_test,
     cp_bagged_train_test,
     cp_rf_train_test,
@@ -310,6 +310,12 @@ class ErrorComparer(object):
 
                 if est_sigma and ests[j].__name__ == 'cp_rf_train_test':
                     est_kwargs[j]['chol_eps'] = est_Chol_t
+
+                if ests[j].__name__ in ['cp_corr_adaptive_smoother_train_test', 'cp_corr_general_train_test']:
+                    est_kwargs[j] = {
+                        **est_kwargs[j],
+                        **{"Cov_st": est_Cov_st}
+                    }
 
             for j, est in enumerate(ests):
                 if est.__name__ in self.CV_METHODS:

@@ -136,9 +136,9 @@ class BlurredForest(RandomForestRegressor):
 
         return Gs
 
-    def predict(self, X, full_refit=False, Chol=None):
+    def predict(self, X, tr_idx, ts_idx, full_refit=False, Chol=None):
         if full_refit or Chol is not None:
-            Ps = self.get_linear_smoother(self.X_tr_, X, Chol=Chol)
+            Ps = self.get_linear_smoother(X, tr_idx, ts_idx, Chol=Chol)#self.X_tr_, X, Chol=Chol)
             # ols_Ps = self.get_linear_smoother(self.X_tr_, X, Chol=None)
             # print("asdfsdfds")
             # assert(np.allclose(Ps, ols_Ps))
