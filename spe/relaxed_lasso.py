@@ -113,7 +113,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
         return XE
 
-    def get_linear_smoother(self, X, tr_idx, ts_idx):# X_pred=None):
+    def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):# X_pred=None):
         X_tr = X[tr_idx,:]
         X_ts = X[ts_idx,:]
         XE_tr = self.get_group_X(X_tr)
@@ -123,6 +123,11 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         
         XE_ts = self.get_group_X(X_ts)
         # return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
+        if ret_full_P:
+            n = X.shape[0]
+            full_XE_tr = np.zeros((n,XE_tr.shape[1]))
+            full_XE_tr[tr_idx,:] = XE_tr
+            return XE_ts @ np.linalg.pinv(full_XE_tr)
         return XE_ts @ np.linalg.pinv(XE_tr)
 
     def fit(self, X, lasso_y, lin_y=None, sample_weight=None, check_input=True):

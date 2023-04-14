@@ -44,7 +44,7 @@ class Tree(LinearSelector, DecisionTreeRegressor):
 
         return G
 
-    def get_linear_smoother(self, X, tr_idx, ts_idx):#, X_pred=None):
+    def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):#, X_pred=None):
         X = self.get_group_X(X)#, is_train=True)
         # if X_pred is None:
         #     X_pred = X
@@ -57,4 +57,9 @@ class Tree(LinearSelector, DecisionTreeRegressor):
         averaging_matrix = X_tr.T / X_tr.T.sum(1)[:,None]
         # print(X, averaging_matrix)
         # assert(0==1)
+        if ret_full_P:
+            n = X.shape[0]
+            full_averaging_matrix = np.zeros((X_tr.shape[1],n))
+            full_averaging_matrix[:,tr_idx] = averaging_matrix
+            return X_ts @ full_averaging_matrix
         return X_ts @ averaging_matrix
