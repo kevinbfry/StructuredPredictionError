@@ -508,54 +508,7 @@ def cp_linear_train_test(
         #     Chol_s,
         # )
 
-
 def cp_general_train_test(
-    model,
-    X,
-    y,
-    tr_idx,
-    Chol_t=None,
-    Chol_s=None,
-    nboot=100,
-    alpha=1.0,
-    use_trace_corr=True,
-):
-
-    X, y, _, n, p = _preprocess_X_y_model(X, y, None)
-
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-
-    Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
-        Chol_t, Chol_s, alpha=alpha
-    )
-
-    Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
-        Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
-    )
-
-    if use_trace_corr:
-        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
-    else:
-        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
-    boot_ests = np.zeros(nboot)
-    for i in range(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-        w_tr = w[tr_idx]
-        wp_ts = wp[ts_idx]
-
-        model.fit(X_tr, w_tr)
-
-        if use_trace_corr:
-            iter_correction = 0
-        else:
-            iter_correction = -(regress_t_eps[ts_idx] ** 2).mean()
-
-        boot_ests[i] = np.mean((wp_ts - model.predict(X_ts)) ** 2) + iter_correction
-
-    return boot_ests.mean() + noise_correction
-
-
-def cp_corr_general_train_test(
     model,
     X,
     y,
@@ -568,70 +521,49 @@ def cp_corr_general_train_test(
     use_trace_corr=True,
 ):
     
-    X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+    X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
 
-    if true_tr_idx is not None:
-        tr_idx = true_tr_idx
-
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, tmp_ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-    if ts_idx is None:
-        ts_idx = tmp_ts_idx
-        n_ts
-
-
-    if Cov_st is None:
-        Cov_st = np.zeros((n, n))
+    (X_tr, X_ts, _, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
 
     Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
         Chol_t, Chol_s, alpha=alpha
     )
 
-    Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
-        Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
-    )
-
-    Sigma_w = (1 + alpha) * Sigma_t
-    # Gamma = Cov_st @ np.linalg.inv(Sigma_t)
-    if full_refit:
-        Gamma = Cov_st @ np.linalg.inv(Sigma_t)
+    if Cov_st is None:
+        _, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
+            Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
+        )
+        Gamma_ts = np.zeros((n_ts, n))
     else:
-        Gamma = Cov_st @ np.linalg.inv(Sigma_w)
-    Gamma_tr_ts = Gamma[ts_idx,:][:,tr_idx]
-    # assert(np.allclose(np.diag(Gamma), .25*np.ones(n)))
-    IMGamma = np.eye(n) - Gamma
-    IMGamma_ts = IMGamma[ts_idx, :][:, ts_idx]
-
-    Cov_N = Sigma_s - Gamma @ Cov_st.T
-    Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
-
-    Cov_wp = (1 + 1 / alpha) * Sigma_t
-    IMGamma_ts_f = IMGamma[ts_idx, :]
-    Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
-    # Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
-    Cov_Np_ts = IMGamma_ts_f @ Cov_wp @ IMGamma_ts_f.T
+        _, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
+            Sigma_t, Sigma_s, Cov_st, ts_idx, alpha, full_refit=False
+        )
 
     if use_trace_corr:
-        noise_correction = np.diag(Cov_N_ts).mean() - np.diag(Cov_Np_ts).mean()
+        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    else:
+        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
     boot_ests = np.zeros(nboot)
     for i in range(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+        w, wp, _, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
         w_tr = w[tr_idx]
         wp_ts = wp[ts_idx]
 
         model.fit(X_tr, w_tr)
-        
-        if use_trace_corr:
-            iter_correction = 0
-        else:
-            iter_correction = - ((IMGamma.T @ regress_t_eps)[ts_idx]**2).mean()
 
-        Np_ts = IMGamma_ts_f @ wp
+        if Cov_st is None:
+            regress_t_eps = regress_t_eps[ts_idx]
+            Np_ts = wp_ts
+        else:
+            regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
+            Np_ts = IMGamma_ts_f @ wp
 
         boot_ests[i] = np.mean(
-            (Np_ts - model.predict(X_ts) + Gamma[ts_idx, :] @ w) ** 2
+            (Np_ts - model.predict(X_ts) + Gamma_ts @ w) ** 2
         )
 
-        boot_ests[i] += iter_correction
+        if not use_trace_corr:
+            boot_ests[i] -= (regress_t_eps**2).mean()
 
     return boot_ests.mean() + noise_correction
 
@@ -650,9 +582,9 @@ def cp_adaptive_smoother_train_test(
     use_trace_corr=True,
 ):
 
-    X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+    X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
 
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+    (X_tr, _, y_tr, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
 
     Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
         Chol_t, Chol_s, alpha=alpha
@@ -709,55 +641,6 @@ def cp_adaptive_smoother_train_test(
         boot_ests[i] += iter_correction
 
     return boot_ests.mean() + noise_correction
-
-def cp_relaxed_lasso_train_test(
-    model,
-    X,
-    y,
-    tr_idx,
-    Chol_t=None,
-    Chol_s=None,
-    Cov_st=None,
-    nboot=100,
-    alpha=1.0,
-    full_refit=True,
-    use_trace_corr=True,
-):
-    if model.__class__.__name__ == "RelaxedLasso":
-        return cp_adaptive_smoother_train_test(
-            model=model,
-            X=X,
-            y=y,
-            tr_idx=tr_idx,
-            Chol_t=Chol_t,
-            Chol_s=Chol_s,
-            Cov_st=Cov_st,
-            nboot=nboot,
-            alpha=alpha,
-            full_refit=full_refit,
-            use_trace_corr=use_trace_corr,
-        )
-    else:
-        raise ValueError(
-            "'cp_relaxed_lasso_train_test' intended only for "
-            "RelaxedLasso model, and 'model' arg "
-            "exists only for back-compatibility. "
-            "Please use 'cp_adaptive_smoother_train_test' if you "
-            "wish to use a different linear smoothing model."
-        )
-        # return cp_adaptive_smoother_train_test(
-        #     RelaxedLasso(lambd=1.0),
-        #     X,
-        #     y,
-        #     tr_idx,
-        #     Chol_t,
-        #     Chol_s,
-        #     nboot,
-        #     alpha,
-        #     full_refit,
-        #     use_trace_corr,
-        # )
-
 
 def cp_bagged_train_test(
     model,
