@@ -15,6 +15,7 @@ pytest = ">=7"
 numba = ">=0.56.3"
 scikit-gstat = ">=1.0.2"
 llvmlite = ">=0.39.1"
+scikit-learn = {git = "https://github.com/kevinbfry/scikit-learn.git"}
 
 [tool.poetry.dev-dependencies]
 
