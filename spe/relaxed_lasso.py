@@ -10,28 +10,28 @@ from sklearn.preprocessing import StandardScaler
 from .tree import LinearSelector
 
 
-class BaggedRelaxedLasso(BaggingRegressor):
-    def get_linear_smoother(self, X, X_pred=None):
-        return [est.get_linear_smoother(X, X_pred) for est in self.estimators_]
+# class BaggedRelaxedLasso(BaggingRegressor):
+#     def get_linear_smoother(self, X, X_pred=None):
+#         return [est.get_linear_smoother(X, X_pred) for est in self.estimators_]
 
-    def get_group_X(self, X):
-        check_is_fitted(self)
+#     def get_group_X(self, X):
+#         check_is_fitted(self)
 
-        n = X.shape[0]
+#         n = X.shape[0]
 
-        Gs = []
-        for i in np.arange(self.n_estimators):
-            est = self.estimators_[i]
+#         Gs = []
+#         for i in np.arange(self.n_estimators):
+#             est = self.estimators_[i]
 
-            E = est.E_
-            if E.shape[0] != 0:
-                XE = X[:, E]
-            else:
-                XE = np.zeros((X.shape[0], 1))
+#             E = est.E_
+#             if E.shape[0] != 0:
+#                 XE = X[:, E]
+#             else:
+#                 XE = np.zeros((X.shape[0], 1))
 
-            return Gs.append(XE)
+#             return Gs.append(XE)
 
-        return Gs
+#         return Gs
 
 
 class RelaxedLasso(LinearSelector, BaseEstimator):
@@ -131,12 +131,11 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             model__check_input=check_input,
         )
 
-        E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
+        self.E_ = E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
         # print("n selected", self.E_.shape[0])
         # self.E_ = E = np.array([0,1,2]) if np.sign(lasso_y - lasso_y.mean()).sum() > 0 else np.array([3,4,5])
 
         self.fit_linear(X, lin_y, sample_weight=sample_weight)
-        self.E_ = E
 
         return self
 

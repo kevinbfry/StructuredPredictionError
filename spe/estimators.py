@@ -9,8 +9,8 @@ from sklearn.base import clone
 from sklearn.utils.validation import check_X_y
 
 from .relaxed_lasso import RelaxedLasso
-from .tree import Tree
-from .forest import BlurredForest
+from .tree import Tree, LinearSelector
+from .forest import BlurredForest, ParametricBaggingRegressor
 
 
 ## TODO: add Chol_eps option, not always do Chol_eps=alpha*Chol_t
@@ -148,6 +148,7 @@ def better_test_est_split(
     alpha=None,
     Chol_t=None,
     gls=None,
+    bagg=False,
     # chol=None,
     **kwargs,
 ):
@@ -161,15 +162,22 @@ def better_test_est_split(
     # preds = model.predict(X_ts)
     # preds = model.predict(X_ts, **kwargs)
 
+    if bagg:
+        base_model = clone(model)
+        model = ParametricBaggingRegressor(base_model, n_estimators=100)
+
     if alpha is not None:
         w, eps = _blur(y, np.sqrt(alpha) * Chol_t)
         w_tr = w[tr_idx]
         model.fit(X_tr, w_tr, **kwargs)
     else:
         # if model.__class__.__name__ == "BlurredForest":
-        if isinstance(model, BlurredForest):
+        if isinstance(model, (ParametricBaggingRegressor, BlurredForest)):
             if "chol_eps" in kwargs:
                 kwargs["chol_eps"] = kwargs["chol_eps"][tr_idx, :][:, tr_idx]
+                # kwargs["idx_tr"] = tr_idx
+            else:
+                kwargs["chol_eps"] = Chol_t[tr_idx, :][:, tr_idx]
         model.fit(X_tr, y_tr, **kwargs)
 
     # print(model.__class__.__name__, full_refit, gls)
@@ -204,6 +212,8 @@ def better_test_est_split(
                                             (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
                                         )).T
             preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit, Chol=chol)
+        elif isinstance(model, ParametricBaggingRegressor):
+            preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit)
         else:
             preds = model.predict(X_ts)
 
@@ -214,6 +224,7 @@ def better_test_est_split(
             if gls is None or not gls:
                 # print("gls None", gls)
                 preds = model.predict(X_ts, full_refit=full_refit)
+                # preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit)
             else:
                 # print("gls not None", gls)
                 Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
@@ -222,10 +233,24 @@ def better_test_est_split(
                 # print("gls", gls)
                 # print("Chol", Chol_t_tr)
                 # print("Sigma", Chol_t_tr @ Chol_t_tr.T)
+                # preds = model.predict(
+                #     X_ts, 
+                #     full_refit=full_refit, 
+                #     Chol=Chol_t_inv_tr
+                # )
                 preds = model.predict(
-                    X_ts, 
+                    X,
+                    tr_idx,
+                    ts_idx, 
                     full_refit=full_refit, 
                     Chol=Chol_t_inv_tr
+                )
+        elif isinstance(model, ParametricBaggingRegressor):
+            preds = model.predict(
+                    X,
+                    tr_idx,
+                    ts_idx, 
+                    full_refit=full_refit, 
                 )
         else:
             # print("using model predict function")
@@ -531,52 +556,65 @@ def cp_general_train_test(
     alpha=1.0,
     use_trace_corr=True,
 ):
-    
-    X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
-
-    (X_tr, X_ts, _, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
-
-    Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
-        Chol_t, Chol_s, alpha=alpha
+    return cp_adaptive_smoother_train_test(
+        model,
+        X=X,
+        y=y,
+        tr_idx=tr_idx,
+        Chol_t=Chol_t,
+        Chol_s=Chol_s,
+        Cov_st=Cov_st,
+        nboot=nboot,
+        alpha=alpha,
+        full_refit=False,
+        use_trace_corr=use_trace_corr,
     )
+    
+    # X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
 
-    if Cov_st is None:
-        _, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
-            Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
-        )
-        Gamma_ts = np.zeros((n_ts, n))
-    else:
-        _, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
-            Sigma_t, Sigma_s, Cov_st, ts_idx, alpha, full_refit=False
-        )
+    # (X_tr, X_ts, _, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
 
-    if use_trace_corr:
-        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
-    else:
-        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
-    boot_ests = np.zeros(nboot)
-    for i in range(nboot):
-        w, wp, _, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-        w_tr = w[tr_idx]
-        wp_ts = wp[ts_idx]
+    # Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
+    #     Chol_t, Chol_s, alpha=alpha
+    # )
 
-        model.fit(X_tr, w_tr)
+    # if Cov_st is None:
+    #     _, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
+    #         Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
+    #     )
+    #     Gamma_ts = np.zeros((n_ts, n))
+    # else:
+    #     _, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
+    #         Sigma_t, Sigma_s, Cov_st, ts_idx, alpha, full_refit=False
+    #     )
 
-        if Cov_st is None:
-            regress_t_eps = regress_t_eps[ts_idx]
-            Np_ts = wp_ts
-        else:
-            regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
-            Np_ts = IMGamma_ts_f @ wp
+    # if use_trace_corr:
+    #     noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    # else:
+    #     noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
+    # boot_ests = np.zeros(nboot)
+    # for i in range(nboot):
+    #     w, wp, _, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+    #     w_tr = w[tr_idx]
+    #     wp_ts = wp[ts_idx]
 
-        boot_ests[i] = np.mean(
-            (Np_ts - model.predict(X_ts) + Gamma_ts @ w) ** 2
-        )
+    #     model.fit(X_tr, w_tr)
 
-        if not use_trace_corr:
-            boot_ests[i] -= (regress_t_eps**2).mean()
+    #     if Cov_st is None:
+    #         regress_t_eps = regress_t_eps[ts_idx]
+    #         Np_ts = wp_ts
+    #     else:
+    #         regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
+    #         Np_ts = IMGamma_ts_f @ wp
 
-    return boot_ests.mean() + noise_correction
+    #     boot_ests[i] = np.mean(
+    #         (Np_ts - model.predict(X_ts) + Gamma_ts @ w) ** 2
+    #     )
+
+    #     if not use_trace_corr:
+    #         boot_ests[i] -= (regress_t_eps**2).mean()
+
+    # return boot_ests.mean() + noise_correction
 
 
 def cp_adaptive_smoother_train_test(
@@ -595,7 +633,7 @@ def cp_adaptive_smoother_train_test(
 
     X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
 
-    (X_tr, _, y_tr, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
+    (X_tr, X_ts, y_tr, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
 
     Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
         Chol_t, Chol_s, alpha=alpha
@@ -623,19 +661,21 @@ def cp_adaptive_smoother_train_test(
 
         model.fit(X_tr, w_tr)
 
-        P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
-
         if Cov_st is None:
-            P_corr = P
             regress_t_eps = regress_t_eps[ts_idx]
             Np_ts = wp_ts
         else:
-            P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
-            P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts))
             regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
             Np_ts = IMGamma_ts_f @ wp
 
         if full_refit:
+            P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
+            if Cov_st is None:
+                P_corr = P 
+            else:
+                P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
+                P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts)) 
+
             iter_correction = 2 * np.diag(Cov_tr_ts @ P_corr).mean()
             boot_ests[i] = np.mean(
                 (Np_ts - P @ y_tr + Gamma_ts @ y)**2
@@ -643,7 +683,7 @@ def cp_adaptive_smoother_train_test(
         else:
             iter_correction = 0
             boot_ests[i] = np.mean(
-                (Np_ts - P @ w_tr + Gamma_ts @ w) ** 2
+                (Np_ts - model.predict(X_ts) + Gamma_ts @ w) ** 2
             )
 
         if not use_trace_corr:
@@ -660,15 +700,18 @@ def cp_bagged_train_test(
     tr_idx,
     Chol_t=None,
     Chol_s=None,
-    full_refit=True,
+    full_refit=False,
     use_trace_corr=False,
-    n_estimators=5,
+    n_estimators=100,
     **kwargs,
 ):
+    if full_refit:
+        assert(isinstance(model, LinearSelector))
 
     # model = clone(model)
     kwargs["chol_eps"] = Chol_t
     kwargs["idx_tr"] = tr_idx
+    kwargs["do_param_boot"] = True
 
     # X, y, _, n, p = _preprocess_X_y_model(X, y, None)
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
@@ -677,20 +720,22 @@ def cp_bagged_train_test(
 
     Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s, alpha=1.0)
 
-    model.fit(X_tr, y_tr, **kwargs)
+    # model.fit(X_tr, y_tr, **kwargs)
+    bagg_model = ParametricBaggingRegressor(model, n_estimators=n_estimators)
+    bagg_model.fit(X_tr, y_tr, **kwargs)
 
-    Ps = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
-    eps = model.eps_
+    Ps = bagg_model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
+    eps = bagg_model.eps_
 
     Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
         Sigma_t, Sigma_s, tr_idx, ts_idx, alpha=1.0
     )
 
-    n_estrs = len(Ps)
+    n_trees = len(Ps)
 
-    estr_ests = np.zeros(n_estrs)
-    ws = np.zeros((n, n_estrs))
-    yhats = np.zeros((n_ts, n_estrs))
+    base_ests = np.zeros(n_trees)
+    ws = np.zeros((n, n_trees))
+    yhats = np.zeros((n_ts, n_trees))
 
     for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
         eps_i = eps_i.ravel()
@@ -704,7 +749,6 @@ def cp_bagged_train_test(
             correction = 2 * np.diag(Cov_tr_ts @ P_i).sum()
         else:
             correction = 0
-
         if not use_trace_corr:
             correction -= (regress_t_eps[ts_idx] ** 2).sum()
 
@@ -713,21 +757,22 @@ def cp_bagged_train_test(
         else:
             yhat = P_i @ w_tr
         yhats[:, i] = yhat
-        estr_ests[i] = np.sum((wp_ts - yhat) ** 2) + correction
+        base_ests[i] = np.sum((wp_ts - yhat) ** 2) + correction
 
     centered_preds = yhats.mean(axis=1)[:, None] - yhats
     if use_trace_corr:
-        iter_indep_correction = n_estrs * (
+        iter_indep_correction = n_trees * (
             np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()
         )
     else:
-        iter_indep_correction = n_estrs * (
+        iter_indep_correction = n_trees * (
             np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()
         )
+    est = (
+        base_ests.sum() + iter_indep_correction - np.sum((centered_preds) ** 2)
+    ) / (n_ts * n_trees)
 
-    return (estr_ests.sum() + iter_indep_correction - np.sum((centered_preds) ** 2)) / (
-        n_ts * n_estrs
-    )
+    return est
 
 
 def cp_rf_train_test(
@@ -739,7 +784,7 @@ def cp_rf_train_test(
     Chol_s=None,
     # n_estimators=5,
     ret_gls=False,
-    full_refit=True,
+    full_refit=False,
     use_trace_corr=True,
     **kwargs,
 ):
@@ -1246,6 +1291,7 @@ def bag_kfoldcv(
     y,
     k=10,
     Chol_t=None,
+    n_estimators=5,
 ):
 
     model = clone(model)
@@ -1253,10 +1299,12 @@ def bag_kfoldcv(
 
     kf = KFold(k, shuffle=True)
 
+    bagg_model = ParametricBaggingRegressor(model, n_estimators=n_estimators)
+
     err = []
-    kwargs = (
-        dict()
-    )  # if type(model).__name__ == 'BaggedRelaxedLasso' else dict(bootstrap_type='blur')
+    kwargs = {
+        "do_param_boot": False
+    }  # if type(model).__name__ == 'BaggedRelaxedLasso' else dict(bootstrap_type='blur')
     for tr_idx, ts_idx in kf.split(X):
         tr_bool = np.zeros(n)
         tr_bool[tr_idx] = 1
@@ -1265,8 +1313,8 @@ def bag_kfoldcv(
             kwargs["chol_eps"] = None
         else:
             kwargs["chol_eps"] = Chol_t[tr_idx, :][:, tr_idx]
-        model.fit(X_tr, y_tr, **kwargs)
-        err.append(np.mean((y_ts - model.predict(X_ts)) ** 2))
+        bagg_model.fit(X_tr, y_tr, **kwargs)
+        err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 
     return np.mean(err)
 
@@ -1292,6 +1340,7 @@ def bag_kmeanscv(
     coord,
     k=10,
     Chol_t=None,
+    n_estimators=5,
 ):
 
     model = clone(model)
@@ -1300,10 +1349,12 @@ def bag_kmeanscv(
     groups = KMeans(n_init=10, n_clusters=k).fit(coord).labels_
     gkf = GroupKFold(k)
 
+    bagg_model = ParametricBaggingRegressor(model, n_estimators=n_estimators)
+
     err = []
-    kwargs = (
-        dict()
-    )  # if type(model).__name__ == 'BaggedRelaxedLasso' else dict(bootstrap_type='blur')
+    kwargs = {
+        "do_param_boot": False
+    } # if type(model).__name__ == 'BaggedRelaxedLasso' else dict(bootstrap_type='blur')
     for tr_idx, ts_idx in gkf.split(X, groups=groups):
         tr_bool = np.zeros(n)
         tr_bool[tr_idx] = 1
@@ -1312,8 +1363,8 @@ def bag_kmeanscv(
             kwargs["chol_eps"] = None
         else:
             kwargs["chol_eps"] = Chol_t[tr_idx, :][:, tr_idx]
-        model.fit(X_tr, y_tr, **kwargs)
-        err.append(np.mean((y_ts - model.predict(X_ts)) ** 2))
+        bagg_model.fit(X_tr, y_tr, **kwargs)
+        err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 
     return np.mean(err)
 

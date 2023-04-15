@@ -10,11 +10,11 @@ from sklearn.utils.validation import check_is_fitted
 
 class LinearSelector(ABC):
     @abstractmethod
-    def get_linear_smoother(self, X, X_pred=None):
+    def get_linear_smoother(self, X):
         pass
 
     @abstractmethod
-    def get_group_X(self, X, X_pred=None):
+    def get_group_X(self, X, tr_idx, ts_idx, ret_full_P=False):
         pass
 
 
