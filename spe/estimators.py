@@ -166,7 +166,8 @@ def better_test_est_split(
         w_tr = w[tr_idx]
         model.fit(X_tr, w_tr, **kwargs)
     else:
-        if model.__class__.__name__ == "BlurredForest":
+        # if model.__class__.__name__ == "BlurredForest":
+        if isinstance(model, BlurredForest):
             if "chol_eps" in kwargs:
                 kwargs["chol_eps"] = kwargs["chol_eps"][tr_idx, :][:, tr_idx]
         model.fit(X_tr, y_tr, **kwargs)
@@ -177,10 +178,11 @@ def better_test_est_split(
     if full_refit is None or full_refit:
         # print(model.__class__.__name__, full_refit, gls)
         ## TODO: change to isinstance(LinearSelector)
-        if model.__class__.__name__ in ["Tree", "RelaxedLasso"]:
+        # if model.__class__.__name__ in ["Tree", "RelaxedLasso"]:
+        if isinstance(model, (Tree, RelaxedLasso)):
             P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
             preds = P @ y_tr
-        else:
+        elif isinstance(model, BlurredForest):
             # if gls is None or not gls:
             #     # print("gls None", gls)
             #     preds = model.predict(X_ts, full_refit=full_refit)
@@ -202,10 +204,13 @@ def better_test_est_split(
                                             (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
                                         )).T
             preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit, Chol=chol)
+        else:
+            preds = model.predict(X_ts)
 
     else:
         ## TODO: all the conditional stuff I have for full refit
-        if model.__class__.__name__ == "BlurredForest":
+        # if model.__class__.__name__ == "BlurredForest":
+        if isinstance(model, BlurredForest):
             if gls is None or not gls:
                 # print("gls None", gls)
                 preds = model.predict(X_ts, full_refit=full_refit)
@@ -412,35 +417,36 @@ def _get_tr_ts_covs_corr(
     Cov_st,
     ts_idx,
     alpha,
-    full_refit
+    full_refit,
 ):
+
     n = Sigma_t.shape[0]
-    Sigma_w = (1 + alpha) * Sigma_t
+    Sigma_G = Sigma_t
     if full_refit:
-        Gamma = Cov_st @ np.linalg.inv(Sigma_t)
-    else:
-        Gamma = Cov_st @ np.linalg.inv(Sigma_w)
+        assert(alpha is not None)
+        Sigma_G *= (1 + alpha)
+    Gamma = Cov_st @ np.linalg.inv(Sigma_G)
+
     Gamma_ts = Gamma[ts_idx,:]
     IMGamma = np.eye(n) - Gamma
 
-    if full_refit:
-        Cov_N = Sigma_s - Gamma @ Sigma_t @ Gamma.T
-    else:
-        Cov_N = Sigma_s - Gamma @ Sigma_w @ Gamma.T
+    Cov_N = Sigma_s - Gamma @ Sigma_G @ Gamma.T
 
     assert(np.allclose(Cov_N, Sigma_s - Gamma @ Cov_st.T))
 
     Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
 
-    Cov_wp = (1 + 1 / alpha) * Sigma_t
     IMGamma_ts_f = IMGamma[ts_idx, :]
-    Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
-    Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
+    Sigma_IMG_ts_f = Sigma_t @ IMGamma_ts_f.T
+    Cov_IMGY_ts = IMGamma_ts_f @ Sigma_IMG_ts_f
+    if alpha is not None:
+        Cov_wp = (1 + 1 / alpha) * Sigma_t
+        Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
+        Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
 
-    Cov_t_ts = IMGamma_ts_f @ Sigma_t @ IMGamma_ts_f.T
+        return Sigma_t, Cov_N_ts, Cov_IMGY_ts, Cov_Np_ts, Gamma_ts, IMGamma, IMGamma_ts_f
 
-    return Sigma_t, Cov_N_ts, Cov_t_ts, Cov_Np_ts, Gamma_ts, IMGamma, IMGamma_ts_f
-
+    return Sigma_IMG_ts_f, Cov_N_ts, Cov_IMGY_ts
 
 def cp_smoother_train_test(
     model,
@@ -449,29 +455,34 @@ def cp_smoother_train_test(
     tr_idx,
     Chol_t=None,
     Chol_s=None,
+    Cov_st=None,
 ):
-
     X, y, _, n, p = _preprocess_X_y_model(X, y, None)
 
     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
     Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s)
 
-    P = X_ts @ np.linalg.inv(X_tr.T @ X_tr) @ X_tr.T
+    # P = X_ts @ np.linalg.inv(X_tr.T @ X_tr) @ X_tr.T
+    model.fit(X_tr, y_tr)
+    P = model.get_linear_smoother(X, tr_idx, ts_idx)
 
-    # Cov_tr_ts = Sigma_t[tr_idx,:][:,ts_idx]
-    # Cov_s_ts = Sigma_s[ts_idx,:][:,ts_idx]
-    # Cov_t_ts = Sigma_t[ts_idx,:][:,ts_idx]
+    if Cov_st is None:
+        Cov_tr_ts, Cov_s_ts, Cov_t_ts = _get_tr_ts_covs(Sigma_t, Sigma_s, tr_idx, ts_idx)
+        correction = (
+            2 * np.diag(Cov_tr_ts @ P).mean()
+            + np.diag(Cov_s_ts).mean()
+            - np.diag(Cov_t_ts).mean()
+        )
+    else:
+        tr_corr, Cov_N_ts, Cov_IMGY_ts = _get_tr_ts_covs_corr(Sigma_t, Sigma_s, Cov_st, ts_idx, alpha=None, full_refit=False)
+        correction = (
+            2 * np.diag(tr_corr[ts_idx,:] - P @ tr_corr[tr_idx,:]).mean()
+            + np.diag(Cov_N_ts).mean()
+            - np.diag(Cov_IMGY_ts).mean()
+        )
 
-    Cov_tr_ts, Cov_s_ts, Cov_t_ts = _get_tr_ts_covs(Sigma_t, Sigma_s, tr_idx, ts_idx)
-
-    correction = (
-        2 * np.diag(Cov_tr_ts @ P).sum()
-        + np.diag(Cov_s_ts).sum()
-        - np.diag(Cov_t_ts).sum()
-    )
-
-    return (np.sum((y_ts - P @ y_tr) ** 2) + correction) / n_ts
+    return np.mean((y_ts - P @ y_tr) ** 2) + correction
 
 
 def cp_linear_train_test(

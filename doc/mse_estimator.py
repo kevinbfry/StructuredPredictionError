@@ -46,6 +46,7 @@ class ErrorComparer(object):
     BAGCV_METHODS = ["bag_kfoldcv", "bag_kmeanscv"]
     CV_METHODS = ["kfoldcv", "kmeanscv", 'timeseriescv'] + BAGCV_METHODS
     SPCV_METHODS = ["bag_kmeanscv", "kmeanscv"]
+    GENCP_METHODS = ['cp_smoother_train_test', 'cp_adaptive_smoother_train_test', 'cp_general_train_test']
 
     def gen_X_beta(self, n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):
         # X = np.random.randn(n, p)
@@ -308,7 +309,7 @@ class ErrorComparer(object):
                 if est_sigma and ests[j].__name__ == 'cp_rf_train_test':
                     est_kwargs[j]['chol_eps'] = est_Chol_t
 
-                if ests[j].__name__ in ['cp_corr_adaptive_smoother_train_test', 'cp_corr_general_train_test']:
+                if ests[j].__name__ in self.GENCP_METHODS:
                     est_kwargs[j] = {
                         **est_kwargs[j],
                         **{"Cov_st": est_Cov_st}

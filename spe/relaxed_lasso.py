@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression, Lasso
 
 from sklearn.base import BaseEstimator
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 from sklearn.ensemble import BaggingRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -39,9 +39,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         self,
         lambd=1.0,
         fit_intercept=False,
-        #  lasso_type='relaxed',
-        #  refit_type='full',
-        # normalize="deprecated",
         precompute=False,
         copy_X=True,
         max_iter=1000,
@@ -54,9 +51,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         (
             self.lambd,
             self.fit_intercept,
-            # self.lasso_type,
-            # self.refit_type,
-            # self.normalize,
             self.precompute,
             self.copy_X,
             self.max_iter,
@@ -68,9 +62,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         ) = (
             lambd,
             fit_intercept,
-            # lasso_type,
-            # refit_type,
-            # normalize,
             precompute,
             copy_X,
             max_iter,
@@ -81,29 +72,8 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             selection,
         )
 
-        self.lassom = Pipeline([
-            ('scaler', StandardScaler()),
-            ('model', Lasso(
-                alpha=lambd,
-                fit_intercept=fit_intercept,
-                # normalize=normalize,
-                precompute=precompute,
-                copy_X=copy_X,
-                max_iter=max_iter,
-                tol=tol,
-                warm_start=warm_start,
-                positive=positive,
-                random_state=random_state,
-                selection=selection,
-            ))
-        ])
-
-        self.linm = LinearRegression(
-            fit_intercept=fit_intercept, copy_X=copy_X, positive=positive
-        )
-
     def get_group_X(self, X):
-        # check_is_fitted(self)
+        check_is_fitted(self)
 
         E = self.E_
         if E.shape[0] != 0:
@@ -131,6 +101,25 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         return XE_ts @ np.linalg.pinv(XE_tr)
 
     def fit(self, X, lasso_y, lin_y=None, sample_weight=None, check_input=True):
+        self.lassom = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', Lasso(
+                alpha=self.lambd,
+                fit_intercept=self.fit_intercept,
+                precompute=self.precompute,
+                copy_X=self.copy_X,
+                max_iter=self.max_iter,
+                tol=self.tol,
+                warm_start=self.warm_start,
+                positive=self.positive,
+                random_state=self.random_state,
+                selection=self.selection,
+            ))
+        ])
+
+        self.linm = LinearRegression(
+            fit_intercept=self.fit_intercept, copy_X=self.copy_X, positive=self.positive
+        )
 
         if lin_y is None:
             lin_y = lasso_y.copy()
@@ -142,11 +131,12 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             model__check_input=check_input,
         )
 
-        self.E_ = E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
+        E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
         # print("n selected", self.E_.shape[0])
         # self.E_ = E = np.array([0,1,2]) if np.sign(lasso_y - lasso_y.mean()).sum() > 0 else np.array([3,4,5])
 
         self.fit_linear(X, lin_y, sample_weight=sample_weight)
+        self.E_ = E
 
         return self
 
@@ -156,5 +146,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         self.linm.fit(XE, y, sample_weight=sample_weight)
 
     def predict(self, X):
+        check_is_fitted(self)
         XE = self.get_group_X(X)
         return self.linm.predict(XE)
