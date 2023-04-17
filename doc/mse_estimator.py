@@ -35,6 +35,7 @@ from spe.estimators import (
     cp_adaptive_smoother_train_test,
     cp_general_train_test,
     cp_bagged_train_test,
+    # cp_bagged_train_test2,
     cp_rf_train_test,
     better_test_est_split,
     ts_test_est_split,
@@ -52,9 +53,9 @@ class ErrorComparer(object):
     BAGCV_METHODS = (bag_kfoldcv, bag_kmeanscv)
     CV_METHODS = (kfoldcv, kmeanscv, timeseriescv) + BAGCV_METHODS
     SPCV_METHODS = (bag_kmeanscv, kmeanscv)
-    GENCP_METHODS = (cp_smoother_train_test, cp_adaptive_smoother_train_test, cp_general_train_test)
+    BAGCP_METHODS = (cp_rf_train_test, cp_bagged_train_test)#, cp_bagged_train_test2)
+    GENCP_METHODS = (cp_smoother_train_test, cp_adaptive_smoother_train_test, cp_general_train_test) + BAGCP_METHODS
     TESTERR_METHODS = (better_test_est_split, ts_test_est_split)
-    BAG_METHODS = (cp_rf_train_test, cp_bagged_train_test)
 
     # BAGCV_METHODS = ["bag_kfoldcv", "bag_kmeanscv"]
     # CV_METHODS = ["kfoldcv", "kmeanscv", 'timeseriescv'] + BAGCV_METHODS
@@ -322,7 +323,7 @@ class ErrorComparer(object):
                             est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
 
                 # if est_sigma and ests[j].__name__ == 'cp_rf_train_test':
-                # if est_sigma and ests[j] in self.BAG_METHODS:
+                # if est_sigma and ests[j] in self.BAGCP_METHODS:
                 #     est_kwargs[j]['chol_eps'] = est_Chol_t
 
                 # if ests[j].__name__ in self.GENCP_METHODS:

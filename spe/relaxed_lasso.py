@@ -89,6 +89,8 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         XE_tr = self.get_group_X(X_tr)
         if not np.any(XE_tr):
             print("zeros")
+            if ret_full_P:
+                return np.zeros((X_ts.shape[0], X.shape[0]))
             return np.zeros((X_ts.shape[0], X_tr.shape[0]))
         
         XE_ts = self.get_group_X(X_ts)

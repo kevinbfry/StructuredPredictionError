@@ -164,7 +164,7 @@ def better_test_est_split(
 
     if bagg:
         base_model = clone(model)
-        model = ParametricBaggingRegressor(base_model, n_estimators=100)
+        model = ParametricBaggingRegressor(base_estimator=base_model, n_estimators=100)
 
     if alpha is not None:
         w, eps = _blur(y, np.sqrt(alpha) * Chol_t)
@@ -449,13 +449,16 @@ def _get_tr_ts_covs_corr(
 ):
 
     n = Sigma_t.shape[0]
-    Sigma_G = Sigma_t
+    Sigma_G = Sigma_t.copy()
     if not full_refit:
         assert(alpha is not None)
         Sigma_G *= (1 + alpha)
     Gamma = Cov_st @ np.linalg.inv(Sigma_G)
+    # if not full_refit:
+    #     Gamma /= 1 + alpha
+    #     Sigma_G *= 1 + alpha
 
-    Gamma_ts = Gamma[ts_idx,:]
+    # Gamma_ts = Gamma[ts_idx,:]
     IMGamma = np.eye(n) - Gamma
 
     Cov_N = Sigma_s - Gamma @ Sigma_G @ Gamma.T
@@ -468,11 +471,11 @@ def _get_tr_ts_covs_corr(
     Sigma_IMG_ts_f = Sigma_t @ IMGamma_ts_f.T
     Cov_IMGY_ts = IMGamma_ts_f @ Sigma_IMG_ts_f
     if alpha is not None:
-        Cov_wp = (1 + 1 / alpha) * Sigma_t
+        Cov_wp = (1 + 1. / alpha) * Sigma_t
         Cov_Np = IMGamma @ Cov_wp @ IMGamma.T
         Cov_Np_ts = Cov_Np[ts_idx,:][:,ts_idx]
 
-        return Sigma_t, Cov_N_ts, Cov_IMGY_ts, Cov_Np_ts, Gamma_ts, IMGamma, IMGamma_ts_f
+        return Sigma_t, Cov_N_ts, Cov_IMGY_ts, Cov_Np_ts, Gamma#_ts, IMGamma, IMGamma_ts_f
 
     return Sigma_IMG_ts_f, Cov_N_ts, Cov_IMGY_ts
 
@@ -649,6 +652,8 @@ def _compute_cp_estimator(
     if full_refit and not isinstance(model, LinearSelector):
         raise TypeError("model must inherit from 'LinearSelector' class")
     
+    n_ts = X_ts.shape[0]
+
     if Gamma is not None:
         Gamma_ts = Gamma[ts_idx,:]
         IMGamma = np.eye(X.shape[0]) - Gamma
@@ -658,40 +663,42 @@ def _compute_cp_estimator(
 
     if isinstance(model, LinearSelector):
         if P is None:
-            P = model.get_linear_smoother(X, tr_idx, ts_idx)
+            P = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)
         if Cov_st is not None and P_full is None:
             P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
 
     if Cov_st is None:
-        regress_t_eps = regress_t_eps[ts_idx]
-        Np_ts = wp_ts
+        regress_t_eps_ts = regress_t_eps[ts_idx]
+        Np_ts = wp_ts.copy()
     else:
-        regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
+        # regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
+        regress_t_eps_ts = (IMGamma @ regress_t_eps)[ts_idx]
         Np_ts = IMGamma_ts_f @ wp
 
     if full_refit:
         # P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
         if Cov_st is None:
-            P_corr = P 
+            P_corr = P.copy() 
         else:
             P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts)) 
 
-        iter_correction = 2 * np.diag(Cov_tr_ts @ P_corr).mean()
+        iter_correction = 2 * np.diag(P_corr @ Cov_tr_ts).sum() / n_ts
         yhat = P @ y_tr
-        assert(np.allclose(P @ w_tr, model.predict(X_ts)))
+        # assert(np.allclose(P @ w_tr, model.predict(X_ts)))
         in_mse = np.mean(
             (Np_ts - yhat + Gamma_ts @ y)**2
         )
     else:
         iter_correction = 0
-        yhat = model.predict(X_ts) #if P is None else P @ w_tr
+        yhat = model.predict(X_ts) if P is None else P @ w_tr
         # yhat = P @ w_tr
+        assert(np.allclose(P @ w_tr, model.predict(X_ts)))
         in_mse = np.mean(
             (Np_ts - yhat + Gamma_ts @ w) ** 2
         )
 
     if not use_trace_corr:
-        iter_correction -= (regress_t_eps**2).mean()
+        iter_correction -= (regress_t_eps_ts**2).mean()
     
     est = in_mse + iter_correction
 
@@ -709,6 +716,7 @@ def cp_adaptive_smoother_train_test(
     alpha=1.0,
     full_refit=True,
     use_trace_corr=True,
+    ret_yhats=False,
 ):
 
     X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
@@ -723,28 +731,30 @@ def cp_adaptive_smoother_train_test(
         Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
             Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
         )
-        # Gamma = None
-        Gamma_ts = np.zeros((n_ts, n))
+        Gamma = None
+        # Gamma_ts = np.zeros((n_ts, n))
     else:
-        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
-        # Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
+        # Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
+        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
             Sigma_t, Sigma_s, Cov_st, ts_idx, alpha, full_refit
         )
-        IMGamma = np.eye(n) - Gamma
-        Gamma_ts = Gamma[ts_idx,:]
-        IMGamma_ts_f = IMGamma[ts_idx,:]
+        # IMGamma = np.eye(n) - Gamma
+        # Gamma_ts = Gamma[ts_idx,:]
+        # IMGamma_ts_f = IMGamma[ts_idx,:]
 
-    if use_trace_corr:
-        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
-    else:
-        noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
-    # noise_correction = _get_noise_correction(
-    #     Cov_s_ts, 
-    #     Cov_t_ts, 
-    #     Cov_wp_ts,
-    #     use_trace_corr
-    # )
+    # if use_trace_corr:
+    #     noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
+    # else:
+    #     noise_correction = np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
+    noise_correction = _get_noise_correction(
+        Cov_s_ts, 
+        Cov_t_ts, 
+        Cov_wp_ts,
+        use_trace_corr
+    )
     boot_ests = np.zeros(nboot)
+    if ret_yhats:
+        yhats = np.zeros((n_ts, nboot))
     for i in range(nboot):
         w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
         w_tr = w[tr_idx]
@@ -752,57 +762,64 @@ def cp_adaptive_smoother_train_test(
 
         model.fit(X_tr, w_tr)
 
-        if Cov_st is None:
-            regress_t_eps = regress_t_eps[ts_idx]
-            Np_ts = wp_ts
-        else:
-            regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
-            Np_ts = IMGamma_ts_f @ wp
+        # if Cov_st is None:
+        #     regress_t_eps = regress_t_eps[ts_idx]
+        #     Np_ts = wp_ts
+        # else:
+        #     regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
+        #     Np_ts = IMGamma_ts_f @ wp
 
-        if full_refit:
-            P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
-            if Cov_st is None:
-                P_corr = P 
-            else:
-                P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
-                P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts)) 
+        # if full_refit:
+        #     P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
+        #     if Cov_st is None:
+        #         P_corr = P 
+        #     else:
+        #         P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
+        #         P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts)) 
 
-            iter_correction = 2 * np.diag(Cov_tr_ts @ P_corr).mean()
-            boot_ests[i] = np.mean(
-                (Np_ts - P @ y_tr + Gamma_ts @ y)**2
-            )
-        else:
-            iter_correction = 0
-            boot_ests[i] = np.mean(
-                (Np_ts - model.predict(X_ts) + Gamma_ts @ w) ** 2
-            )
+        #     iter_correction = 2 * np.diag(Cov_tr_ts @ P_corr).mean()
+        #     boot_ests[i] = np.mean(
+        #         (Np_ts - P @ y_tr + Gamma_ts @ y)**2
+        #     )
+        # else:
+        #     iter_correction = 0
+        #     boot_ests[i] = np.mean(
+        #         (Np_ts - model.predict(X_ts) + Gamma_ts @ w) ** 2
+        #     )
 
-        if not use_trace_corr:
-            iter_correction -= (regress_t_eps**2).mean()
+        # if not use_trace_corr:
+        #     iter_correction -= (regress_t_eps**2).mean()
 
-        boot_ests[i] += iter_correction
-        # base_est, _ = _compute_cp_estimator(
-        #     model=model,
-        #     X=X, 
-        #     X_ts=X_ts, 
-        #     y=y, 
-        #     y_tr=y_tr, 
-        #     w=w, 
-        #     w_tr=w_tr,
-        #     wp=wp,
-        #     wp_ts=wp_ts,
-        #     regress_t_eps=regress_t_eps,
-        #     tr_idx=tr_idx,
-        #     ts_idx=ts_idx,
-        #     Cov_st=Cov_st,
-        #     Cov_tr_ts=Cov_tr_ts,
-        #     full_refit=full_refit,
-        #     use_trace_corr=use_trace_corr,
-        #     Gamma=Gamma,
-        # )
-        # boot_ests[i] = base_est
+        # boot_ests[i] += iter_correction
+        base_est, yhat = _compute_cp_estimator(
+            model=model,
+            X=X, 
+            X_ts=X_ts, 
+            y=y, 
+            y_tr=y_tr, 
+            w=w, 
+            w_tr=w_tr,
+            wp=wp,
+            wp_ts=wp_ts,
+            regress_t_eps=regress_t_eps,
+            tr_idx=tr_idx,
+            ts_idx=ts_idx,
+            Cov_st=Cov_st,
+            Cov_tr_ts=Cov_tr_ts,
+            full_refit=full_refit,
+            use_trace_corr=use_trace_corr,
+            Gamma=Gamma,
+        )
+        boot_ests[i] = base_est
+        if ret_yhats:
+            yhats[:,i] = yhat
 
-    return boot_ests.mean() + noise_correction
+    cp_est = boot_ests.mean() + noise_correction
+
+    if ret_yhats:
+        return cp_est, yhats
+
+    return cp_est
 
 # def cp_bagged_train_test(
 #     model,
@@ -899,151 +916,183 @@ def cp_bagged_train_test(
     n_estimators=100,
     **kwargs,
 ):
-    if full_refit:
-        assert(isinstance(model, LinearSelector))
+    ind_est, yhats = cp_adaptive_smoother_train_test(model,
+        X=X,
+        y=y,
+        tr_idx=tr_idx,
+        Chol_t=Chol_t,
+        Chol_s=Chol_s,
+        Cov_st=Cov_st,
+        nboot=n_estimators,
+        alpha=1.,
+        full_refit=full_refit,
+        use_trace_corr=use_trace_corr,
+        ret_yhats=True
+    )
 
-    # model = clone(model)
-    kwargs["chol_eps"] = Chol_t
-    kwargs["idx_tr"] = tr_idx
-    kwargs["do_param_boot"] = True
+    centered_preds = yhats - yhats.mean(1)[:,None]
+    return ind_est - (centered_preds**2).mean()
 
-    # X, y, _, n, p = _preprocess_X_y_model(X, y, None)
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+# def cp_bagged_train_test(
+#     model,
+#     X,
+#     y,
+#     tr_idx,
+#     Chol_t=None,
+#     Chol_s=None,
+#     Cov_st=None,
+#     full_refit=False,
+#     use_trace_corr=False,
+#     n_estimators=100,
+#     **kwargs,
+# ):
+#     if full_refit:
+#         assert(isinstance(model, LinearSelector))
 
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+#     # model = clone(model)
+#     kwargs["chol_eps"] = Chol_t
+#     kwargs["idx_tr"] = tr_idx
+#     kwargs["do_param_boot"] = True
 
-    Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s, alpha=1.0)
+#     # X, y, _, n, p = _preprocess_X_y_model(X, y, None)
+#     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
-    # model.fit(X_tr, y_tr, **kwargs)
-    bagg_model = ParametricBaggingRegressor(model, n_estimators=n_estimators)
-    bagg_model.fit(X_tr, y_tr, **kwargs)
+#     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-    if full_refit:
-        Ps = bagg_model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)#X_tr, X_ts)
-    else:
-        Ps = None
-    eps = bagg_model.eps_
+#     Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s, alpha=1.0)
 
-    if Cov_st is None:
-        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
-            Sigma_t, Sigma_s, tr_idx, ts_idx, 1.0
-        )
-        # Gamma_ts = np.zeros((n_ts, n))
-        Gamma = None
-    else:
-        # Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
-        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
-            Sigma_t, Sigma_s, Cov_st, ts_idx, 1.0, full_refit
-        )
+#     # model.fit(X_tr, y_tr, **kwargs)
+#     bagg_model = ParametricBaggingRegressor(model, n_estimators=n_estimators)
+#     bagg_model.fit(X_tr, y_tr, **kwargs)
+
+#     if full_refit:
+#         Ps = None
+#         # Ps = bagg_model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)#X_tr, X_ts)
+#     else:
+#         Ps = None
+#     eps = bagg_model.eps_
+
+#     if Cov_st is None:
+#         Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
+#             Sigma_t, Sigma_s, tr_idx, ts_idx, 1.0
+#         )
+#         # Gamma_ts = np.zeros((n_ts, n))
+#         Gamma = None
+#     else:
+#         # Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma_ts, IMGamma, IMGamma_ts_f = _get_tr_ts_covs_corr(
+#         Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
+#             Sigma_t, Sigma_s, Cov_st, ts_idx, 1.0, full_refit
+#         )
         
-    if Cov_st is not None and full_refit:
-        P_fulls = bagg_model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
-    else:
-        P_fulls = None
+#     if Cov_st is not None and full_refit:
+#         P_fulls = None
+#         # P_fulls = bagg_model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
+#     else:
+#         P_fulls = None
 
-    n_ests = len(eps)
+#     n_ests = len(eps)
 
-    base_ests = np.zeros(n_ests)
-    # ws = np.zeros((n, n_ests))
-    yhats = np.zeros((n_ts, n_ests))
+#     base_ests = np.zeros(n_ests)
+#     # ws = np.zeros((n, n_ests))
+#     yhats = np.zeros((n_ts, n_ests))
 
-    noise_correction = _get_noise_correction(
-        Cov_s_ts,
-        Cov_t_ts, 
-        Cov_wp_ts, 
-        use_trace_corr
-    )
+#     noise_correction = _get_noise_correction(
+#         Cov_s_ts,
+#         Cov_t_ts, 
+#         Cov_wp_ts, 
+#         use_trace_corr
+#     )
 
-    # for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
-    for i, eps_i in enumerate(eps):
-        eps_i = eps_i#.ravel()
-        w = y + eps_i
-        w_tr = w[tr_idx]
-        regress_t_eps = eps_i
-        wp = y - regress_t_eps
-        wp_ts = wp[ts_idx]
+#     # for i, (P_i, eps_i) in enumerate(zip(Ps, eps)):
+#     for i, eps_i in enumerate(eps):
+#         eps_i = eps_i#.ravel()
+#         w = y + eps_i
+#         w_tr = w[tr_idx]
+#         regress_t_eps = eps_i
+#         wp = y - regress_t_eps
+#         wp_ts = wp[ts_idx]
 
-        P_i = Ps[i] if Ps is not None else None
-        P_full_i = P_fulls[i] if P_fulls is not None else None
-        model_i = bagg_model.estimators_[i]
+#         P_i = Ps[i] if Ps is not None else None
+#         P_full_i = P_fulls[i] if P_fulls is not None else None
+#         model_i = bagg_model.estimators_[i]
 
-        # if Cov_st is None:
-        #     regress_t_eps = regress_t_eps[ts_idx]
-        #     Np_ts = wp_ts
-        # else:
-        #     regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
-        #     Np_ts = IMGamma_ts_f @ wp
+#         # if Cov_st is None:
+#         #     regress_t_eps = regress_t_eps[ts_idx]
+#         #     Np_ts = wp_ts
+#         # else:
+#         #     regress_t_eps = IMGamma.T[ts_idx,:] @ regress_t_eps
+#         #     Np_ts = IMGamma_ts_f @ wp
 
-        # if full_refit:
-        #     if Cov_st is None:
-        #         P_corr = P_i
-        #     else:
-        #         P_full_i = P_fulls[i]
-        #         P_corr = (IMGamma_ts_f.T @ (P_full_i - Gamma_ts)) 
+#         # if full_refit:
+#         #     if Cov_st is None:
+#         #         P_corr = P_i
+#         #     else:
+#         #         P_full_i = P_fulls[i]
+#         #         P_corr = (IMGamma_ts_f.T @ (P_full_i - Gamma_ts)) 
 
-        #     iter_correction = 2 * np.diag(Cov_tr_ts @ P_corr).sum()
-        #     base_ests[i] = np.sum(
-        #         (Np_ts - P_i @ y_tr + Gamma_ts @ y)**2
-        #     )
-        #     yhat = P_i @ y_tr
-        # else:
-        #     iter_correction = 0
-        #     base_ests[i] = np.sum(
-        #         (Np_ts - P_i @ w_tr + Gamma_ts @ w) ** 2
-        #     )
-        #     yhat = P_i @ w_tr
+#         #     iter_correction = 2 * np.diag(Cov_tr_ts @ P_corr).sum()
+#         #     base_ests[i] = np.sum(
+#         #         (Np_ts - P_i @ y_tr + Gamma_ts @ y)**2
+#         #     )
+#         #     yhat = P_i @ y_tr
+#         # else:
+#         #     iter_correction = 0
+#         #     base_ests[i] = np.sum(
+#         #         (Np_ts - P_i @ w_tr + Gamma_ts @ w) ** 2
+#         #     )
+#         #     yhat = P_i @ w_tr
 
-        # if not use_trace_corr:
-        #     iter_correction -= (regress_t_eps**2).sum()
+#         # if not use_trace_corr:
+#         #     iter_correction -= (regress_t_eps**2).sum()
 
-        # base_ests[i] += iter_correction
+#         # base_ests[i] += iter_correction
 
-        base_est, yhat = _compute_cp_estimator(
-            model_i,
-            X, 
-            X_ts, 
-            y, 
-            y_tr, 
-            w, 
-            w_tr,
-            wp,
-            wp_ts,
-            regress_t_eps,
-            tr_idx,
-            ts_idx,
-            Cov_st,
-            Cov_tr_ts,
-            full_refit,
-            use_trace_corr,
-            Gamma=Gamma,
-            P=P_i,
-            P_full=P_full_i,
-        )
-        base_ests[i] = base_est
-        yhats[:,i] = yhat
+#         base_est, yhat = _compute_cp_estimator(
+#             model=model_i,
+#             X=X, 
+#             X_ts=X_ts, 
+#             y=y, 
+#             y_tr=y_tr, 
+#             w=w, 
+#             w_tr=w_tr,
+#             wp=wp,
+#             wp_ts=wp_ts,
+#             regress_t_eps=regress_t_eps,
+#             tr_idx=tr_idx,
+#             ts_idx=ts_idx,
+#             Cov_st=Cov_st,
+#             Cov_tr_ts=Cov_tr_ts,
+#             full_refit=full_refit,
+#             use_trace_corr=use_trace_corr,
+#             Gamma=Gamma,
+#             P=P_i,
+#             P_full=P_full_i,
+#         )
+#         base_ests[i] = base_est
+#         yhats[:,i] = yhat
 
-    # if use_trace_corr:
-    #     noise_correction = n_ests * (
-    #         np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()
-    #     )
-    # else:
-    #     noise_correction = n_ests * (
-    #         np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()
-    #     )
+#     # if use_trace_corr:
+#     #     noise_correction = n_ests * (
+#     #         np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()
+#     #     )
+#     # else:
+#     #     noise_correction = n_ests * (
+#     #         np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()
+#     #     )
 
-    centered_preds = yhats.mean(axis=1)[:, None] - yhats
-    # assert(np.all(centered_preds == 0))
-    # est = (
-    #     base_ests.sum() - np.sum((centered_preds) ** 2)
-    # ) / (n_ests * n_ts) + noise_correction
-    # est = (
-    #      - np.sum((centered_preds) ** 2)
-    # ) / (n_ests * n_ts) + base_ests.mean() + noise_correction
-    est = (
-        base_ests.mean() - np.mean((centered_preds) ** 2) + noise_correction
-    )
+#     centered_preds = yhats.mean(axis=1)[:, None] - yhats
+#     # assert(np.all(centered_preds == 0))
+#     # est = (
+#     #     base_ests.sum() - np.sum((centered_preds) ** 2)
+#     # ) / (n_ests * n_ts) + noise_correction
+#     # est = (
+#     #      - np.sum((centered_preds) ** 2)
+#     # ) / (n_ests * n_ts) + base_ests.mean() + noise_correction
+#     est = (
+#         base_ests.mean() - np.mean((centered_preds) ** 2) + noise_correction
+#     )
 
-    return est
+#     return est
 
 
 def cp_rf_train_test(
