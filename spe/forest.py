@@ -35,17 +35,16 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
 
         return super().get_group_X(X)
 
-    def get_linear_smoother(self, X, tr_idx, ts_idx,):
+    def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):
         assert(isinstance(self.base_estimator, LinearSelector))
 
-        Ps = [est.get_linear_smoother(X, tr_idx, ts_idx, ) for est in self.estimators_]
+        Ps = [est.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P) for est in self.estimators_]
         
         return Ps#np.mean(Ps,axis=0)
     
     def predict(self, X, tr_idx=None, ts_idx=None, full_refit=False):
         check_is_fitted(self)
-        if self.do_param_boot or full_refit:
-            assert(tr_idx is not None and ts_idx is not None)
+        if isinstance(self.base_estimator, LinearSelector):
             Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
             if full_refit:
                 preds = [P @ self.y_refit_ for P in Ps]
@@ -55,7 +54,23 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
             pred = np.mean(preds, axis=0)
             return pred
         else:
-            return super().predict(X)#[ts_idx,:])
+            if ts_idx is not None:
+                X_pred = X[ts_idx,:]
+            else:
+                X_pred = X
+            return super().predict(X_pred)
+        # if self.do_param_boot or full_refit:
+        #     assert(tr_idx is not None and ts_idx is not None)
+        #     Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
+        #     if full_refit:
+        #         preds = [P @ self.y_refit_ for P in Ps]
+        #     else: # must be self.do_param_boot == True
+        #         preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
+            
+        #     pred = np.mean(preds, axis=0)
+        #     return pred
+        # else:
+        #     return super().predict(X)#[ts_idx,:])
 
 class BlurredForest(RandomForestRegressor):
     def __init__(
@@ -116,7 +131,7 @@ class BlurredForest(RandomForestRegressor):
 
         return self
 
-    def get_linear_smoother(self, X, tr_idx, ts_idx, Chol=None):
+    def get_linear_smoother(self, X, tr_idx, ts_idx, Chol=None, ret_full_P=False):
         # Gs = self.get_group_X(X)
         # if X_pred is None:
         #     G_preds = Gs
@@ -145,7 +160,14 @@ class BlurredForest(RandomForestRegressor):
         averaging_matrices = [X_tr.T / X_tr.T.sum(1)[:,None] for X_tr in X_trs]
         # print(X, averaging_matrix)
         # assert(0==1)
-        return [X_ts @ averaging_matrix for X_ts, averaging_matrix in zip(X_tss, averaging_matrices)]
+        if ret_full_P:
+            n = X.shape[0]
+            full_averaging_matrices = [np.zeros((X_trs[0].shape[1],n)) for _ in range(len(averaging_matrices))]
+            for full_averaging_matrix, averaging_matrix in zip(full_averaging_matrices, averaging_matrices):
+                full_averaging_matrix[:,tr_idx] = averaging_matrix
+        else:
+            full_averaging_matrices = averaging_matrices
+        return [X_ts @ averaging_matrix for X_ts, averaging_matrix in zip(X_tss, full_averaging_matrices)]
 
     def get_group_X(self, X):
         check_is_fitted(self)
@@ -209,7 +231,12 @@ class BlurredForest(RandomForestRegressor):
             pred = np.mean(preds, axis=0)
             return pred
         else:
-            return super().predict(X)#[ts_idx,:])
+            if ts_idx is not None:
+                X_pred = X[ts_idx,:]
+            else:
+                X_pred = X
+            return super().predict(X_pred)
+            # return super().predict(X)#[ts_idx,:])
 
 
 # class BlurredForestClassifier(RandomForestClassifier):

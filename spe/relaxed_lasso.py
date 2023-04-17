@@ -122,7 +122,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         )
 
         if lin_y is None:
-            lin_y = lasso_y.copy()
+            self.lin_y = lin_y = lasso_y.copy()
 
         self.lassom.fit(
             X, 
@@ -134,12 +134,13 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         self.E_ = E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
         # print("n selected", self.E_.shape[0])
         # self.E_ = E = np.array([0,1,2]) if np.sign(lasso_y - lasso_y.mean()).sum() > 0 else np.array([3,4,5])
-
+        # self.E_ = E = np.arange(X.shape[1])
         self.fit_linear(X, lin_y, sample_weight=sample_weight)
 
         return self
 
     def fit_linear(self, X, y, sample_weight=None):
+        # check_is_fitted(self.lassom)
         XE = self.get_group_X(X)
 
         self.linm.fit(XE, y, sample_weight=sample_weight)
