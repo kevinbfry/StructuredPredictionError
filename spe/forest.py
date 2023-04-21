@@ -10,24 +10,27 @@ from sklearn.utils.validation import check_is_fitted
 
 from .tree import LinearSelector
 
-## code from sklearn, only need to change a small part of fit function
-
 class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
-    # def __init__(self, estimator=None, n_estimators=10,**kwargs):
-    #     super().__init__(estimator, n_estimators, **kwargs)
 
-    def fit(self, X, y, sample_weight=None, chol_eps=None, idx_tr=None, do_param_boot=True):
+    def fit(
+        self, 
+        X, 
+        y, 
+        sample_weight=None, 
+        chol_eps=None, 
+        idx_tr=None, 
+        do_param_boot=True
+    ):
         self.do_param_boot = do_param_boot
         self.X_tr_ = X
-        # self.y_refit_ = y
-        super().fit(X, y, sample_weight=sample_weight, chol_eps=chol_eps, idx_tr=idx_tr, do_param_boot=do_param_boot)
-        # if self.bootstrap_type == "blur":
-        # if do_param_boot:
-        #     if idx_tr is None:
-        #         self.w_refit_ = [y + eps for eps in self.eps_]
-        #     else:
-        #         self.w_refit_ = [y + eps[idx_tr] for eps in self.eps_]
-
+        super().fit(
+            X,
+            y, 
+            sample_weight=sample_weight, 
+            chol_eps=chol_eps, 
+            idx_tr=idx_tr, 
+            do_param_boot=do_param_boot
+        )
         return self
 
     def get_group_X(self, X, X_pred=None):
@@ -40,38 +43,7 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
 
         Ps = [est.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P)[0] for est in self.estimators_]
         
-        return Ps#np.mean(Ps,axis=0)
-    
-    # def predict(self, X, tr_idx=None, ts_idx=None, full_refit=False):
-    #     check_is_fitted(self)
-    #     if isinstance(self.base_estimator, LinearSelector):
-    #         Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
-    #         if full_refit:
-    #             preds = [P @ self.y_refit_ for P in Ps]
-    #         else: # must be self.do_param_boot == True
-    #             preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
-            
-    #         pred = np.mean(preds, axis=0)
-    #         return pred
-    #     else:
-    #         if ts_idx is not None:
-    #             X_pred = X[ts_idx,:]
-    #         else:
-    #             X_pred = X
-    #         return super().predict(X_pred)
-        
-        # if self.do_param_boot or full_refit:
-        #     assert(tr_idx is not None and ts_idx is not None)
-        #     Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
-        #     if full_refit:
-        #         preds = [P @ self.y_refit_ for P in Ps]
-        #     else: # must be self.do_param_boot == True
-        #         preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
-            
-        #     pred = np.mean(preds, axis=0)
-        #     return pred
-        # else:
-        #     return super().predict(X)#[ts_idx,:])
+        return Ps
 
 class BlurredForest(RandomForestRegressor):
     def __init__(
@@ -94,7 +66,6 @@ class BlurredForest(RandomForestRegressor):
         warm_start=False,
         ccp_alpha=0.0,
         max_samples=None,
-        # bootstrap_type="blur",
     ):
 
         super().__init__(
@@ -115,7 +86,6 @@ class BlurredForest(RandomForestRegressor):
             warm_start=warm_start,
             ccp_alpha=ccp_alpha,
             max_samples=max_samples,
-            # bootstrap_type=bootstrap_type,
         )
 
     def fit(self, X, y, sample_weight=None, chol_eps=None, idx_tr=None, do_param_boot=True):
@@ -123,7 +93,6 @@ class BlurredForest(RandomForestRegressor):
         self.X_tr_ = X
         self.y_refit_ = y
         super().fit(X, y, sample_weight=sample_weight, chol_eps=chol_eps, idx_tr=idx_tr, do_param_boot=do_param_boot)
-        # if self.bootstrap_type == "blur":
         if do_param_boot:
             if idx_tr is None:
                 self.w_refit_ = [y + eps for eps in self.eps_]
@@ -133,34 +102,12 @@ class BlurredForest(RandomForestRegressor):
         return self
 
     def get_linear_smoother(self, X, tr_idx, ts_idx, Chol=None, ret_full_P=False):
-        # Gs = self.get_group_X(X)
-        # if X_pred is None:
-        #     G_preds = Gs
-        # else:
-        #     G_preds = self.get_group_X(X_pred)
-        #     delattr(self, "n_leaves")
-
-        # # return [G_pred @ np.linalg.inv(G.T @ G) @ G.T for (G,G_pred) in zip(Gs, G_preds)]
-        # if Chol is None:
-        #     return [G_pred @ np.linalg.pinv(G) for (G, G_pred) in zip(Gs, G_preds)]
-
-        # return [
-        #     G_pred @ np.linalg.pinv(Chol.T @ G) @ Chol.T
-        #     for (G, G_pred) in zip(Gs, G_preds)
-        # ]
     
-        Xs = self.get_group_X(X)#, is_train=True)
-        # if X_pred is None:
-        #     X_pred = X
-        # else:
-        #     X_pred = self.get_group_X(X_pred, is_train=False)
-
-        # print("X", X, "\n", "pinv", np.linalg.pinv(X))
+        Xs = self.get_group_X(X)
+        
         X_tss = [X[ts_idx,:] for X in Xs]
         X_trs = [X[tr_idx,:] for X in Xs]
         averaging_matrices = [X_tr.T / X_tr.T.sum(1)[:,None] for X_tr in X_trs]
-        # print(X, averaging_matrix)
-        # assert(0==1)
         if ret_full_P:
             n = X.shape[0]
             full_averaging_matrices = [np.zeros((X_trs[0].shape[1],n)) for _ in range(len(averaging_matrices))]
@@ -181,28 +128,16 @@ class BlurredForest(RandomForestRegressor):
             self.n_leaves = np.zeros(leaf_node_array.shape[1]).astype(int)
             self.leaves_map = []
 
-        # stored_leaf_idx = hasattr(self, 'leaf_idx')
-        # if not stored_leaf_idx:
-        #   self.leaf_idx = []
-
         Gs = []
         for i in np.arange(leaf_node_array.shape[1]):
-            # tree = self.estimators_[i]
             leaf_nodes = leaf_node_array[:, i]
             _, indices = np.unique(leaf_nodes, return_inverse=True)
 
             n_leaves = np.amax(indices) + 1
             n = X.shape[0]
-            # print("X shape", X.shape, "n leaves", n_leaves)
 
-            # if is_train:
             G = np.zeros((n, n_leaves))
-            #     self.n_leaves = n_leaves
-            # else:
-            #     G = np.zeros((n, self.n_leaves))
-
             G[np.arange(n), indices] = 1
-
             Gs.append(G)
 
         return Gs

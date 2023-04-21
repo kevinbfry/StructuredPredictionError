@@ -22,20 +22,10 @@ from spe.estimators import (
     kfoldcv,
     kmeanscv,
     timeseriescv,
-    # test_set_estimator,
-    # cb,
-    # cb_isotropic,
-    # blur_linear,
-    # blur_linear_selector,
-    # blur_forest,
-    # cp_linear_train_test,
-    # test_est_split,
-    # cp_relaxed_lasso_train_test,
     cp_smoother_train_test,
     cp_adaptive_smoother_train_test,
     cp_general_train_test,
     cp_bagged_train_test,
-    # cp_bagged_train_test2,
     cp_rf_train_test,
     better_test_est_split,
     ts_test_est_split,
@@ -121,10 +111,6 @@ class ErrorComparer(object):
         if Cov_st is None:
             eps = Chol_t @ np.random.randn(n)
             eps2 = Chol_s @ np.random.randn(n)
-            # Sigma_t = Chol_t @ Chol_t.T
-            # Sigma_s = Chol_s @ Chol_s.T
-            # eps = np.random.multivariate_normal(np.zeros(n),Sigma_t)
-            # eps2 = np.random.multivariate_normal(np.zeros(n),Sigma_s)
         else:
             Sigma_t = Chol_t @ Chol_t.T
             Sigma_s = Chol_s @ Chol_s.T
@@ -211,10 +197,8 @@ class ErrorComparer(object):
         const_mu=False,
         friedman_mu=False,
         noise_sigma=None,
-        # test_kwargs={},
         **kwargs,
     ):
-        # print("NEW NEW")
 
         self.Chol_y = np.copy(Chol_y) if Chol_y is not None else None
         self.Chol_ystar = np.copy(Chol_ystar) if Chol_ystar is not None else None
@@ -231,29 +215,17 @@ class ErrorComparer(object):
             raise ValueError("ests must be same length as models")
 
         errs = [np.zeros(niter) for _ in range(len(ests))]
-        # errs = [np.zeros(niter) for _ in range(len(ests)+1)]
-        # ests.insert(0, better_test_est_split)
-        # est_kwargs.insert(0, test_kwargs)
-        # print(models)
         for j, est in enumerate(ests):
-            # if est.__name__ not in self.CV_METHODS:
             if est in self.CV_METHODS:
                 est_kwargs[j] = {**est_kwargs[j], **kwargs, **{"model": models[j]}}
             else:
                 est_kwargs[j]["model"] = models[j]
-            # if j == 0:
-            # 	est_kwargs[j]['model'] = model
 
         gen_beta, n, p = self.preprocess_X_beta(X, beta, n, p, friedman_mu, const_mu)
-
-        # Chol_t_orig = np.copy(Chol_y)
-        # Chol_s_orig = np.copy(Chol_ystar) if Chol_ystar is not None else None
-        # Cov_st_orig = np.copy(Cov_y_ystar) if Cov_y_ystar is not None else None
 
         if not gen_beta:
             mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
             Chol_t, Chol_s, Cov_st = self.preprocess_chol(
-                # Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
                 self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
             )
 
@@ -262,13 +234,11 @@ class ErrorComparer(object):
                 X, beta = self.gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
                 mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
                 Chol_t, Chol_s, Cov_st = self.preprocess_chol(
-                    # Chol_t_orig, Chol_s_orig, sigma, n, Cov_st=Cov_st_orig
                     self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
                 )
 
             if tr_idx is None:
                 if fair:
-                    # tr_samples = np.random.choice(n, size=int(.8*n), replace=False)
                     tr_samples = np.random.choice(
                         n, size=int(tr_frac * n), replace=False
                     )
@@ -278,25 +248,19 @@ class ErrorComparer(object):
                     tr_idx = create_clus_split(
                         int(np.sqrt(n)), int(np.sqrt(n)), tr_frac
                     )
-            # if i == 0:
-            #     print(tr_idx.mean())
 
             y, y2 = self.gen_ys(
                 mu, Chol_t, Chol_s, sigma=sigma, Cov_st=Cov_st, delta=delta
             )
-            # print("y max", np.fabs(y).max(), "y2 max", np.fabs(y2).max())
 
             if not fair:
                 X_tr, y_tr, coord_tr = self.get_train(X, y, coord, tr_idx)
                 cvChol_t = Chol_t[tr_idx, :][:, tr_idx]
 
             if est_sigma:
-                # est_Chol_t = self.est_Sigma(X_tr, y_tr, coord_tr, coord, est_sigma_model)
                 est_Chol_t = self.est_Sigma(X, y, coord, est_sigma_model)
-                # if Chol_s_orig is not None:
                 if self.Chol_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Chol_s != None")
-                # if Cov_st_orig is not None:
                 if self.Cov_y_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Cov_st != None")
                 est_Chol_s = est_Chol_t
@@ -307,7 +271,6 @@ class ErrorComparer(object):
                 est_Cov_st = np.copy(Cov_st) if Cov_st is not None else None
             
             for j in range(len(est_kwargs)):
-                # if ests[j].__name__ in ["better_test_est_split", "ts_test_est_split"]:
                 if ests[j] in self.TESTERR_METHODS:
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
@@ -328,15 +291,9 @@ class ErrorComparer(object):
                         },
                     }
                     if not (delta is None):
-                        # if ests[j].__name__ not in self.CV_METHODS:
                         if ests[j] in self.CV_METHODS:
                             est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
 
-                # if est_sigma and ests[j].__name__ == 'cp_rf_train_test':
-                # if est_sigma and ests[j] in self.BAGCP_METHODS:
-                #     est_kwargs[j]['chol_eps'] = est_Chol_t
-
-                # if ests[j].__name__ in self.GENCP_METHODS:
                 if ests[j] in self.GENCP_METHODS:
                     est_kwargs[j] = {
                         **est_kwargs[j],
@@ -344,22 +301,17 @@ class ErrorComparer(object):
                     }
 
             for j, est in enumerate(ests):
-                # if est.__name__ in self.CV_METHODS:
                 if est in self.CV_METHODS:
                     if fair:
-                        # if est.__name__ in self.SPCV_METHODS:
                         if est in self.SPCV_METHODS:
                             est_kwargs[j]["coord"] = coord
                     else:
                         est_kwargs[j]["X"] = X_tr
                         est_kwargs[j]["y"] = y_tr
-                        # if est.__name__ in self.BAGCV_METHODS:
                         if est in self.BAGCV_METHODS:
                             est_kwargs[j]["Chol_t"] = cvChol_t
-                        # if est.__name__ in self.SPCV_METHODS:
                         if est in self.SPCV_METHODS:
                             est_kwargs[j]["coord"] = coord_tr
-                    # if est.__name__ not in self.BAGCV_METHODS:
                     if est not in self.BAGCV_METHODS:
                         est_kwargs[j].pop("Chol_t", None)
                     est_kwargs[j].pop("Chol_s", None)
@@ -369,312 +321,3 @@ class ErrorComparer(object):
                 err[i] = est(**est_kwarg)
 
         return errs
-
-    # def compareLinearTrTs(
-    #     self,
-    #     niter=100,
-    #     n=200,
-    #     p=30,
-    #     s=5,
-    #     snr=0.4,
-    #     X=None,
-    #     beta=None,
-    #     coord=None,
-    #     Chol_t=None,
-    #     Chol_s=None,
-    #     tr_idx=None,
-    #     tr_frac=.6,
-    #     const_mu=False,
-    #     friedman_mu=False,
-    #     k=10,
-    # ):
-    #     return self.compare(
-    #         LinearRegression(fit_intercept=False),
-    #         [better_test_est_split, kfoldcv, kmeanscv, cp_linear_train_test],
-    #         [{}, {"k": k}, {"k": k}, {}],
-    #         niter=niter,
-    #         n=n,
-    #         p=p,
-    #         s=s,
-    #         snr=snr,
-    #         X=X,
-    #         beta=beta,
-    #         coord=coord,
-    #         Chol_t=Chol_t,
-    #         Chol_s=Chol_s,
-    #         tr_idx=tr_idx,
-    #         tr_frac=tr_frac,
-    #         fair=False,
-    #         const_mu=const_mu,
-    #         friedman_mu=friedman_mu,
-    #         **{},
-    #     )
-
-    # def compareLinearTrTsFair(
-    #     self,
-    #     niter=100,
-    #     n=200,
-    #     p=30,
-    #     s=5,
-    #     snr=0.4,
-    #     X=None,
-    #     beta=None,
-    #     coord=None,
-    #     Chol_t=None,
-    #     Chol_s=None,
-    #     tr_idx=None,
-    #     k=10,
-    # ):
-    #     return self.compare(
-    #         LinearRegression(fit_intercept=False),
-    #         [better_test_est_split, kfoldcv, kmeanscv, cp_linear_train_test],
-    #         [{}, {"k": k}, {"k": k}, {}],
-    #         niter=niter,
-    #         n=n,
-    #         p=p,
-    #         s=s,
-    #         snr=snr,
-    #         X=X,
-    #         beta=beta,
-    #         coord=coord,
-    #         Chol_t=Chol_t,
-    #         Chol_s=Chol_s,
-    #         tr_idx=tr_idx,
-    #         fair=True,
-    #         **{},
-    #     )
-
-    # def compareRelaxedLassoTrTs(
-    #     self,
-    #     niter=100,
-    #     n=200,
-    #     p=30,
-    #     s=5,
-    #     snr=0.4,
-    #     X=None,
-    #     beta=None,
-    #     coord=None,
-    #     Chol_t=None,
-    #     Chol_s=None,
-    #     alpha=1.0,
-    #     lambd=0.31,
-    #     tr_idx=None,
-    #     tr_frac=.6,
-    #     k=10,
-    # ):
-    #     return self.compare(
-    #         RelaxedLasso(lambd=lambd),
-    #         [better_test_est_split, kfoldcv, kmeanscv, cp_relaxed_lasso_train_test],
-    #         [{}, {"k": k}, {"k": k}, {"alpha": alpha, "use_trace_corr": True}],
-    #         niter=niter,
-    #         n=n,
-    #         p=p,
-    #         s=s,
-    #         snr=snr,
-    #         X=X,
-    #         beta=beta,
-    #         coord=coord,
-    #         Chol_t=Chol_t,
-    #         Chol_s=Chol_s,
-    #         tr_idx=tr_idx,
-    #         tr_frac=tr_frac,
-    #         fair=False,
-    #     )
-
-    # def compareRelaxedLassoTrTsFair(
-    #     self,
-    #     niter=100,
-    #     n=200,
-    #     p=30,
-    #     s=5,
-    #     snr=0.4,
-    #     X=None,
-    #     beta=None,
-    #     coord=None,
-    #     Chol_t=None,
-    #     Chol_s=None,
-    #     alpha=1.0,
-    #     lambd=0.31,
-    #     tr_idx=None,
-    #     k=10,
-    # ):
-    #     return self.compare(
-    #         RelaxedLasso(lambd=lambd),
-    #         [better_test_est_split, kfoldcv, kmeanscv, cp_relaxed_lasso_train_test],
-    #         [{}, {"k": k}, {"k": k}, {"alpha": alpha, "use_trace_corr": True}],
-    #         niter=niter,
-    #         n=n,
-    #         p=p,
-    #         s=s,
-    #         snr=snr,
-    #         X=X,
-    #         beta=beta,
-    #         coord=coord,
-    #         Chol_t=Chol_t,
-    #         Chol_s=Chol_s,
-    #         tr_idx=tr_idx,
-    #         fair=True,
-    #     )
-
-    # def compareBaggedTrTs(
-    #     self,
-    #     base_estimator=RelaxedLasso(lambd=0.1, fit_intercept=False),
-    #     niter=100,
-    #     n=200,
-    #     p=30,
-    #     s=5,
-    #     snr=0.4,
-    #     X=None,
-    #     beta=None,
-    #     coord=None,
-    #     Chol_t=None,
-    #     Chol_s=None,
-    #     n_estimators=10,
-    #     # lambd=0.31,
-    #     tr_idx=None,
-    #     tr_frac=.6,
-    #     k=10,
-    #     **kwargs,
-    # ):
-    #     return self.compare(
-    #         BaggedRelaxedLasso(
-    #             base_estimator=base_estimator, n_estimators=n_estimators
-    #         ),
-    #         [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
-    #         [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-    #         niter=niter,
-    #         n=n,
-    #         p=p,
-    #         s=s,
-    #         snr=snr,
-    #         X=X,
-    #         beta=beta,
-    #         coord=coord,
-    #         Chol_t=Chol_t,
-    #         Chol_s=Chol_s,
-    #         tr_idx=tr_idx,
-    #         tr_frac=tr_frac,
-    #         fair=False,
-    #     )
-
-    # def compareBaggedTrTsFair(
-    #     self,
-    #     base_estimator=RelaxedLasso(lambd=0.1, fit_intercept=False),
-    #     niter=100,
-    #     n=200,
-    #     p=30,
-    #     s=5,
-    #     snr=0.4,
-    #     X=None,
-    #     beta=None,
-    #     coord=None,
-    #     Chol_t=None,
-    #     Chol_s=None,
-    #     n_estimators=10,
-    #     # lambd=0.31,
-    #     tr_idx=None,
-    #     k=10,
-    #     **kwargs,
-    # ):
-    #     return self.compare(
-    #         BaggedRelaxedLasso(
-    #             base_estimator=base_estimator, n_estimators=n_estimators
-    #         ),
-    #         [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
-    #         [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-    #         niter=niter,
-    #         n=n,
-    #         p=p,
-    #         s=s,
-    #         snr=snr,
-    #         X=X,
-    #         beta=beta,
-    #         coord=coord,
-    #         Chol_t=Chol_t,
-    #         Chol_s=Chol_s,
-    #         tr_idx=tr_idx,
-    #         fair=True,
-    #     )
-
-    def compareForestTrTs(
-        self,
-        niter=100,
-        n=200,
-        p=30,
-        s=5,
-        snr=0.4,
-        X=None,
-        beta=None,
-        coord=None,
-        Chol_t=None,
-        Chol_s=None,
-        max_depth=4,
-        n_estimators=5,
-        tr_idx=None,
-        tr_frac=.6,
-        k=10,
-        **kwargs,
-    ):
-        return self.compare(
-            BlurredForest(n_estimators=n_estimators),
-            [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
-            [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-            niter=niter,
-            n=n,
-            p=p,
-            s=s,
-            snr=snr,
-            X=X,
-            beta=beta,
-            coord=coord,
-            Chol_t=Chol_t,
-            Chol_s=Chol_s,
-            tr_idx=tr_idx,
-            tr_frac=tr_frac,
-            fair=False,
-            **kwargs,
-        )
-
-    def compareForestTrTsFair(
-        self,
-        niter=100,
-        n=200,
-        p=30,
-        s=5,
-        snr=0.4,
-        X=None,
-        beta=None,
-        coord=None,
-        Chol_t=None,
-        Chol_s=None,
-        max_depth=4,
-        n_estimators=5,
-        tr_idx=None,
-        k=10,
-        **kwargs,
-    ):
-        return self.compare(
-            BlurredForest(n_estimators=n_estimators),
-            [better_test_est_split, bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
-            [{}, {"k": k}, {"k": k}, {"use_trace_corr": True}],
-            niter=niter,
-            n=n,
-            p=p,
-            s=s,
-            snr=snr,
-            X=X,
-            beta=beta,
-            coord=coord,
-            Chol_t=Chol_t,
-            Chol_s=Chol_s,
-            tr_idx=tr_idx,
-            fair=True,
-            **kwargs,
-        )
-    
-
-    
-
-
-
-

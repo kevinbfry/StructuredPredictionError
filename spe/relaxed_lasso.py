@@ -10,30 +10,6 @@ from sklearn.preprocessing import StandardScaler
 from .tree import LinearSelector
 
 
-# class BaggedRelaxedLasso(BaggingRegressor):
-#     def get_linear_smoother(self, X, X_pred=None):
-#         return [est.get_linear_smoother(X, X_pred) for est in self.estimators_]
-
-#     def get_group_X(self, X):
-#         check_is_fitted(self)
-
-#         n = X.shape[0]
-
-#         Gs = []
-#         for i in np.arange(self.n_estimators):
-#             est = self.estimators_[i]
-
-#             E = est.E_
-#             if E.shape[0] != 0:
-#                 XE = X[:, E]
-#             else:
-#                 XE = np.zeros((X.shape[0], 1))
-
-#             return Gs.append(XE)
-
-#         return Gs
-
-
 class RelaxedLasso(LinearSelector, BaseEstimator):
     def __init__(
         self,
@@ -83,7 +59,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
         return XE
 
-    def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):# X_pred=None):
+    def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):
         X_tr = X[tr_idx,:]
         X_ts = X[ts_idx,:]
         XE_tr = self.get_group_X(X_tr)
@@ -94,7 +70,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             return [np.zeros((X_ts.shape[0], X_tr.shape[0]))]
         
         XE_ts = self.get_group_X(X_ts)
-        # return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
         if ret_full_P:
             n = X.shape[0]
             full_XE_tr = np.zeros((n,XE_tr.shape[1]))
@@ -134,15 +109,11 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         )
 
         self.E_ = E = np.where(self.lassom.named_steps['model'].coef_ != 0)[0]
-        # print("n selected", self.E_.shape[0])
-        # self.E_ = E = np.array([0,1,2]) if np.sign(lasso_y - lasso_y.mean()).sum() > 0 else np.array([3,4,5])
-        # self.E_ = E = np.arange(X.shape[1])
         self.fit_linear(X, lin_y, sample_weight=sample_weight)
 
         return self
 
     def fit_linear(self, X, y, sample_weight=None):
-        # check_is_fitted(self.lassom)
         XE = self.get_group_X(X)
 
         self.linm.fit(XE, y, sample_weight=sample_weight)
@@ -159,10 +130,3 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             XE = self.get_group_X(X)
             return self.linm.predict(XE)
         return super().predict(X, tr_idx, ts_idx, y_refit)
-        # elif tr_idx is not None and ts_idx is not None and y_refit is not None:
-        #     Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
-        #     preds = [P @ y_refit for P in Ps]
-        #     pred = np.mean(preds, axis=0)
-        #     return pred
-        # else:
-        #     raise ValueError("Either all of 'tr_idx', 'ts_idx', 'y_refit' must be None or all must not be None")
