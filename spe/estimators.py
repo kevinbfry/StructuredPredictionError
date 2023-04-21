@@ -6,7 +6,7 @@ from sklearn.model_selection import cross_validate, GroupKFold, KFold, TimeSerie
 from sklearn.cluster import KMeans
 
 from sklearn.base import clone
-from sklearn.utils.validation import check_X_y
+from sklearn.utils.validation import check_X_y, check_is_fitted
 
 from .relaxed_lasso import RelaxedLasso
 from .tree import Tree, LinearSelector
@@ -213,50 +213,53 @@ def better_test_est_split(
             chol = None if not gls else np.linalg.inv(np.linalg.cholesky(
                                             (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
                                         )).T
-            preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit, Chol=chol)
+            # preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit, Chol=chol)
+            preds = model.predict(X, tr_idx, ts_idx, y_tr)
         elif isinstance(model, ParametricBaggingRegressor):
-            preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit)
+            # preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit)
+            preds = model.predict(X, tr_idx, ts_idx, y_tr)
         else:
             preds = model.predict(X_ts)
 
     else:
         ## TODO: all the conditional stuff I have for full refit
         # if model.__class__.__name__ == "BlurredForest":
-        if isinstance(model, BlurredForest):
-            if gls is None or not gls:
-                # print("gls None", gls)
-                preds = model.predict(X_ts, full_refit=full_refit)
-                # preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit)
-            else:
-                # print("gls not None", gls)
-                Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
-                    (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
-                )).T
-                # print("gls", gls)
-                # print("Chol", Chol_t_tr)
-                # print("Sigma", Chol_t_tr @ Chol_t_tr.T)
-                # preds = model.predict(
-                #     X_ts, 
-                #     full_refit=full_refit, 
-                #     Chol=Chol_t_inv_tr
-                # )
-                preds = model.predict(
-                    X,
-                    tr_idx,
-                    ts_idx, 
-                    full_refit=full_refit, 
-                    Chol=Chol_t_inv_tr
-                )
-        elif isinstance(model, ParametricBaggingRegressor):
-            preds = model.predict(
-                    X,
-                    tr_idx,
-                    ts_idx, 
-                    full_refit=full_refit, 
-                )
-        else:
-            # print("using model predict function")
-            preds = model.predict(X_ts)
+        # if isinstance(model, BlurredForest):
+        #     if gls is None or not gls:
+        #         # print("gls None", gls)
+        #         preds = model.predict(X_ts, full_refit=full_refit)
+        #         # preds = model.predict(X, tr_idx, ts_idx, full_refit=full_refit)
+        #     else:
+        #         # print("gls not None", gls)
+        #         Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
+        #             (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
+        #         )).T
+        #         # print("gls", gls)
+        #         # print("Chol", Chol_t_tr)
+        #         # print("Sigma", Chol_t_tr @ Chol_t_tr.T)
+        #         # preds = model.predict(
+        #         #     X_ts, 
+        #         #     full_refit=full_refit, 
+        #         #     Chol=Chol_t_inv_tr
+        #         # )
+        #         preds = model.predict(
+        #             X,
+        #             tr_idx,
+        #             ts_idx, 
+        #             full_refit=full_refit, 
+        #             Chol=Chol_t_inv_tr
+        #         )
+        # elif isinstance(model, ParametricBaggingRegressor):
+        #     preds = model.predict(
+        #             X,
+        #             tr_idx,
+        #             ts_idx, 
+        #             full_refit=full_refit, 
+        #         )
+        # else:
+        #     # print("using model predict function")
+        #     preds = model.predict(X_ts)
+        preds = model.predict(X_ts)
 
 
     # sse = np.sum((y2_ts - preds) ** 2)
@@ -663,9 +666,9 @@ def _compute_cp_estimator(
 
     if isinstance(model, LinearSelector):
         if P is None:
-            P = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)
+            P = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)[0]
         if Cov_st is not None and P_full is None:
-            P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)
+            P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)[0]
 
     if Cov_st is None:
         regress_t_eps_ts = regress_t_eps[ts_idx]
@@ -683,19 +686,27 @@ def _compute_cp_estimator(
             P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts)) 
 
         iter_correction = 2 * np.diag(P_corr @ Cov_tr_ts).sum() / n_ts
-        yhat = P @ y_tr
-        # assert(np.allclose(P @ w_tr, model.predict(X_ts)))
-        in_mse = np.mean(
-            (Np_ts - yhat + Gamma_ts @ y)**2
-        )
+        corr_correction = Gamma_ts @ y
+        yhat = model.predict(X, tr_idx, ts_idx, y_tr)
+        # yhat = P @ y_tr
+        # # assert(np.allclose(P @ w_tr, model.predict(X_ts)))
+        # in_mse = np.mean(
+        #     (Np_ts - yhat + Gamma_ts @ y)**2
+        # )
     else:
         iter_correction = 0
-        yhat = model.predict(X_ts) if P is None else P @ w_tr
-        # yhat = P @ w_tr
-        assert(np.allclose(P @ w_tr, model.predict(X_ts)))
-        in_mse = np.mean(
-            (Np_ts - yhat + Gamma_ts @ w) ** 2
-        )
+        corr_correction = Gamma_ts @ w
+        yhat = model.predict(X_ts)
+        # yhat = model.predict(X_ts) if P is None else P @ w_tr
+        # # yhat = P @ w_tr
+        # assert(np.allclose(P @ w_tr, model.predict(X_ts)))
+        # in_mse = np.mean(
+        #     (Np_ts - yhat + Gamma_ts @ w) ** 2
+        # )
+
+    in_mse = np.mean(
+        (Np_ts - yhat + corr_correction) ** 2
+    )
 
     if not use_trace_corr:
         iter_correction -= (regress_t_eps_ts**2).mean()
@@ -1102,6 +1113,7 @@ def cp_rf_train_test(
     tr_idx,
     Chol_t=None,
     Chol_s=None,
+    Cov_st=None, ## TODO: not implemented yet...
     # n_estimators=100,
     ret_gls=False,
     full_refit=False,

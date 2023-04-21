@@ -148,10 +148,14 @@ class ErrorComparer(object):
 
     def est_Sigma(
         self,
-        X_tr, 
-        y_tr, 
-        locs_tr,
+        # X_tr, 
+        # y_tr, 
+        # locs_tr,
+        X,
+        y,
         locs, ## TODO: only needed now to work with how _forest.py eps variable is processed. should fix and then remove this too
+        # tr_idx,
+        # ts_idx,
         est_sigma_model, 
     ):
         n = locs.shape[0]
@@ -159,20 +163,24 @@ class ErrorComparer(object):
         if est_sigma_model is None:
             raise ValueError("Must provide est_simga_model")
 
-        est_sigma_model.fit(X_tr, y_tr)
-        resids =  y_tr - est_sigma_model.predict(X_tr)
+        # est_sigma_model.fit(X_tr, y_tr)
+        # resids =  y_tr - est_sigma_model.predict(X_tr)
+        est_sigma_model.fit(X, y)
+        resids =  y - est_sigma_model.predict(X)
 
-        V = skg.Variogram(locs_tr, resids, model='matern')
+        # V = skg.Variogram(locs_tr, resids, model='matern')
+        V = skg.Variogram(locs, resids, model='matern')
         
         fitted_vm = V.fitted_model
         full_distance = distance_matrix(locs, locs)
         semivar = fitted_vm(full_distance.flatten()).reshape((n,n))
 
         K0 = V.parameters[1] ## use sill as estimate of variance
-        est_Sigma_t = K0*np.ones_like(semivar) - semivar
-        est_Chol_t = np.linalg.cholesky(est_Sigma_t)
+        est_Sigma_full = K0*np.ones_like(semivar) - semivar
+        est_Chol_t = np.linalg.cholesky(est_Sigma_full)#[tr_idx,:][:,tr_idx])
+        # est_Chol_s = np.linalg.cholesky(est_Sigma_full[ts_idx,:][:,ts_idx])
 
-        return est_Chol_t
+        return est_Chol_t#, est_Chol_s
 
     ## TODO: cleanup, compartmentalize
     def compare(
@@ -283,7 +291,8 @@ class ErrorComparer(object):
                 cvChol_t = Chol_t[tr_idx, :][:, tr_idx]
 
             if est_sigma:
-                est_Chol_t = self.est_Sigma(X_tr, y_tr, coord_tr, coord, est_sigma_model)
+                # est_Chol_t = self.est_Sigma(X_tr, y_tr, coord_tr, coord, est_sigma_model)
+                est_Chol_t = self.est_Sigma(X, y, coord, est_sigma_model)
                 # if Chol_s_orig is not None:
                 if self.Chol_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Chol_s != None")
@@ -291,6 +300,7 @@ class ErrorComparer(object):
                 if self.Cov_y_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Cov_st != None")
                 est_Chol_s = est_Chol_t
+                est_Cov_st = None
             else:
                 est_Chol_t = np.copy(Chol_t)
                 est_Chol_s = np.copy(Chol_s) if Chol_s is not None else None

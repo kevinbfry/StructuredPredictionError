@@ -19,14 +19,14 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
     def fit(self, X, y, sample_weight=None, chol_eps=None, idx_tr=None, do_param_boot=True):
         self.do_param_boot = do_param_boot
         self.X_tr_ = X
-        self.y_refit_ = y
+        # self.y_refit_ = y
         super().fit(X, y, sample_weight=sample_weight, chol_eps=chol_eps, idx_tr=idx_tr, do_param_boot=do_param_boot)
         # if self.bootstrap_type == "blur":
-        if do_param_boot:
-            if idx_tr is None:
-                self.w_refit_ = [y + eps for eps in self.eps_]
-            else:
-                self.w_refit_ = [y + eps[idx_tr] for eps in self.eps_]
+        # if do_param_boot:
+        #     if idx_tr is None:
+        #         self.w_refit_ = [y + eps for eps in self.eps_]
+        #     else:
+        #         self.w_refit_ = [y + eps[idx_tr] for eps in self.eps_]
 
         return self
 
@@ -38,27 +38,28 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
     def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):
         assert(isinstance(self.base_estimator, LinearSelector))
 
-        Ps = [est.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P) for est in self.estimators_]
+        Ps = [est.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P)[0] for est in self.estimators_]
         
         return Ps#np.mean(Ps,axis=0)
     
-    def predict(self, X, tr_idx=None, ts_idx=None, full_refit=False):
-        check_is_fitted(self)
-        if isinstance(self.base_estimator, LinearSelector):
-            Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
-            if full_refit:
-                preds = [P @ self.y_refit_ for P in Ps]
-            else: # must be self.do_param_boot == True
-                preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
+    # def predict(self, X, tr_idx=None, ts_idx=None, full_refit=False):
+    #     check_is_fitted(self)
+    #     if isinstance(self.base_estimator, LinearSelector):
+    #         Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
+    #         if full_refit:
+    #             preds = [P @ self.y_refit_ for P in Ps]
+    #         else: # must be self.do_param_boot == True
+    #             preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
             
-            pred = np.mean(preds, axis=0)
-            return pred
-        else:
-            if ts_idx is not None:
-                X_pred = X[ts_idx,:]
-            else:
-                X_pred = X
-            return super().predict(X_pred)
+    #         pred = np.mean(preds, axis=0)
+    #         return pred
+    #     else:
+    #         if ts_idx is not None:
+    #             X_pred = X[ts_idx,:]
+    #         else:
+    #             X_pred = X
+    #         return super().predict(X_pred)
+        
         # if self.do_param_boot or full_refit:
         #     assert(tr_idx is not None and ts_idx is not None)
         #     Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
@@ -206,36 +207,36 @@ class BlurredForest(RandomForestRegressor):
 
         return Gs
 
-    def predict(self, X, tr_idx=None, ts_idx=None, full_refit=False, Chol=None):
-        check_is_fitted(self)
-        if full_refit or Chol is not None:
-            assert(tr_idx is not None and ts_idx is not None)
-            Ps = self.get_linear_smoother(X, tr_idx, ts_idx, Chol=Chol)#self.X_tr_, X, Chol=Chol)
-            # ols_Ps = self.get_linear_smoother(self.X_tr_, X, Chol=None)
-            # print("asdfsdfds")
-            # assert(np.allclose(Ps, ols_Ps))
-            # if self.bootstrap_type == "blur":
-            if self.do_param_boot:
-                if full_refit:
-                    preds = [P @ self.y_refit_ for P in Ps]
-                else:
-                    preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
-            else:
-                if full_refit:
-                    preds = [P @ self.y_refit_ for P in Ps]
-                else:
-                    if Chol is None:
-                        return self.predict(X)
-                    else:
-                        raise NotImplementedError("Not yet implemented for RF with GLS and W refit")
-            pred = np.mean(preds, axis=0)
-            return pred
-        else:
-            if ts_idx is not None:
-                X_pred = X[ts_idx,:]
-            else:
-                X_pred = X
-            return super().predict(X_pred)
+    # def predict(self, X, tr_idx=None, ts_idx=None, full_refit=False, Chol=None):
+    #     check_is_fitted(self)
+    #     if full_refit or Chol is not None:
+    #         assert(tr_idx is not None and ts_idx is not None)
+    #         Ps = self.get_linear_smoother(X, tr_idx, ts_idx, Chol=Chol)#self.X_tr_, X, Chol=Chol)
+    #         # ols_Ps = self.get_linear_smoother(self.X_tr_, X, Chol=None)
+    #         # print("asdfsdfds")
+    #         # assert(np.allclose(Ps, ols_Ps))
+    #         # if self.bootstrap_type == "blur":
+    #         if self.do_param_boot:
+    #             if full_refit:
+    #                 preds = [P @ self.y_refit_ for P in Ps]
+    #             else:
+    #                 preds = [P @ w for (P, w) in zip(Ps, self.w_refit_)]
+    #         else:
+    #             if full_refit:
+    #                 preds = [P @ self.y_refit_ for P in Ps]
+    #             else:
+    #                 if Chol is None:
+    #                     return self.predict(X)
+    #                 else:
+    #                     raise NotImplementedError("Not yet implemented for RF with GLS and W refit")
+    #         pred = np.mean(preds, axis=0)
+    #         return pred
+    #     else:
+    #         if ts_idx is not None:
+    #             X_pred = X[ts_idx,:]
+    #         else:
+    #             X_pred = X
+    #         return super().predict(X_pred)
             # return super().predict(X)#[ts_idx,:])
 
 

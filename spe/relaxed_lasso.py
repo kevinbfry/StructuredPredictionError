@@ -90,8 +90,8 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         if not np.any(XE_tr):
             print("zeros")
             if ret_full_P:
-                return np.zeros((X_ts.shape[0], X.shape[0]))
-            return np.zeros((X_ts.shape[0], X_tr.shape[0]))
+                return [np.zeros((X_ts.shape[0], X.shape[0]))]
+            return [np.zeros((X_ts.shape[0], X_tr.shape[0]))]
         
         XE_ts = self.get_group_X(X_ts)
         # return XE_pred @ np.linalg.inv(XE.T @ XE) @ XE.T
@@ -99,8 +99,8 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             n = X.shape[0]
             full_XE_tr = np.zeros((n,XE_tr.shape[1]))
             full_XE_tr[tr_idx,:] = XE_tr
-            return XE_ts @ np.linalg.pinv(full_XE_tr)
-        return XE_ts @ np.linalg.pinv(XE_tr)
+            return [XE_ts @ np.linalg.pinv(full_XE_tr)]
+        return [XE_ts @ np.linalg.pinv(XE_tr)]
 
     def fit(self, X, lasso_y, lin_y=None, sample_weight=None, check_input=True):
         self.lassom = Pipeline([
@@ -147,7 +147,22 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
         self.linm.fit(XE, y, sample_weight=sample_weight)
 
-    def predict(self, X):
+    def predict(
+        self,
+        X,
+        tr_idx=None,
+        ts_idx=None,
+        y_refit=None,
+    ):
         check_is_fitted(self)
-        XE = self.get_group_X(X)
-        return self.linm.predict(XE)
+        if tr_idx is None and ts_idx is None and y_refit is None:
+            XE = self.get_group_X(X)
+            return self.linm.predict(XE)
+        return super().predict(X, tr_idx, ts_idx, y_refit)
+        # elif tr_idx is not None and ts_idx is not None and y_refit is not None:
+        #     Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
+        #     preds = [P @ y_refit for P in Ps]
+        #     pred = np.mean(preds, axis=0)
+        #     return pred
+        # else:
+        #     raise ValueError("Either all of 'tr_idx', 'ts_idx', 'y_refit' must be None or all must not be None")
