@@ -90,6 +90,8 @@ def create_clus_split(
     ny,
     tr_frac,
     ngrid=5,
+    ts_frac=None,
+    sort_grids=False,
 ):
     ngrid = int(np.amin([nx/2, ny/2, ngrid])) ## a grid square must have at least 4 points
 
@@ -112,12 +114,25 @@ def create_clus_split(
         grids.append([(x, y) for (x, y) in zip(gxv.ravel(), gyv.ravel())])
     grids = np.array(grids)
 
-    n_centers = np.minimum(nsq, int(tr_frac * nsq * 2))
+    n_tr_centers = np.minimum(nsq, int(tr_frac * nsq * 2))
+    if ts_frac is not None:
+        n_ts_centers = np.minimum(nsq, int(ts_frac * nsq * 2))
+    else:
+        ts_frac = 0
+        n_ts_centers = 0
+
+    n_centers = n_tr_centers + n_ts_centers
+
     grid_idx = np.random.choice(nsq, size=n_centers, replace=False)
-    sel_grids = grids[grid_idx]
+
+    if sort_grids:
+        grid_idx = np.sort(grid_idx)
+
+    sel_grids = grids[grid_idx[:n_tr_centers]]
+    sel_ts_grids = grids[grid_idx[n_tr_centers:]]
 
     tr_idx = []
-    sample_frac = n * tr_frac / (n_centers * incrx * incry)
+    sample_frac = n * (tr_frac) / (n_tr_centers * incrx * incry)
     for g in sel_grids:
         tr_idx.append(
             g[np.random.choice(len(g), size=int(len(g) * sample_frac), replace=False)]
@@ -129,5 +144,22 @@ def create_clus_split(
 
     tr_bool = np.zeros(n).astype(bool)
     tr_bool[tr_idx] = True
+
+    if ts_frac is not None:
+        ts_idx = []
+        sample_ts_frac = n * (ts_frac) / (n_ts_centers * incrx * incry)
+        for g in sel_ts_grids:
+            ts_idx.append(
+                g[np.random.choice(len(g), size=int(len(g) * sample_ts_frac), replace=False)]
+            )
+
+        ts_idx = np.vstack(ts_idx)
+
+        ts_idx = np.ravel_multi_index(ts_idx.T, (nx, ny))
+
+        ts_bool = np.zeros(n).astype(bool)
+        ts_bool[ts_idx] = True
+        
+        return tr_idx, ts_idx
 
     return tr_bool
