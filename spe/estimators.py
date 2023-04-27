@@ -1,4 +1,19 @@
+"""
+TODO:
+- Clean up CV methods
+- Move est_sigma functionality to spe/
+- notebooks:
+    - Linear: OLS, Spline, ind/cov
+    - Adpative linear: RL, Tree,
+    - Bagged: RF, ?, ind/cov
+    - Comparison(s) to BY
+    - Comparison(s) to CV
+    - Compare Oracle to Estimated
+- Implement BY estimator
+"""
+
 import numpy as np
+
 from itertools import product
 from sklearn.linear_model import LinearRegression
 # from sklearn.ensemble import RandomForestRegressor
@@ -399,7 +414,7 @@ def _get_tr_ts_covs_corr(
 
         return Sigma_t, Cov_N_ts, Cov_IMGY_ts, Cov_Np_ts, Gamma
 
-    return Sigma_IMG_ts_f, Cov_N_ts, Cov_IMGY_ts
+    return Sigma_IMG_ts_f, Cov_N_ts, Cov_IMGY_ts, Gamma
 
 def cp_smoother_train_test(
     model,
@@ -417,19 +432,20 @@ def cp_smoother_train_test(
     Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s)
 
     model.fit(X_tr, y_tr)
-    P = model.get_linear_smoother(X, tr_idx, ts_idx)
+    P = model.get_linear_smoother(X, tr_idx, ts_idx)[0]
 
     if Cov_st is None:
         Cov_tr_ts, Cov_s_ts, Cov_t_ts = _get_tr_ts_covs(Sigma_t, Sigma_s, tr_idx, ts_idx)
         correction = (
-            2 * np.diag(Cov_tr_ts @ P).mean()
+            2 * np.diag(P @ Cov_tr_ts).mean()
             + np.diag(Cov_s_ts).mean()
             - np.diag(Cov_t_ts).mean()
         )
     else:
-        tr_corr, Cov_N_ts, Cov_IMGY_ts = _get_tr_ts_covs_corr(Sigma_t, Sigma_s, Cov_st, ts_idx, alpha=None, full_refit=True)
+        tr_corr, Cov_N_ts, Cov_IMGY_ts, Gamma = _get_tr_ts_covs_corr(Sigma_t, Sigma_s, Cov_st, ts_idx, alpha=None, full_refit=True)
         correction = (
-            2 * np.diag(tr_corr[ts_idx,:] - P @ tr_corr[tr_idx,:]).mean()
+            # 2 * np.diag(tr_corr[ts_idx,:] - P @ tr_corr[tr_idx,:]).mean()
+            2 * np.diag(P @ tr_corr[tr_idx,:] - Gamma[ts_idx,:] @ tr_corr).mean()
             + np.diag(Cov_N_ts).mean()
             - np.diag(Cov_IMGY_ts).mean()
         )
