@@ -191,7 +191,6 @@ def better_test_est_split(
         model.fit(X_tr, y_tr, **kwargs)
 
     if full_refit is None or full_refit:
-        ## TODO: change to isinstance(LinearSelector)
         if isinstance(model, (Tree, RelaxedLasso)):
             P = model.get_linear_smoother(X, tr_idx, ts_idx)
             preds = P @ y_tr
@@ -206,30 +205,42 @@ def better_test_est_split(
             preds = model.predict(X_ts)
 
     else:
-        ## TODO: all the conditional stuff I have for full refit
         preds = model.predict(X_ts)
 
     return np.mean((y2_ts - preds)**2)
 
 
-## \| Y - g(Y) \|_2^2 + 1/(B-1)\sum_i (Y^b_i - \bar Y_B)g(Y^b_i)
-def efron_boot_est(
+## Spatial extension of Breiman-Ye estimator
+## \| Y - g(Y) \|_2^2 + 2/\alpha * 1/(B-1)\sum_i (Y^b_i - \bar Y_B)g(Y^b_i) - 2/\alpha * 1/(B-1)\sum_i (Y^(*b_i) - \bar Y^*_B)g(Y^b_i)
+## assumes Y^* and Y have same covariance matrix (so no noise correction terms)
+def by_spatial(
     model,
     X,
     y,
+    alpha,
+    Chol_f,
     nboot=100,
-    Chol_t=None,
-    alpha=None,
-    Chol_s=None,
     tr_idx=None,
 ):
+    # print("HERE", alpha)
+    # assert(0==1)
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
+    assert(Chol_f.shape[0] == Chol_f.shape[1] == 2*n)
+
     boot_samples = np.zeros((n, nboot))
+    boot_star_samples = np.zeros((n, nboot))
     boot_preds = np.zeros((n, nboot))
     for b in np.arange(nboot):
-        yb = y + np.sqrt(alpha)*Chol_t @ np.random.randn(n)
+        omega_full = np.sqrt(alpha)*Chol_f @ np.random.randn(2*n)
+        omega_1 = omega_full[:n]
+        omega_2 = omega_full[n:]
+        yb = y + omega_1
         boot_samples[:,b] = yb
+
+
+        ystarb = y + omega_2
+        boot_star_samples[:,b] = ystarb
 
         model.fit(X, yb)
         preds = model.predict(X)
@@ -238,10 +249,18 @@ def efron_boot_est(
     model.fit(X,y)
     obs_preds = model.predict(X)
 
-    boot_corr = 2*np.sum((boot_samples - boot_samples.mean(1)[:, None]).T @ boot_preds) / ((nboot - 1)*alpha)
+    # print(Chol_f[0,0])
+    # print(np.mean((boot_samples - boot_samples.mean(1)[:, None]) * boot_preds) / alpha)
+    # print(np.mean((boot_star_samples - boot_star_samples.mean(1)[:, None]) * boot_preds) / alpha)
 
-    sigmasq = alpha*Chol_t[0,0]**2
-    return np.mean((y - obs_preds)**2) + boot_corr/n #+ sigmasq
+    boot_corr = 2 / alpha * (
+        np.mean((boot_samples - boot_samples.mean(1)[:, None]) * boot_preds)
+        - np.mean((boot_star_samples - boot_star_samples.mean(1)[:, None]) * boot_preds)
+        # np.sum((boot_samples - boot_samples.mean(1)[:, None]) * boot_preds) / (nboot - 1.)
+        # - np.sum((boot_star_samples - boot_star_samples.mean(1)[:, None]) * boot_preds) / (nboot - 1.)
+    )
+
+    return np.mean((y - obs_preds)**2) + boot_corr#/n 
 
 
 def ts_test_est_split(
@@ -433,9 +452,12 @@ def cp_smoother_train_test(
 
     model.fit(X_tr, y_tr)
     P = model.get_linear_smoother(X, tr_idx, ts_idx)[0]
-
+    # assert(np.allclose(P, X @ np.linalg.pinv(X)))
+    # assert(n_ts == n)
     if Cov_st is None:
+        # print("here")
         Cov_tr_ts, Cov_s_ts, Cov_t_ts = _get_tr_ts_covs(Sigma_t, Sigma_s, tr_idx, ts_idx)
+        # assert(np.allclose(Cov_s_ts, Cov_t_ts))
         correction = (
             2 * np.diag(P @ Cov_tr_ts).mean()
             + np.diag(Cov_s_ts).mean()

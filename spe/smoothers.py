@@ -21,8 +21,8 @@ class LinearRegression(LinearSelector, LinReg):
             n = X.shape[0]
             full_X_tr = np.zeros((n,X_tr.shape[1]))
             full_X_tr[tr_idx,:] = X_tr
-            return X_ts @ np.linalg.pinv(full_X_tr)
-        return X_ts @ np.linalg.pinv(X_tr)
+            return [X_ts @ np.linalg.pinv(full_X_tr)]
+        return [X_ts @ np.linalg.pinv(X_tr)]
 
 
 class BSplineRegressor(LinearSelector, BaseEstimator):
@@ -61,8 +61,8 @@ class BSplineRegressor(LinearSelector, BaseEstimator):
             n = X.shape[0]
             full_X_tr = np.zeros((n,X_tr.shape[1]))
             full_X_tr[tr_idx,:] = X_tr
-            return X_ts @ np.linalg.pinv(full_X_tr)
-        return X_ts @ np.linalg.pinv(X_tr)
+            return [X_ts @ np.linalg.pinv(full_X_tr)]
+        return [X_ts @ np.linalg.pinv(X_tr)]
     
     def fit(self, X, y):
         self.spline_transformer = SplineTransformer(

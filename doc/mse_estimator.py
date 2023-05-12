@@ -21,6 +21,7 @@ from spe.relaxed_lasso import RelaxedLasso#, BaggedRelaxedLasso
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
+    by_spatial,
     timeseriescv,
     cp_smoother_train_test,
     cp_adaptive_smoother_train_test,
@@ -69,7 +70,7 @@ class ErrorComparer(object):
     def gen_mu_sigma(self, X, beta, snr, const_mu=False, friedman_mu=False, sigma=None):
         if friedman_mu:
             assert(X.shape[1] == 5)
-            # (10 sin(πx_1x_2)+ 20(x_3 −0.5)2 + 10x_4 + 5x_5)/6
+            # (10 sin(πx_1x_2)+ 20(x_3 −0.5)^2 + 10x_4 + 5x_5)/6
             mu = (
                 10 * np.sin(X[:,0]*X[:,1]*np.pi) +
                 20 * (X[:,2] - 0.5)**2 +
@@ -108,17 +109,28 @@ class ErrorComparer(object):
 
     def gen_ys(self, mu, Chol_t, Chol_s, sigma=1.0, Cov_st=None, delta=1.): ## TODO: why is delta here?
         n = len(mu)
+
+        Sigma_t = Chol_t @ Chol_t.T
+        Sigma_s = Chol_s @ Chol_s.T
+        
         if Cov_st is None:
             eps = Chol_t @ np.random.randn(n)
             eps2 = Chol_s @ np.random.randn(n)
+            full_Cov = np.block([
+                [Sigma_t, np.zeros_like(Sigma_t)],
+                [np.zeros_like(Sigma_t), Sigma_s]
+            ])
+            self.Chol_f = np.linalg.cholesky(full_Cov)
         else:
-            Sigma_t = Chol_t @ Chol_t.T
-            Sigma_s = Chol_s @ Chol_s.T
-            full_Cov = np.vstack((
-                np.hstack((Sigma_t, Cov_st)),
-                np.hstack((Cov_st, Sigma_s))
-            ))
-            Chol_f = np.linalg.cholesky(full_Cov)
+            # full_Cov = np.vstack((
+            #     np.hstack((Sigma_t, Cov_st)),
+            #     np.hstack((Cov_st, Sigma_s))
+            # ))
+            full_Cov = np.block([
+                [Sigma_t, Cov_st],
+                [Cov_st, Sigma_s]
+            ])
+            self.Chol_f = Chol_f = np.linalg.cholesky(full_Cov)
 
             full_eps = Chol_f @ np.random.randn(2*n)
             eps = full_eps[:n]
@@ -155,7 +167,7 @@ class ErrorComparer(object):
         resids =  y - est_sigma_model.predict(X)
 
         # V = skg.Variogram(locs_tr, resids, model='matern')
-        V = skg.Variogram(locs, resids, model='matern')
+        V = skg.Variogram(locs, resids, model='matern', maxlag='median')
         
         fitted_vm = V.fitted_model
         full_distance = distance_matrix(locs, locs)
@@ -165,7 +177,7 @@ class ErrorComparer(object):
         est_Sigma_full = K0*np.ones_like(semivar) - semivar
         est_Chol_t = np.linalg.cholesky(est_Sigma_full)#[tr_idx,:][:,tr_idx])
         # est_Chol_s = np.linalg.cholesky(est_Sigma_full[ts_idx,:][:,ts_idx])
-
+        self.Chol_t = est_Chol_t
         return est_Chol_t#, est_Chol_s
 
     ## TODO: cleanup, compartmentalize
@@ -197,6 +209,7 @@ class ErrorComparer(object):
         const_mu=False,
         friedman_mu=False,
         noise_sigma=None,
+        risk=False,
         **kwargs,
     ):
 
@@ -258,7 +271,12 @@ class ErrorComparer(object):
                 cvChol_t = Chol_t[tr_idx, :][:, tr_idx]
 
             if est_sigma:
-                est_Chol_t = self.est_Sigma(X, y, coord, est_sigma_model)
+                if est_sigma == 'over':
+                    X_over = np.random.randn(n,p)
+                    X_est = np.hstack([X, X_over])
+                else:
+                    X_est = X
+                est_Chol_t = self.est_Sigma(X_est, y, coord, est_sigma_model)
                 if self.Chol_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Chol_s != None")
                 if self.Cov_y_ystar is not None:
@@ -278,6 +296,13 @@ class ErrorComparer(object):
                             "tr_idx": tr_idx, 
                             "y": y, 
                             "y2": y2
+                        }
+                    }
+                elif ests[j]  == by_spatial:
+                    est_kwargs[j] = {**est_kwargs[j], **{
+                            "X": X, 
+                            "Chol_f": self.Chol_f, 
+                            "y": y, 
                         }
                     }
                 else:
@@ -319,5 +344,7 @@ class ErrorComparer(object):
 
             for err, est, est_kwarg in zip(errs, ests, est_kwargs):
                 err[i] = est(**est_kwarg)
+                if risk:
+                    err[i] -= sigma**2
 
         return errs

@@ -145,7 +145,7 @@ def create_clus_split(
     tr_bool = np.zeros(n).astype(bool)
     tr_bool[tr_idx] = True
 
-    if ts_frac is not None:
+    if ts_frac > 0:
         ts_idx = []
         sample_ts_frac = n * (ts_frac) / (n_ts_centers * incrx * incry)
         for g in sel_ts_grids:
