@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def gen_model_barplots(model_errs, model_names, est_names, title, has_elev_err=False):
+def gen_model_barplots(model_errs, model_names, est_names, title, has_elev_err=False, err_bars=False):
     fig = make_subplots(
         rows=1, cols=len(model_names),
         subplot_titles=model_names)
@@ -22,24 +22,34 @@ def gen_model_barplots(model_errs, model_names, est_names, title, has_elev_err=F
 
         df = pd.DataFrame({est_names[i]: errs[i+offset] for i in np.arange(len(est_names))})
 
-        fig.add_trace(go.Bar(
-            x = df.columns,
-            y=(df).mean()/test_risk,
-            marker_color=px.colors.qualitative.Plotly,
-            text=np.around((df).mean()/test_risk,3),
-            textposition='outside',
-            error_y=dict(
-                type='data',
-                color='black',
-                array=(df).std() / test_risk,
-            )
-        ), row=1, col=i+1)
+        if err_bars:
+            fig.add_trace(go.Bar(
+                x = df.columns,
+                y=(df).mean()/test_risk,
+                marker_color=px.colors.qualitative.Plotly,
+                text=np.around((df).mean()/test_risk,3),
+                textposition='outside',
+                error_y=dict(
+                    type='data',
+                    color='black',
+                    array=(df).std() / test_risk,
+                )
+            ), row=1, col=i+1)
+        else:
+            fig.add_trace(go.Bar(
+                x = df.columns,
+                y=(df).mean()/test_risk,
+                marker_color=px.colors.qualitative.Plotly,
+                text=np.around((df).mean()/test_risk,3),
+                textposition='outside',
+            ), row=1, col=i+1)
+
         fig.add_hline(y=1., line_color='red', row=1, col=i+1)
         if has_elev_err:
             fig.add_hline(y=elev_test_risk / test_risk, line_color='grey', line_dash='dash', row=1, col=i+1)
         
     fig.update_yaxes(title_text="Relative MSE", row=1, col=1)
-    fig.update_layout(title_text=title)
+    fig.update_layout(title_text=title, showlegend=False)
     return fig
 
 

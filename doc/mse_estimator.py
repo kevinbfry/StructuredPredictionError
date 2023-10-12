@@ -32,6 +32,7 @@ from spe.estimators import (
     ts_test_est_split,
     bag_kfoldcv,
     bag_kmeanscv,
+    simple_train_test_split,
 )
 
 from spe.tree import Tree
@@ -177,8 +178,14 @@ class ErrorComparer(object):
         est_Sigma_full = K0*np.ones_like(semivar) - semivar
         est_Chol_t = np.linalg.cholesky(est_Sigma_full)#[tr_idx,:][:,tr_idx])
         # est_Chol_s = np.linalg.cholesky(est_Sigma_full[ts_idx,:][:,ts_idx])
-        self.Chol_t = est_Chol_t
+        # self.Chol_t = est_Chol_t
         return est_Chol_t#, est_Chol_s
+        '''
+        for nugget:
+        Nugget is measurement error/microscale variation.
+        structured part is like above but use partial sill (K0 - nugget)
+        rather than sill (K0).
+        '''
 
     ## TODO: cleanup, compartmentalize
     def compare(
@@ -281,7 +288,7 @@ class ErrorComparer(object):
                     raise ValueError("est_sigma=True not implemented for Chol_s != None")
                 if self.Cov_y_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Cov_st != None")
-                est_Chol_s = est_Chol_t
+                est_Chol_s = None#est_Chol_t
                 est_Cov_st = None
             else:
                 est_Chol_t = np.copy(Chol_t)
@@ -301,8 +308,15 @@ class ErrorComparer(object):
                 elif ests[j]  == by_spatial:
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
-                            "Chol_f": self.Chol_f, 
+                            "Chol_f": self.Chol_f, ## TODO: this is still using truth
                             "y": y, 
+                        }
+                    }
+                elif ests[j]  == simple_train_test_split:
+                    est_kwargs[j] = {**est_kwargs[j], **{
+                            "X": X, 
+                            "y": y, 
+                            "tr_idx": tr_idx,
                         }
                     }
                 else:

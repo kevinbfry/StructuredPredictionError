@@ -207,7 +207,10 @@ def better_test_est_split(
     else:
         preds = model.predict(X_ts)
 
+    # assert(np.mean((y2_ts - preds)**2) >= 0)
     return np.mean((y2_ts - preds)**2)
+    # return np.sum((y2_ts - preds)**2)
+
 
 
 ## Spatial extension of Breiman-Ye estimator
@@ -227,6 +230,8 @@ def by_spatial(
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
     assert(Chol_f.shape[0] == Chol_f.shape[1] == 2*n)
+    Sigma_f = Chol_f @ Chol_f.T
+    assert(np.allclose(Sigma_f[:n,:][:,:n], Sigma_f[n:,:][:,n:]))
 
     boot_samples = np.zeros((n, nboot))
     boot_star_samples = np.zeros((n, nboot))
@@ -247,20 +252,25 @@ def by_spatial(
         boot_preds[:,b] = preds
 
     model.fit(X,y)
+    # print(np.sum(model.coef_ != 0))
     obs_preds = model.predict(X)
 
     # print(Chol_f[0,0])
     # print(np.mean((boot_samples - boot_samples.mean(1)[:, None]) * boot_preds) / alpha)
     # print(np.mean((boot_star_samples - boot_star_samples.mean(1)[:, None]) * boot_preds) / alpha)
-
+    # boot_cov = np.sum((boot_samples - boot_samples.mean(axis=1)[:, None]) * boot_preds) / (nboot - 1.)
+    boot_cov = np.mean((boot_samples - boot_samples.mean(axis=1)[:, None]) * boot_preds)
+    boot_star_cov = np.mean((boot_star_samples - boot_star_samples.mean(axis=1)[:, None]) * boot_preds)
+    # assert(np.fabs(boot_star_cov) < 1e-4)
     boot_corr = 2 / alpha * (
-        np.mean((boot_samples - boot_samples.mean(1)[:, None]) * boot_preds)
-        - np.mean((boot_star_samples - boot_star_samples.mean(1)[:, None]) * boot_preds)
+        boot_cov
+        - boot_star_cov
         # np.sum((boot_samples - boot_samples.mean(1)[:, None]) * boot_preds) / (nboot - 1.)
         # - np.sum((boot_star_samples - boot_star_samples.mean(1)[:, None]) * boot_preds) / (nboot - 1.)
     )
 
     return np.mean((y - obs_preds)**2) + boot_corr#/n 
+    # return np.sum((y - obs_preds)**2) + boot_corr#/n 
 
 
 def ts_test_est_split(
@@ -506,6 +516,10 @@ def _get_noise_correction(Cov_s_ts, Cov_t_ts, Cov_wp_ts, use_trace_corr):
         return np.diag(Cov_s_ts).mean() - np.diag(Cov_wp_ts).mean()
     else:
         return np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
+    # if use_trace_corr:
+    #     return np.diag(Cov_s_ts).sum() - np.diag(Cov_wp_ts).sum()
+    # else:
+    #     return np.diag(Cov_s_ts).sum() - np.diag(Cov_t_ts).sum()
     
 def _compute_cp_estimator(
     model,
@@ -651,6 +665,7 @@ def cp_adaptive_smoother_train_test(
             yhats[:,i] = yhat
 
     cp_est = boot_ests.mean() + noise_correction
+    # cp_est = boot_ests.sum() + noise_correction
 
     if ret_yhats:
         return cp_est, yhats
@@ -902,6 +917,18 @@ def bag_kmeanscv(
         err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 
     return np.mean(err)
+
+
+def simple_train_test_split(model, X, y, tr_idx, **kwargs):
+
+    model = clone(model)
+
+    X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts = split_data(X, y, tr_idx)
+    
+    model.fit(X_tr, y_tr, **kwargs)
+    preds = model.predict(X_ts)
+
+    return np.mean((y_ts - preds)**2)
 
 
 def kfoldcv(model, X, y, k=10, **kwargs):
