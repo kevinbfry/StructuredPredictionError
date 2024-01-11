@@ -1,2 +1,0 @@
-,niter,n,p,s,k,snr,n_estimators,max_depth,delta,nk,nls,nn,xk,xls,xn
-15,100,900,30,30,10,0.4,50,6,0.5,matern,5.0,2.5,matern,5.0,2.5

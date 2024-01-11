@@ -5,7 +5,7 @@ import numpy as np
 
 # from scipy.linalg import block_diag, sqrtm
 # from scipy.spatial.distance import squareform
-from scipy.spatial import distance_matrix
+# from scipy.spatial import distance_matrix
 
 from sklearn.linear_model import LinearRegression, Lasso
 # from sklearn.model_selection import cross_validate, GroupKFold, KFold
@@ -13,11 +13,12 @@ from sklearn.linear_model import LinearRegression, Lasso
 # from sklearn.base import clone
 # from sklearn.ensemble import RandomForestRegressor
 
-import skgstat as skg
+# import skgstat as skg
 
 from tqdm import tqdm
 
 from spe.relaxed_lasso import RelaxedLasso#, BaggedRelaxedLasso
+from spe.cov_estimation import est_Sigma
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
@@ -145,47 +146,114 @@ class ErrorComparer(object):
     def get_train(self, X, y, coord, tr_idx):
         return X[tr_idx, :], y[tr_idx], coord[tr_idx, :] if len(coord.shape) == 2 else coord[tr_idx]
 
-    def est_Sigma(
-        self,
-        # X_tr, 
-        # y_tr, 
-        # locs_tr,
-        X,
-        y,
-        locs, ## TODO: only needed now to work with how _forest.py eps variable is processed. should fix and then remove this too
-        # tr_idx,
-        # ts_idx,
-        est_sigma_model, 
-    ):
-        n = locs.shape[0]
+    # def est_Sigma(
+    #     self,
+    #     # locs_tr,
+    #     X,
+    #     y,
+    #     locs, ## TODO: only needed now to work with how _forest.py eps variable is processed. should fix and then remove this too
+    #     # tr_idx,
+    #     # ts_idx,
+    #     est_sigma,
+    #     est_sigma_model, 
+    # ):
+    #     n = locs.shape[0]
 
-        if est_sigma_model is None:
-            raise ValueError("Must provide est_simga_model")
+    #     if est_sigma_model is None:
+    #         raise ValueError("Must provide est_simga_model")
 
-        # est_sigma_model.fit(X_tr, y_tr)
-        # resids =  y_tr - est_sigma_model.predict(X_tr)
-        est_sigma_model.fit(X, y)
-        resids =  y - est_sigma_model.predict(X)
+    #     # est_sigma_model.fit(X_tr, y_tr)
+    #     # resids =  y_tr - est_sigma_model.predict(X_tr)
+    #     est_sigma_model.fit(X, y)
+    #     resids =  y - est_sigma_model.predict(X)
 
-        # V = skg.Variogram(locs_tr, resids, model='matern')
-        V = skg.Variogram(locs, resids, model='matern', maxlag='median')
+    #     # V = skg.Variogram(locs_tr, resids, model='matern')
+    #     # V = skg.Variogram(locs, resids, model='matern', maxlag='median')
         
-        fitted_vm = V.fitted_model
-        full_distance = distance_matrix(locs, locs)
-        semivar = fitted_vm(full_distance.flatten()).reshape((n,n))
+    #     # fitted_vm = V.fitted_model
+    #     # full_distance = distance_matrix(locs, locs)
+    #     # semivar = fitted_vm(full_distance.flatten()).reshape((n,n))
 
-        K0 = V.parameters[1] ## use sill as estimate of variance
-        est_Sigma_full = K0*np.ones_like(semivar) - semivar
-        est_Chol_t = np.linalg.cholesky(est_Sigma_full)#[tr_idx,:][:,tr_idx])
-        # est_Chol_s = np.linalg.cholesky(est_Sigma_full[ts_idx,:][:,ts_idx])
-        # self.Chol_t = est_Chol_t
-        return est_Chol_t#, est_Chol_s
-        '''
-        for nugget:
-        Nugget is measurement error/microscale variation.
-        structured part is like above but use partial sill (K0 - nugget)
-        rather than sill (K0).
-        '''
+    #     # K0 = V.parameters[1] ## use sill as estimate of variance
+    #     # est_Sigma_full = K0*np.ones_like(semivar) - semivar
+    #     # est_Chol_t = np.linalg.cholesky(est_Sigma_full)#[tr_idx,:][:,tr_idx])
+    #     # # est_Chol_s = np.linalg.cholesky(est_Sigma_full[ts_idx,:][:,ts_idx])
+    #     # # self.Chol_t = est_Chol_t
+    #     # return est_Chol_t#, est_Chol_s
+    
+    #     V = skg.Variogram(locs, resids, model='matern', maxlag='median', use_nugget=True)
+        
+    #     fitted_vm = V.fitted_model
+    #     full_distance = distance_matrix(locs, locs)
+    #     semivar = fitted_vm(full_distance.flatten()).reshape((n,n))
+
+    #     K0 = V.parameters[1] ## use sill as estimate of variance
+    #     N0 = V.parameters[-1] ## use sill as estimate of variance
+    #     sill = K0 + N0
+    #     est_Sigma_S = sill*np.ones_like(semivar) - semivar
+    #     est_Sigma_M = N0 * np.eye(semivar.shape[0])
+    #     est_Sigma_F = est_Sigma_S + est_Sigma_M
+
+    #     def get_cholesky(Sigma):
+    #         try:
+    #             chol = np.linalg.cholesky(Sigma)#[tr_idx,:][:,tr_idx])
+    #         # except np.linalg.LinAlgError as e:
+    #         except LinAlgError as err:#Exception as e:
+    #             if str(err) == "Matrix is not positive definite":
+    #                 # eigv = np.linalg.eigh(Sigma)[0]
+    #                 # if eigv[1] > 0:
+    #                 #     eigv = -eigv[0]
+    #                 #     chol = np.linalg.cholesky(Sigma + eigv*np.eye(Sigma.shape[0]))
+    #                 # else:
+    #                 #     raise ValueError("At least two eigenvalues of 'est_Sigma_F' negative")
+
+    #                 ## instead of doing eigendecomp, just add some proportion of trace
+    #                 c = 1e-6/n
+    #                 trc = np.sum(np.diag(Sigma))
+    #                 chol = np.linalg.cholesky(Sigma + c*trc*np.eye(n))
+    #             else:
+    #                 raise
+
+    #         return chol
+        
+    #     est_Chol_F = get_cholesky(est_Sigma_F)
+    #     est_Chol_S = get_cholesky(est_Sigma_S)
+
+    #     # try:
+    #     #     est_Chol_F = np.linalg.cholesky(est_Sigma_F)#[tr_idx,:][:,tr_idx])
+    #     # except np.linalg.LinAlgError as e:
+    #     #     if str(e) == "Matrix is not positive definite":
+    #     #         eigv = np.linalg.eigh(est_Sigma_F)[0]
+    #     #         if eigv[1] > 0:
+    #     #             eigv = -eigv[0]
+    #     #             est_Chol_F = np.linalg.cholesky(est_Sigma_F + eigv*np.eye(est_Sigma_F.shape[0]))
+    #     #         else:
+    #     #             raise ValueError("At least two eigenvalues of 'est_Sigma_F' negative")
+    #     #     raise
+        
+    #     # # est_Chol_S = np.linalg.cholesky(K0*np.ones_like(semivar) - semivar)
+    #     # try:
+    #     #     est_Chol_S = np.linalg.cholesky(est_Sigma_S)#[tr_idx,:][:,tr_idx])
+    #     # except np.linalg.LinAlgError as e:
+    #     #     if str(e) == "Matrix is not positive definite":
+    #     #         eigv = np.linalg.eigh(est_Sigma_S)[0]
+    #     #         if eigv[1] > 0:
+    #     #             eigv = -eigv[0]
+    #     #             est_Chol_S = np.linalg.cholesky(est_Sigma_S + eigv*np.eye(est_Sigma_S.shape[0]))
+    #     #         else:
+    #     #             raise ValueError("At least two eigenvalues of 'est_Sigma_F' negative")
+    #     #     raise
+
+    #     if est_sigma == 'corr_resp':
+    #         return est_Chol_F, est_Chol_S
+        
+    #     return est_Chol_F
+    #     '''
+    #     for nugget:
+    #     Nugget is measurement error/microscale variation.
+    #     structured part is like above but use partial sill (K0 - nugget)
+    #     rather than sill (K0).
+    #     '''
 
     ## TODO: cleanup, compartmentalize
     def compare(
@@ -278,18 +346,26 @@ class ErrorComparer(object):
                 cvChol_t = Chol_t[tr_idx, :][:, tr_idx]
 
             if est_sigma:
+                if self.Chol_ystar is not None:
+                    raise ValueError("est_sigma=True not implemented for Chol_s != None")
+                # if self.Cov_y_ystar is not None:
+                #     raise ValueError("est_sigma=True not implemented for Cov_st != None")
+
                 if est_sigma == 'over':
                     X_over = np.random.randn(n,p)
                     X_est = np.hstack([X, X_over])
                 else:
                     X_est = X
-                est_Chol_t = self.est_Sigma(X_est, y, coord, est_sigma_model)
-                if self.Chol_ystar is not None:
-                    raise ValueError("est_sigma=True not implemented for Chol_s != None")
-                if self.Cov_y_ystar is not None:
-                    raise ValueError("est_sigma=True not implemented for Cov_st != None")
+                # est_covs = self.est_Sigma(X_est, y, coord, est_sigma, est_sigma_model)
+                est_covs = est_Sigma(X_est, y, coord, est_sigma, est_sigma_model)
+                if est_sigma == 'corr_resp':
+                    est_Chol_t = est_covs[0]
+                    est_Cov_st = est_covs[1]
+                else:
+                    est_Chol_t = est_covs
+                    est_Cov_st = None
                 est_Chol_s = None#est_Chol_t
-                est_Cov_st = None
+                # est_Cov_st = None
             else:
                 est_Chol_t = np.copy(Chol_t)
                 est_Chol_s = np.copy(Chol_s) if Chol_s is not None else None
@@ -323,13 +399,13 @@ class ErrorComparer(object):
                     est_kwargs[j] = {
                         **est_kwargs[j],
                         **{"X": X, 
-                            "Chol_t": est_Chol_t, 
-                            "Chol_s": est_Chol_s, 
+                            "Chol_t": est_Chol_t,
+                            "Chol_s": est_Chol_s,
                             "tr_idx": tr_idx, 
                             "y": y
                         },
                     }
-                    if not (delta is None):
+                    if not (delta is None): ## TODO: think this can be 'if delta is not None'
                         if ests[j] in self.CV_METHODS:
                             est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
 
