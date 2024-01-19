@@ -4,23 +4,40 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def gen_model_barplots(model_errs, model_names, est_names, title, has_elev_err=False, err_bars=False):
+def gen_model_barplots(
+        model_errs, 
+        model_names, 
+        est_names, 
+        title, 
+        yaxis_title="Relative MSE",
+        has_test_risk=True, 
+        has_elev_err=False, 
+        err_bars=False
+    ):
+
     fig = make_subplots(
         rows=1, cols=len(model_names),
         subplot_titles=model_names)
+    
+    if has_elev_err and not has_test_risk:
+        raise ValueError("Can't have has_elev_err=True and has_test_risk=False")
 
     for i, errs in enumerate(model_errs):
         risks = [err.mean() for err in errs]
-        test_risk = risks[0]
-        if has_elev_err:
-            elev_test_risk = risks[1]
-            # est_risks = risks[2:]
-            offset = 2
+        if has_test_risk:
+            test_risk = risks[0]
+            if has_elev_err:
+                elev_test_risk = risks[1]
+                offset = 2
+            else:
+                offset = 1
         else:
-            # est_risks = risks[1:]
-            offset = 1
+            test_risk = 1.
+            offset = 0
 
-        df = pd.DataFrame({est_names[i]: errs[i+offset] for i in np.arange(len(est_names))})
+        df = pd.DataFrame({
+            est_names[i]: errs[i+offset] for i in np.arange(len(est_names))
+        })
 
         if err_bars:
             fig.add_trace(go.Bar(
@@ -44,11 +61,24 @@ def gen_model_barplots(model_errs, model_names, est_names, title, has_elev_err=F
                 textposition='outside',
             ), row=1, col=i+1)
 
-        fig.add_hline(y=1., line_color='red', row=1, col=i+1)
+        fig.update_xaxes(title_text="Method", row=1, col=i+1)
+        if has_test_risk:
+            fig.add_hline(
+                y=1., 
+                line_color='red', 
+                row=1, 
+                col=i+1
+            )
         if has_elev_err:
-            fig.add_hline(y=elev_test_risk / test_risk, line_color='grey', line_dash='dash', row=1, col=i+1)
+            fig.add_hline(
+                y=elev_test_risk / test_risk, 
+                line_color='grey', 
+                line_dash='dash', 
+                row=1, 
+                col=i+1
+            )
         
-    fig.update_yaxes(title_text="Relative MSE", row=1, col=1)
+    fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
     fig.update_layout(title_text=title, showlegend=False)
     return fig
 

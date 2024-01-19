@@ -64,7 +64,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         X_ts = X[ts_idx,:]
         XE_tr = self.get_group_X(X_tr)
         if not np.any(XE_tr):
-            print("zeros")
+            # print("zeros")
             if ret_full_P:
                 return [np.zeros((X_ts.shape[0], X.shape[0]))]
             return [np.zeros((X_ts.shape[0], X_tr.shape[0]))]
@@ -79,7 +79,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
 
     def fit(self, X, lasso_y, lin_y=None, sample_weight=None, check_input=True):
         self.lassom = Pipeline([
-            ('scaler', StandardScaler()),
+            # ('scaler', StandardScaler()),
             ('model', Lasso(
                 alpha=self.lambd,
                 fit_intercept=self.fit_intercept,

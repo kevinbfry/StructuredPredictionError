@@ -53,7 +53,16 @@ class ErrorComparer(object):
 
         return X, beta
 
-    def gen_mu_sigma(self, X, beta, snr, const_mu=False, friedman_mu=False, sigma=None):
+    def gen_mu_sigma(
+        self, 
+        X, 
+        beta, 
+        snr, 
+        const_mu=False, 
+        friedman_mu=False, 
+        piecewise_const_mu=False,
+        sigma=None
+    ):
         if friedman_mu:
             assert(X.shape[1] == 5)
             # (10 sin(πx_1x_2)+ 20(x_3 −0.5)^2 + 10x_4 + 5x_5)/6
@@ -62,6 +71,19 @@ class ErrorComparer(object):
                 20 * (X[:,2] - 0.5)**2 +
                 10 * X[:,3] + 5 * X[:,4]
             ) / 6.
+        elif piecewise_const_mu:
+            assert(X.shape[1] == 5)
+            def get_piecewise_const_mu(X):
+                rng = np.random.default_rng(1)
+                return (
+                    rng.normal() * (X[:,0] > rng.normal())
+                    + rng.normal() * (X[:,1] > rng.normal())
+                    + rng.normal() * (X[:,2] > rng.normal())
+                    + rng.normal() * (X[:,3] > rng.normal())
+                    + rng.normal() * (X[:,4] > rng.normal())
+                )
+
+            mu = get_piecewise_const_mu(X)
         elif const_mu:
             mu = np.ones(X.shape[0])*beta.sum()*5
         else:
@@ -154,6 +176,7 @@ class ErrorComparer(object):
         est_sigma_model=None,
         const_mu=False,
         friedman_mu=False,
+        piecewise_const_mu=False,
         noise_sigma=None,
         risk=False,
         **kwargs,
@@ -183,7 +206,7 @@ class ErrorComparer(object):
         gen_beta, n, p = self.preprocess_X_beta(X, beta, n, p, friedman_mu, const_mu)
 
         if not gen_beta:
-            mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
+            mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, piecewise_const_mu=piecewise_const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
             Chol_t, Chol_s, Cov_st = self.preprocess_chol(
                 self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
             )
@@ -191,7 +214,7 @@ class ErrorComparer(object):
         for i in tqdm(range(niter)):
             if gen_beta:
                 X, beta = self.gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
-                mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
+                mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, piecewise_const_mu=piecewise_const_mu, sigma=noise_sigma)
                 Chol_t, Chol_s, Cov_st = self.preprocess_chol(
                     self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
                 )

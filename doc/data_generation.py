@@ -10,13 +10,8 @@ def gen_matern_X(
     nu=1.5,
     nspikes=None,
 ):
-    # locs = np.stack([c_x, c_y]).T
-
-    # n = len(locs)
     n = len(c_x)
-
     matern_kernel = Matern(length_scale=length_scale, nu=nu)
-    # cov = matern_kernel(locs)
     cov = gen_cov_mat(c_x, c_y, matern_kernel)
 
     return _gen_X(n, p, cov, nspikes)
@@ -29,13 +24,9 @@ def gen_rbf_X(
     length_scale=5,
     nspikes=None,
 ):
-    # locs = np.stack([c_x, c_y]).T
-
-    # n = len(locs)
     n = len(c_x)
 
     rbf_kernel = RBF(length_scale)
-    # cov = rbf_kernel(locs)
     cov = gen_cov_mat(c_x, c_y, rbf_kernel)
 
     return _gen_X(n, p, cov, nspikes)
@@ -56,7 +47,6 @@ def gen_cov_mat(
 def _gen_X(n, p, cov, nspikes=None):
     if nspikes is None:
         nspikes = int(2 * np.log2(n))
-        # nspikes = int(np.log2(n))
 
     X = np.zeros((n, p))
     for i in np.arange(p):
@@ -68,18 +58,6 @@ def _gen_X(n, p, cov, nspikes=None):
         W = cov[:, spike_idx]
         W = W / W.sum(axis=1)[:, None]
         X[:, i] = W @ spikes
-
-        # X[spike_idx,i] = spikes
-
-        # spike_bool = np.zeros(n, dtype=bool)
-        # spike_bool[spike_idx] = True
-        # nonspike_bool = np.ones(n) - spike_bool
-        # nonspike_bool = nonspike_bool.astype(bool)
-
-        # S12 = cov[nonspike_bool,:][:,spike_bool]
-        # S22 = cov[spike_bool,:][:,spike_bool]
-        # W = S12 @ np.linalg.inv(S22)
-        # X[nonspike_bool,i] = W @ spikes
 
     return X
 
@@ -101,7 +79,6 @@ def create_clus_split(
 
     cxv, cyv = np.meshgrid(np.arange(ngrid), np.arange(ngrid))
     cpts = np.stack([cxv.ravel(), cyv.ravel()]).T
-    # selected_grids = cpts[ctr_idx,:]
 
     incrx = int(nx / ngrid)
     incry = int(ny / ngrid)
