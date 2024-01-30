@@ -12,7 +12,8 @@ def gen_model_barplots(
         yaxis_title="Relative MSE",
         has_test_risk=True, 
         has_elev_err=False, 
-        err_bars=False
+        err_bars=False,
+        color_discrete_sequence=px.colors.qualitative.Plotly,
     ):
 
     fig = make_subplots(
@@ -43,7 +44,7 @@ def gen_model_barplots(
             fig.add_trace(go.Bar(
                 x = df.columns,
                 y=(df).mean()/test_risk,
-                marker_color=px.colors.qualitative.Plotly,
+                marker_color=color_discrete_sequence,
                 text=np.around((df).mean()/test_risk,3),
                 textposition='outside',
                 error_y=dict(
@@ -56,7 +57,7 @@ def gen_model_barplots(
             fig.add_trace(go.Bar(
                 x = df.columns,
                 y=(df).mean()/test_risk,
-                marker_color=px.colors.qualitative.Plotly,
+                marker_color=color_discrete_sequence,
                 text=np.around((df).mean()/test_risk,3),
                 textposition='outside',
             ), row=1, col=i+1)

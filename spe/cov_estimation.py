@@ -33,16 +33,20 @@ def est_Sigma(
     est_Sigma_F = est_Sigma_S + est_Sigma_M
 
     def get_cholesky(Sigma):
-        try:
-            chol = np.linalg.cholesky(Sigma)#[tr_idx,:][:,tr_idx])
-        except LinAlgError as err:
-            if str(err) == "Matrix is not positive definite":
-                ## instead of doing eigendecomp, just add some proportion of trace
-                c = 1e-6/n
-                trc = np.sum(np.diag(Sigma))
-                chol = np.linalg.cholesky(Sigma + c*trc*np.eye(n))
+        c = 1e-7/n
+        while True:
+            try:
+                c *= 10
+                chol = np.linalg.cholesky(Sigma)#[tr_idx,:][:,tr_idx])
+            except LinAlgError as err:
+                if str(err) == "Matrix is not positive definite":
+                    ## instead of doing eigendecomp, just add some proportion of trace
+                    trc = np.sum(np.diag(Sigma))
+                    chol = np.linalg.cholesky(Sigma + c*trc*np.eye(n))
+                else:
+                    raise
             else:
-                raise
+                break
 
         return chol
     

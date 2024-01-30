@@ -171,7 +171,7 @@ def better_test_est_split(
 
     if bagg:
         base_model = clone(model)
-        model = ParametricBaggingRegressor(base_estimator=base_model, n_estimators=100)
+        model = ParametricBaggingRegressor(estimator=base_model, n_estimators=100)
 
     if alpha is not None:
         w, eps = _blur(y, np.sqrt(alpha) * Chol_t)
