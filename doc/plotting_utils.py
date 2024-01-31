@@ -13,7 +13,7 @@ def gen_model_barplots(
         has_test_risk=True, 
         has_elev_err=False, 
         err_bars=False,
-        color_discrete_sequence=px.colors.qualitative.Plotly,
+        color_discrete_sequence=px.colors.qualitative.Bold,
     ):
 
     fig = make_subplots(

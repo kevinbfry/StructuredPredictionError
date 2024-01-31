@@ -38,55 +38,6 @@ def _preprocess_X_y_model(X, y, model):
 
     return X, y, model, n, p
 
-
-def _get_rand_bool(rand_type):
-    return rand_type == "full"
-
-
-def _compute_matrices(n, Chol_t, Chol_eps, Theta_p):
-    if Chol_eps is None:
-        Chol_eps = np.eye(n)
-        Sigma_eps = np.eye(n)
-    else:
-        Sigma_eps = Chol_eps @ Chol_eps.T
-
-    Prec_eps = np.linalg.inv(Sigma_eps)
-
-    if Chol_t is None:
-        Chol_t = np.eye(n)
-        Sigma_t = np.eye(n)
-    else:
-        Sigma_t = Chol_t @ Chol_t.T
-
-    proj_t_eps = Sigma_t @ Prec_eps
-
-    if Theta_p is None:
-        Theta_p = np.eye(n)
-        Chol_p = np.eye(n)
-    else:
-        if np.count_nonzero(Theta_p - np.diag(np.diagonal(Theta_p))) == 0:
-            Chol_p = np.diag(np.sqrt(np.diagonal(Theta_p)))
-        else:
-            Chol_p = np.linalg.cholesky(Theta_p)
-    Sigma_t_Theta_p = Sigma_t @ Theta_p
-
-    Aperpinv = np.eye(n) + proj_t_eps
-    Aperp = np.linalg.inv(Aperpinv)
-
-    return (
-        Chol_t,
-        Sigma_t,
-        Chol_eps,
-        Sigma_eps,
-        Prec_eps,
-        proj_t_eps,
-        Theta_p,
-        Chol_p,
-        Sigma_t_Theta_p,
-        Aperp,
-    )
-
-
 def _blur(y, Chol_eps, proj_t_eps=None):
     n = y.shape[0]
     eps = Chol_eps @ np.random.randn(n)
@@ -133,6 +84,7 @@ def split_data(
     if ts_idx.sum() == 0:
         ts_idx = tr_idx
     else:
+        ## TODO: understandable error message
         assert(np.sum(tr_idx * ts_idx) == 0)
         assert(np.sum(tr_idx + ts_idx) == X.shape[0])
 
@@ -151,7 +103,7 @@ def split_data(
     return X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts
 
 
-def better_test_est_split(
+def new_y_est(
     model,
     X,
     y,
@@ -204,7 +156,6 @@ def better_test_est_split(
         preds = model.predict(X_ts)
 
     return np.mean((y2_ts - preds)**2)
-
 
 
 ## Spatial extension of Breiman-Ye estimator
@@ -412,7 +363,7 @@ def _get_tr_ts_covs_corr(
 
     return Sigma_IMG_ts_f, Cov_N_ts, Cov_IMGY_ts, Gamma
 
-def cp_smoother_train_test(
+def cp_smoother(
     model,
     X,
     y,
@@ -447,7 +398,7 @@ def cp_smoother_train_test(
     return np.mean((y_ts - P @ y_tr) ** 2) + correction
 
 
-def cp_general_train_test(
+def cp_general(
     model,
     X,
     y,
@@ -459,7 +410,7 @@ def cp_general_train_test(
     alpha=1.0,
     use_trace_corr=True,
 ):
-    return cp_adaptive_smoother_train_test(
+    return cp_adaptive_smoother(
         model,
         X=X,
         y=y,
@@ -550,7 +501,7 @@ def _compute_cp_estimator(
 
     return est, yhat
 
-def cp_adaptive_smoother_train_test(
+def cp_adaptive_smoother(
     model,
     X,
     y,
@@ -630,7 +581,7 @@ def cp_adaptive_smoother_train_test(
     return cp_est
 
 
-def cp_bagged_train_test(
+def cp_bagged(
     model,
     X,
     y,
@@ -643,7 +594,7 @@ def cp_bagged_train_test(
     n_estimators=100,
     **kwargs,
 ):
-    ind_est, yhats = cp_adaptive_smoother_train_test(model,
+    ind_est, yhats = cp_adaptive_smoother(model,
         X=X,
         y=y,
         tr_idx=tr_idx,
@@ -661,7 +612,7 @@ def cp_bagged_train_test(
     return ind_est - (centered_preds**2).mean()
 
 
-def cp_rf_train_test(
+def cp_rf(
     model,
     X,
     y,
@@ -863,31 +814,9 @@ def kfoldcv(model, X, y, k=10, **kwargs):
         scoring="neg_mean_squared_error",
         cv=KFold(k, shuffle=True),
         error_score="raise",
-        fit_params=kwargs,
+        params=kwargs,
     )
     return -np.mean(kfcv_res["test_score"])  # , model
-
-
-def my_timeseriessplit(X, k=10, min_train_size=0, max_train_size=None, gap=0, test_size=None):
-    ts_splitter = TimeSeriesSplit(n_splits=k, max_train_size=max_train_size, gap=gap, test_size=test_size)
-    for tr, ts in ts_splitter.split(X):
-        if tr.sum() > min_train_size:
-            yield tr, ts
-
-def timeseriescv(model, X, y, k=10, min_train_size=0, max_train_size=None, gap=0, test_size=None, **kwargs):
-
-    model = clone(model)
-
-    tscv_res = cross_validate(
-        model,
-        X,
-        y,
-        scoring="neg_mean_squared_error",
-        cv=my_timeseriessplit(X, k=k, min_train_size=min_train_size, max_train_size=max_train_size, gap=gap, test_size=test_size),
-        error_score="raise",
-        fit_params=kwargs,
-    )
-    return -np.mean(tscv_res["test_score"])  # , model
 
 
 def kmeanscv(model, X, y, coord, k=10, **kwargs):
@@ -900,7 +829,7 @@ def kmeanscv(model, X, y, coord, k=10, **kwargs):
         scoring="neg_mean_squared_error",
         cv=GroupKFold(k),
         groups=groups,
-        fit_params=kwargs,
+        params=kwargs,
     )
 
     return -np.mean(spcv_res["test_score"])  # , model

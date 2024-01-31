@@ -15,13 +15,12 @@ from spe.estimators import (
     kfoldcv,
     kmeanscv,
     by_spatial,
-    timeseriescv,
-    cp_smoother_train_test,
-    cp_adaptive_smoother_train_test,
-    cp_general_train_test,
-    cp_bagged_train_test,
-    cp_rf_train_test,
-    better_test_est_split,
+    cp_smoother,
+    cp_adaptive_smoother,
+    cp_general,
+    cp_bagged,
+    cp_rf,
+    new_y_est,
     ts_test_est_split,
     bag_kfoldcv,
     bag_kmeanscv,
@@ -34,11 +33,11 @@ from .data_generation import create_clus_split, gen_matern_X, gen_rbf_X ## TODO:
 class ErrorComparer(object):
     DATA_ARGS = ["X", "y", "y2", "tr_idx", "Chol_t", "Chol_s"]
     BAGCV_METHODS = (bag_kfoldcv, bag_kmeanscv)
-    CV_METHODS = (kfoldcv, kmeanscv, timeseriescv) + BAGCV_METHODS
+    CV_METHODS = (kfoldcv, kmeanscv) + BAGCV_METHODS
     SPCV_METHODS = (bag_kmeanscv, kmeanscv)
-    BAGCP_METHODS = (cp_rf_train_test, cp_bagged_train_test)#, cp_bagged_train_test2)
-    GENCP_METHODS = (cp_smoother_train_test, cp_adaptive_smoother_train_test, cp_general_train_test) + BAGCP_METHODS
-    TESTERR_METHODS = (better_test_est_split, ts_test_est_split)
+    BAGCP_METHODS = (cp_rf, cp_bagged)#, cp_bagged2)
+    GENCP_METHODS = (cp_smoother, cp_adaptive_smoother, cp_general) + BAGCP_METHODS
+    TESTERR_METHODS = (new_y_est, ts_test_est_split)
 
     def gen_X_beta(self, n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):
         if X_kernel == 'rbf':
