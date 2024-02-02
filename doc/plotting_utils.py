@@ -14,6 +14,7 @@ def gen_model_barplots(
         has_elev_err=False, 
         err_bars=False,
         color_discrete_sequence=px.colors.qualitative.Bold,
+        fig_name=None,
     ):
 
     fig = make_subplots(
@@ -80,7 +81,24 @@ def gen_model_barplots(
             )
         
     fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
-    fig.update_layout(title_text=title, showlegend=False)
+    fig_width = 100 * len(model_errs) * (len(model_errs[0])-offset) + 50 * len(model_errs)
+    fig_width = max(fig_width, 400)
+    fig.update_layout(
+        font=dict(
+            # family="Courier New, monospace",
+            size=15,  # Set the font size here
+            # color="RebeccaPurple"
+        ),
+        title_text=title, 
+        showlegend=False, 
+        height=600, 
+        width=fig_width,
+    )
+
+    if fig_name:
+        # fig.to_image(format="pdf", width=600, height=400, name=)
+        fig.write_image("../figures/" + fig_name + ".pdf")#, width=600, height=450)
+
     return fig
 
 
