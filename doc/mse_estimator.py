@@ -10,7 +10,7 @@ from tqdm import tqdm
 from spe.relaxed_lasso import RelaxedLasso#, BaggedRelaxedLasso
 from spe.cov_estimation import est_Sigma
 from spe.tree import Tree
-from spe.forest import BlurredForest
+from spe.forest import BlurredForestRegressor
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
@@ -21,7 +21,6 @@ from spe.estimators import (
     cp_bagged,
     cp_rf,
     new_y_est,
-    ts_test_est_split,
     bag_kfoldcv,
     bag_kmeanscv,
     simple_train_test_split,
@@ -37,7 +36,7 @@ class ErrorComparer(object):
     SPCV_METHODS = (bag_kmeanscv, kmeanscv)
     BAGCP_METHODS = (cp_rf, cp_bagged)#, cp_bagged2)
     GENCP_METHODS = (cp_smoother, cp_adaptive_smoother, cp_general) + BAGCP_METHODS
-    TESTERR_METHODS = (new_y_est, ts_test_est_split)
+    TESTERR_METHODS = (new_y_est,)
 
     def gen_X_beta(self, n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):
         if X_kernel == 'rbf':

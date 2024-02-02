@@ -25,7 +25,8 @@ from sklearn.utils.validation import check_X_y, check_is_fitted
 
 from .relaxed_lasso import RelaxedLasso
 from .tree import Tree, LinearSelector
-from .forest import BlurredForest, ParametricBaggingRegressor
+from .forest import BlurredForestRegressor
+from .bagging import ParametricBaggingRegressor
 
 ## TODO: add Chol_eps option, not always do Chol_eps=alpha*Chol_t
 
@@ -103,6 +104,14 @@ def split_data(
     return X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts
 
 
+def _get_subset_chol(
+    Chol,
+    idx,
+):
+    Sigma_subset = (Chol @ Chol.T)[idx,:][:,idx]
+    return np.linalg.cholesky(Sigma_subset)
+
+
 def new_y_est(
     model,
     X,
@@ -116,9 +125,9 @@ def new_y_est(
     bagg=False,
     **kwargs,
 ):
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
+    X, y, model, _, _ = _preprocess_X_y_model(X, y, model)
 
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
+    (X_tr, X_ts, y_tr, _, tr_idx, ts_idx, _, _) = split_data(X, y, tr_idx)
     y2_ts = y2[ts_idx]
 
     if bagg:
@@ -126,23 +135,20 @@ def new_y_est(
         model = ParametricBaggingRegressor(estimator=base_model, n_estimators=100)
 
     if alpha is not None:
-        w, eps = _blur(y, np.sqrt(alpha) * Chol_t)
+        w, _ = _blur(y, np.sqrt(alpha) * Chol_t)
         w_tr = w[tr_idx]
         model.fit(X_tr, w_tr, **kwargs)
     else:
-        if isinstance(model, (ParametricBaggingRegressor, BlurredForest)):
-            if "chol_eps" in kwargs:
-                pass
-            else:
-                kwargs["chol_eps"] = Chol_t
-            kwargs["idx_tr"] = tr_idx
+        if isinstance(model, (ParametricBaggingRegressor, BlurredForestRegressor)):
+            Chol_t_tr = _get_subset_chol(Chol_t, tr_idx)
+            kwargs["chol_eps"] = Chol_t_tr
         model.fit(X_tr, y_tr, **kwargs)
 
     if full_refit is None or full_refit:
         if isinstance(model, (Tree, RelaxedLasso)):
             P = model.get_linear_smoother(X, tr_idx, ts_idx)
             preds = P @ y_tr
-        elif isinstance(model, BlurredForest):
+        elif isinstance(model, BlurredForestRegressor):
             chol = None if not gls else np.linalg.inv(np.linalg.cholesky(
                                             (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
                                         )).T
@@ -205,62 +211,6 @@ def by_spatial(
     )
 
     return np.mean((y - obs_preds)**2) + boot_corr
-
-
-def ts_test_est_split(
-    model,
-    X,
-    y,
-    y2,
-    tr_idx,
-    full_refit=False,
-    alpha=None,
-    Chol_t=None,
-    gls=None,
-    max_train_size=None,
-    **kwargs,
-):
-
-    X, y, model, n, p = _preprocess_X_y_model(X, y, model)
-
-    (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
-    # y2_ts = y2[ts_idx] ## TODO: give option for y2 vs y
-    y2_ts = y_ts
-
-    X_tr = X_tr[-max_train_size:,]
-    y_tr = y_tr[-max_train_size:]
-
-    if alpha is not None:
-        w, eps = _blur(y, np.sqrt(alpha) * Chol_t)
-        w_tr = w[tr_idx]
-        model.fit(X_tr, w_tr, **kwargs)
-    else:
-        if model.__class__.__name__ == "BlurredForest":
-            if "chol_eps" in kwargs:
-                kwargs["chol_eps"] = kwargs["chol_eps"][tr_idx, :][:, tr_idx]
-        model.fit(X_tr, y_tr, **kwargs)
-
-    if full_refit is None or full_refit:
-        if model.__class__.__name__ == "RelaxedLasso":
-            P = model.get_linear_smoother(X, tr_idx, ts_idx)#X_tr, X_ts)
-            preds = P @ y_tr
-        else:
-            if gls is None or not gls:
-                preds = model.predict(X_ts, full_refit=full_refit)
-            else:
-                Chol_t_inv_tr = np.linalg.inv(np.linalg.cholesky(
-                    (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
-                )).T
-                preds = model.predict(
-                    X_ts, 
-                    full_refit=full_refit, 
-                    Chol=Chol_t_inv_tr
-                )
-    else:
-        ## TODO: all the conditional stuff I have for full refit
-        preds = model.predict(X_ts)
-
-    return np.mean((y2_ts - preds) ** 2)
 
 
 def test_est_split(
@@ -626,8 +576,7 @@ def cp_rf(
     **kwargs,
 ):
 
-    kwargs["chol_eps"] = Chol_t
-    kwargs["idx_tr"] = tr_idx
+    kwargs["chol_eps"] = _get_subset_chol(Chol_t, tr_idx)
 
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
@@ -748,7 +697,7 @@ def bag_kfoldcv(
         if Chol_t is None:
             kwargs["chol_eps"] = None
         else:
-            kwargs["chol_eps"] = Chol_t[tr_idx, :][:, tr_idx]
+            kwargs["chol_eps"] = _get_subset_chol(Chol_t, tr_idx)
         bagg_model.fit(X_tr, y_tr, **kwargs)
         err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 
@@ -784,7 +733,7 @@ def bag_kmeanscv(
         if Chol_t is None:
             kwargs["chol_eps"] = None
         else:
-            kwargs["chol_eps"] = Chol_t[tr_idx, :][:, tr_idx]
+            kwargs["chol_eps"] = _get_subset_chol(Chol_t, tr_idx)
         bagg_model.fit(X_tr, y_tr, **kwargs)
         err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 
