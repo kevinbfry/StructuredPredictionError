@@ -18,6 +18,9 @@ scikit-learn = ">=1.3"
 # scikit-learn = {git = "https://github.com/kevinbfry/scikit-learn.git"}
 
 [tool.poetry.group.doc.dependencies]
+sphinx = "^7.2.6"
+numpydoc = "^1.6.0"
+pydata-sphinx-theme = "^0.15.2"
 pandas= ">=1.3.5"
 tqdm = ">=4.66.1"
 xgboost = ">=2.0.3"
