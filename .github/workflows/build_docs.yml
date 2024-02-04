@@ -60,5 +60,5 @@ jobs:
       with:
         branch: gh-pages
         directory: docs
-        github_token: ${{ secrets.ACTIONS_TOKEN }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
     # ===============================
