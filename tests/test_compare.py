@@ -2,8 +2,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 from spe.relaxed_lasso import BaggedRelaxedLasso, RelaxedLasso
-from spe.forest import BlurredForest
-from .mse_estimator import ErrorComparer
+from spe.forest import BlurredForestRegressor
+from ..mse_estimator import ErrorComparer
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
@@ -14,9 +14,9 @@ from spe.estimators import (
     blur_forest,
     cp_linear_train_test,
     cp_relaxed_lasso_train_test,
-    cp_bagged_train_test,
-    cp_rf_train_test,
-    better_test_est_split,
+    cp_bagged,
+    cp_rf,
+    new_y_est,
     bag_kfoldcv,
     bag_kmeanscv,
 )
@@ -125,7 +125,7 @@ def test_bagged_relaxed_lasso(n=100):
 
     (true_mse_tst, kfcv_mse_tst, spcv_mse_tst, gmcp_mse_tst) = mse_sim.compare(
         BaggedRelaxedLasso(base_estimator=RelaxedLasso(lambd=0.5), n_estimators=5),
-        [bag_kfoldcv, bag_kmeanscv, cp_bagged_train_test],
+        [bag_kfoldcv, bag_kmeanscv, cp_bagged],
         [{"k": 5}, {"k": 5}, {"use_trace_corr": False}],
         niter=10,
         n=n,
@@ -154,8 +154,8 @@ def test_blurred_forest(n=100):
     mse_sim = ErrorComparer()
 
     (true_mse_tst, kfcv_mse_tst, spcv_mse_tst, gmcp_mse_tst) = mse_sim.compare(
-        BlurredForest(n_estimators=5),
-        [bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
+        BlurredForestRegressor(n_estimators=5),
+        [bag_kfoldcv, bag_kmeanscv, cp_rf],
         [{"k": 5}, {"k": 5}, {"use_trace_corr": False}],
         niter=10,
         n=n,
@@ -185,8 +185,8 @@ def test_blurred_forest_fair(n=100):
     mse_sim = ErrorComparer()
 
     (true_mse_tst, kfcv_mse_tst, spcv_mse_tst, gmcp_mse_tst) = mse_sim.compare(
-        BlurredForest(n_estimators=5),
-        [bag_kfoldcv, bag_kmeanscv, cp_rf_train_test],
+        BlurredForestRegressor(n_estimators=5),
+        [bag_kfoldcv, bag_kmeanscv, cp_rf],
         [{"k": 5}, {"k": 5}, {"use_trace_corr": False}],
         niter=10,
         n=n,
