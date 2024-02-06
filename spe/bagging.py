@@ -171,30 +171,6 @@ def _parallel_build_estimators(
 class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
 
     def fit(
-        self, 
-        X, 
-        y, 
-        sample_weight=None, 
-        chol_eps=None, 
-        do_param_boot=True
-    ):
-        self.do_param_boot = do_param_boot
-        self.X_tr_ = X
-        _raise_for_unsupported_routing(self, "fit", sample_weight=sample_weight)
-        # Convert data (X is required to be 2d and indexable)
-        X, y = self._validate_data(
-            X,
-            y,
-            accept_sparse=["csr", "csc"],
-            dtype=None,
-            force_all_finite=False,
-            multi_output=True,
-        )
-        ### KF:
-        return self._fit(X, y, max_samples=self.max_samples, sample_weight=sample_weight, chol_eps=chol_eps, do_param_boot=do_param_boot)
-        ###
-    
-    def _fit(
         self,
         X,
         y,
@@ -203,7 +179,7 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
         sample_weight=None,
         check_input=True,
         chol_eps=None, 
-        do_param_boot=False
+        do_param_boot=False,
     ):
         """Build a Bagging ensemble of estimators from the training
            set (X, y).
@@ -248,6 +224,42 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
         self : object
             Fitted estimator.
         """
+        self.do_param_boot = do_param_boot
+        self.X_tr_ = X
+        _raise_for_unsupported_routing(self, "fit", sample_weight=sample_weight)
+        # Convert data (X is required to be 2d and indexable)
+        X, y = self._validate_data(
+            X,
+            y,
+            accept_sparse=["csr", "csc"],
+            dtype=None,
+            force_all_finite=False,
+            multi_output=True,
+        )
+        ### KF:
+        return self._fit(
+            X,
+            y,
+            max_samples=max_samples if max_samples is not None else self.max_samples,
+            max_depth=max_depth,
+            sample_weight=sample_weight,
+            check_input=check_input,
+            chol_eps=chol_eps, 
+            do_param_boot=do_param_boot,
+        )
+        ###
+    
+    def _fit(
+        self,
+        X,
+        y,
+        max_samples,
+        max_depth,
+        sample_weight,
+        check_input,
+        chol_eps, 
+        do_param_boot,
+    ):
         # print("start bagging fit")
         random_state = check_random_state(self.random_state)
 
