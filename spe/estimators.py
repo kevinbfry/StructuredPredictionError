@@ -1,17 +1,3 @@
-"""
-TODO:
-- Clean up CV methods
-- Move est_sigma functionality to spe/
-- notebooks:
-    - Linear: OLS, Spline, ind/cov
-    - Adpative linear: RL, Tree,
-    - Bagged: RF, ?, ind/cov
-    - Comparison(s) to BY
-    - Comparison(s) to CV
-    - Compare Oracle to Estimated
-- Implement BY estimator
-"""
-
 import numpy as np
 
 from itertools import product
@@ -318,10 +304,42 @@ def cp_smoother(
     X,
     y,
     tr_idx,
-    Chol_t=None,
+    ## TODO: ts_idx param, it need not always be ~tr_idx
+    Chol_t=None, 
     Chol_s=None,
     Cov_st=None,
 ):
+    """Computes Mallow's Cp for any linear model and dependent train and test set.
+
+    TODO: Longer description.
+
+    Parameters
+    ----------
+    model: object
+
+    X : array-like of shape (n, p)
+
+    y : array-like of shape (n,)
+
+    tr_idx : bool array-like of shape (n,)
+
+    Chol_t : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
+        in which case ``Chol_t`` is set to ``np.eye(n)``.
+
+    Chol_s : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
+        in which case ``Chol_s`` is set to ``np.eye(n)``.
+
+    Cov_st : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
+        in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
+
+    Returns
+    -------
+    err_est : float
+        Cp type estimate of MSE.
+    """
     X, y, _, n, p = _preprocess_X_y_model(X, y, None)
 
     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
