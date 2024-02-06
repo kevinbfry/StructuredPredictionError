@@ -10,7 +10,7 @@ from tqdm import tqdm
 from spe.relaxed_lasso import RelaxedLasso#, BaggedRelaxedLasso
 from spe.cov_estimation import est_Sigma
 from spe.tree import Tree
-from spe.forest import BlurredForestRegressor
+from spe.forest import ParametricRandomForestRegressor
 from spe.estimators import (
     kfoldcv,
     kmeanscv,
@@ -30,7 +30,7 @@ from .data_generation import create_clus_split, gen_matern_X, gen_rbf_X ## TODO:
 
 
 class ErrorComparer(object):
-    DATA_ARGS = ["X", "y", "y2", "tr_idx", "Chol_t", "Chol_s"]
+    DATA_ARGS = ["X", "y", "y2", "tr_idx", "Chol_y", "Chol_ystar"]
     BAGCV_METHODS = (bag_kfoldcv, bag_kmeanscv)
     CV_METHODS = (kfoldcv, kmeanscv) + BAGCV_METHODS
     SPCV_METHODS = (bag_kmeanscv, kmeanscv)
@@ -98,30 +98,30 @@ class ErrorComparer(object):
             n, p = X.shape
         return gen_beta, n, p
 
-    def preprocess_chol(self, Chol_t, Chol_s, sigma, n, Cov_st=None):
-        if Chol_t is None:
-            Chol_t = np.eye(n)
-        Chol_t *= sigma
+    def preprocess_chol(self, Chol_y, Chol_ystar, sigma, n, Cov_y_ystar=None):
+        if Chol_y is None:
+            Chol_y = np.eye(n)
+        Chol_y *= sigma
 
-        if Chol_s is None:
-            Chol_s = Chol_t
+        if Chol_ystar is None:
+            Chol_ystar = Chol_y
         else:
-            Chol_s *= sigma
+            Chol_ystar *= sigma
 
-        if Cov_st is not None:
-            Cov_st *= sigma**2
+        if Cov_y_ystar is not None:
+            Cov_y_ystar *= sigma**2
 
-        return Chol_t, Chol_s, Cov_st
+        return Chol_y, Chol_ystar, Cov_y_ystar
 
-    def gen_ys(self, mu, Chol_t, Chol_s, sigma=1.0, Cov_st=None, delta=1.): ## TODO: why is delta here?
+    def gen_ys(self, mu, Chol_y, Chol_ystar, sigma=1.0, Cov_y_ystar=None, delta=1.): ## TODO: why is delta here?
         n = len(mu)
 
-        Sigma_t = Chol_t @ Chol_t.T
-        Sigma_s = Chol_s @ Chol_s.T
+        Sigma_t = Chol_y @ Chol_y.T
+        Sigma_s = Chol_ystar @ Chol_ystar.T
         
-        if Cov_st is None:
-            eps = Chol_t @ np.random.randn(n)
-            eps2 = Chol_s @ np.random.randn(n)
+        if Cov_y_ystar is None:
+            eps = Chol_y @ np.random.randn(n)
+            eps2 = Chol_ystar @ np.random.randn(n)
             full_Cov = np.block([
                 [Sigma_t, np.zeros_like(Sigma_t)],
                 [np.zeros_like(Sigma_t), Sigma_s]
@@ -129,8 +129,8 @@ class ErrorComparer(object):
             self.Chol_f = np.linalg.cholesky(full_Cov)
         else:
             full_Cov = np.block([
-                [Sigma_t, Cov_st],
-                [Cov_st, Sigma_s]
+                [Sigma_t, Cov_y_ystar],
+                [Cov_y_ystar, Sigma_s]
             ])
             self.Chol_f = Chol_f = np.linalg.cholesky(full_Cov)
 
@@ -205,16 +205,16 @@ class ErrorComparer(object):
 
         if not gen_beta:
             mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, piecewise_const_mu=piecewise_const_mu, friedman_mu=friedman_mu, sigma=noise_sigma)
-            Chol_t, Chol_s, Cov_st = self.preprocess_chol(
-                self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
+            Chol_y, Chol_ystar, Cov_y_ystar = self.preprocess_chol(
+                self.Chol_y, self.Chol_ystar, sigma, n, Cov_y_ystar=self.Cov_y_ystar
             )
 
         for i in tqdm(range(niter)):
             if gen_beta:
                 X, beta = self.gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
                 mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, piecewise_const_mu=piecewise_const_mu, sigma=noise_sigma)
-                Chol_t, Chol_s, Cov_st = self.preprocess_chol(
-                    self.Chol_y, self.Chol_ystar, sigma, n, Cov_st=self.Cov_y_ystar
+                Chol_y, Chol_ystar, Cov_y_ystar = self.preprocess_chol(
+                    self.Chol_y, self.Chol_ystar, sigma, n, Cov_y_ystar=self.Cov_y_ystar
                 )
 
             if tr_idx is None:
@@ -230,12 +230,12 @@ class ErrorComparer(object):
                     )
 
             y, y2 = self.gen_ys(
-                mu, Chol_t, Chol_s, sigma=sigma, Cov_st=Cov_st, delta=delta
+                mu, Chol_y, Chol_ystar, sigma=sigma, Cov_y_ystar=Cov_y_ystar, delta=delta
             )
 
             if not fair:
                 X_tr, y_tr, coord_tr = self.get_train(X, y, coord, tr_idx)
-                cvChol_t = Chol_t[tr_idx, :][:, tr_idx]
+                cvChol_y = Chol_y[tr_idx, :][:, tr_idx]
 
             if est_sigma:
                 if self.Chol_ystar is not None:
@@ -248,22 +248,22 @@ class ErrorComparer(object):
                     X_est = X
                 est_covs = est_Sigma(X_est, y, coord, est_sigma, est_sigma_model)
                 if est_sigma == 'corr_resp':
-                    est_Chol_t = est_covs[0]
-                    est_Cov_st = est_covs[1]
+                    est_Chol_y = est_covs[0]
+                    est_Cov_y_ystar = est_covs[1]
                 else:
-                    est_Chol_t = est_covs
-                    est_Cov_st = None
-                est_Chol_s = None
+                    est_Chol_y = est_covs
+                    est_Cov_y_ystar = None
+                est_Chol_ystar = None
             else:
-                est_Chol_t = np.copy(Chol_t)
-                est_Chol_s = np.copy(Chol_s) if Chol_s is not None else None
-                est_Cov_st = np.copy(Cov_st) if Cov_st is not None else None
+                est_Chol_y = np.copy(Chol_y)
+                est_Chol_ystar = np.copy(Chol_ystar) if Chol_ystar is not None else None
+                est_Cov_y_ystar = np.copy(Cov_y_ystar) if Cov_y_ystar is not None else None
             
             for j in range(len(est_kwargs)):
                 if ests[j] in self.TESTERR_METHODS:
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
-                            "Chol_t": est_Chol_t, 
+                            "Chol_y": est_Chol_y, 
                             "tr_idx": tr_idx, 
                             "y": y, 
                             "y2": y2
@@ -287,20 +287,20 @@ class ErrorComparer(object):
                     est_kwargs[j] = {
                         **est_kwargs[j],
                         **{"X": X, 
-                            "Chol_t": est_Chol_t,
-                            "Chol_s": est_Chol_s,
+                            "Chol_y": est_Chol_y,
+                            "Chol_ystar": est_Chol_ystar,
                             "tr_idx": tr_idx, 
                             "y": y
                         },
                     }
                     if not (delta is None): ## TODO: think this can be 'if delta is not None'
                         if ests[j] in self.CV_METHODS:
-                            est_kwargs[j] = {**est_kwargs[j], **{"Cov_st": est_Cov_st}}
+                            est_kwargs[j] = {**est_kwargs[j], **{"Cov_y_ystar": est_Cov_y_ystar}}
 
                 if ests[j] in self.GENCP_METHODS:
                     est_kwargs[j] = {
                         **est_kwargs[j],
-                        **{"Cov_st": est_Cov_st}
+                        **{"Cov_y_ystar": est_Cov_y_ystar}
                     }
 
             for j, est in enumerate(ests):
@@ -312,12 +312,12 @@ class ErrorComparer(object):
                         est_kwargs[j]["X"] = X_tr
                         est_kwargs[j]["y"] = y_tr
                         if est in self.BAGCV_METHODS:
-                            est_kwargs[j]["Chol_t"] = cvChol_t
+                            est_kwargs[j]["Chol_y"] = cvChol_y
                         if est in self.SPCV_METHODS:
                             est_kwargs[j]["coord"] = coord_tr
                     if est not in self.BAGCV_METHODS:
-                        est_kwargs[j].pop("Chol_t", None)
-                    est_kwargs[j].pop("Chol_s", None)
+                        est_kwargs[j].pop("Chol_y", None)
+                    est_kwargs[j].pop("Chol_ystar", None)
                     est_kwargs[j].pop("tr_idx", None)
 
             for err, est, est_kwarg in zip(errs, ests, est_kwargs):

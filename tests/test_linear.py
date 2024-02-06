@@ -27,8 +27,8 @@ def test_linear(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         k=10,
     )

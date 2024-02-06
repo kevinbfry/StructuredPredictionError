@@ -11,10 +11,10 @@ from sklearn.utils.validation import check_X_y, check_is_fitted
 
 from .relaxed_lasso import RelaxedLasso
 from .tree import Tree, LinearSelector
-from .forest import BlurredForestRegressor
+from .forest import ParametricRandomForestRegressor
 from .bagging import ParametricBaggingRegressor
 
-## TODO: add Chol_eps option, not always do Chol_eps=alpha*Chol_t
+## TODO: add Chol_eps option, not always do Chol_eps=alpha*Chol_y
 
 def _preprocess_X_y_model(X, y, model):
     X, y = check_X_y(X, y)
@@ -38,26 +38,27 @@ def _blur(y, Chol_eps, proj_t_eps=None):
     return w, eps
 
 
-def _get_covs(Chol_t, Chol_s, n, alpha=1.0):
-    # n = Chol_t.shape[0]
-    if Chol_t is None:
-        Chol_t = np.eye(n)
+def _get_covs(Chol_y, Chol_ystar, n, alpha=1.0):
+    # n = Chol_y.shape[0]
+    if Chol_y is None:
+        Chol_y = np.eye(n)
         Sigma_t = np.eye(n)
     else:
-        Sigma_t = Chol_t @ Chol_t.T
+        Sigma_t = Chol_y @ Chol_y.T
 
-    same_cov = Chol_s is None
+    same_cov = Chol_ystar is None
     if same_cov:
-        Chol_s = Chol_t
+        Chol_ystar = Chol_y
         Sigma_s = Sigma_t
     else:
-        Sigma_s = Chol_s @ Chol_s.T
+        Sigma_s = Chol_ystar @ Chol_ystar.T
 
     ## TODO: change when allowing general Chol_eps
-    Chol_eps = np.sqrt(alpha) * Chol_t
+    ## TODO: maybe this should be if/else with alpha optional
+    Chol_eps = np.sqrt(alpha) * Chol_y
     proj_t_eps = np.eye(n) / alpha
 
-    return Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps
+    return Chol_y, Sigma_t, Chol_ystar, Sigma_s, Chol_eps, proj_t_eps
 
 
 def split_data(
@@ -106,7 +107,7 @@ def new_y_est(
     tr_idx,
     full_refit=False,
     alpha=None,
-    Chol_t=None,
+    Chol_y=None,
     gls=None,
     bagg=False,
     **kwargs,
@@ -121,22 +122,22 @@ def new_y_est(
         model = ParametricBaggingRegressor(estimator=base_model, n_estimators=100)
 
     if alpha is not None:
-        w, _ = _blur(y, np.sqrt(alpha) * Chol_t)
+        w, _ = _blur(y, np.sqrt(alpha) * Chol_y)
         w_tr = w[tr_idx]
         model.fit(X_tr, w_tr, **kwargs)
     else:
-        if isinstance(model, (ParametricBaggingRegressor, BlurredForestRegressor)):
-            Chol_t_tr = _get_subset_chol(Chol_t, tr_idx)
-            kwargs["chol_eps"] = Chol_t_tr
+        if isinstance(model, (ParametricBaggingRegressor, ParametricRandomForestRegressor)):
+            Chol_y_tr = _get_subset_chol(Chol_y, tr_idx)
+            kwargs["chol_eps"] = Chol_y_tr
         model.fit(X_tr, y_tr, **kwargs)
 
     if full_refit is None or full_refit:
         if isinstance(model, (Tree, RelaxedLasso)):
             P = model.get_linear_smoother(X, tr_idx, ts_idx)
             preds = P @ y_tr
-        elif isinstance(model, BlurredForestRegressor):
+        elif isinstance(model, ParametricRandomForestRegressor):
             chol = None if not gls else np.linalg.inv(np.linalg.cholesky(
-                                            (Chol_t @ Chol_t.T)[tr_idx,:][:,tr_idx]
+                                            (Chol_y @ Chol_y.T)[tr_idx,:][:,tr_idx]
                                         )).T
             preds = model.predict(X, tr_idx, ts_idx, y_tr)
         elif isinstance(model, ParametricBaggingRegressor):
@@ -266,7 +267,7 @@ def _get_tr_ts_covs(
 def _get_tr_ts_covs_corr(
     Sigma_t,
     Sigma_s,
-    Cov_st,
+    Cov_y_ystar,
     ts_idx,
     alpha,
     full_refit,
@@ -277,13 +278,13 @@ def _get_tr_ts_covs_corr(
     if not full_refit:
         assert(alpha is not None)
         Sigma_G *= (1 + alpha)
-    Gamma = Cov_st @ np.linalg.inv(Sigma_G)
+    Gamma = Cov_y_ystar @ np.linalg.inv(Sigma_G)
     
     IMGamma = np.eye(n) - Gamma
 
     Cov_N = Sigma_s - Gamma @ Sigma_G @ Gamma.T
 
-    assert(np.allclose(Cov_N, Sigma_s - Gamma @ Cov_st.T))
+    assert(np.allclose(Cov_N, Sigma_s - Gamma @ Cov_y_ystar.T))
 
     Cov_N_ts = Cov_N[ts_idx, :][:, ts_idx]
 
@@ -305,13 +306,11 @@ def cp_smoother(
     y,
     tr_idx,
     ## TODO: ts_idx param, it need not always be ~tr_idx
-    Chol_t=None, 
-    Chol_s=None,
-    Cov_st=None,
+    Chol_y=None, 
+    Chol_ystar=None,
+    Cov_y_ystar=None,
 ):
     """Computes Mallow's Cp for any linear model and dependent train and test set.
-
-    TODO: Longer description.
 
     Parameters
     ----------
@@ -323,16 +322,16 @@ def cp_smoother(
 
     tr_idx : bool array-like of shape (n,)
 
-    Chol_t : array-like of shape (n, n), optional
+    Chol_y : array-like of shape (n, n), optional
         Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
-        in which case ``Chol_t`` is set to ``np.eye(n)``.
+        in which case ``Chol_y`` is set to ``np.eye(n)``.
 
-    Chol_s : array-like of shape (n, n), optional
+    Chol_ystar : array-like of shape (n, n), optional
         Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
-        in which case ``Chol_s`` is set to ``np.eye(n)``.
+        in which case ``Chol_ystar`` is set to ``np.eye(n)``.
 
-    Cov_st : array-like of shape (n, n), optional
-        Cholesky of covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
+    Cov_y_ystar : array-like of shape (n, n), optional
+        Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
         in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
 
     Returns
@@ -344,11 +343,11 @@ def cp_smoother(
 
     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-    Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s, n=n)
+    Chol_y, Sigma_t, Chol_ystar, Sigma_s, _, _ = _get_covs(Chol_y, Chol_ystar, n=n)
 
     model.fit(X_tr, y_tr)
     P = model.get_linear_smoother(X, tr_idx, ts_idx)[0]
-    if Cov_st is None:
+    if Cov_y_ystar is None:
         Cov_tr_ts, Cov_s_ts, Cov_t_ts = _get_tr_ts_covs(Sigma_t, Sigma_s, tr_idx, ts_idx)
         correction = (
             2 * np.diag(P @ Cov_tr_ts).mean()
@@ -356,7 +355,7 @@ def cp_smoother(
             - np.diag(Cov_t_ts).mean()
         )
     else:
-        tr_corr, Cov_N_ts, Cov_IMGY_ts, Gamma = _get_tr_ts_covs_corr(Sigma_t, Sigma_s, Cov_st, ts_idx, alpha=None, full_refit=True)
+        tr_corr, Cov_N_ts, Cov_IMGY_ts, Gamma = _get_tr_ts_covs_corr(Sigma_t, Sigma_s, Cov_y_ystar, ts_idx, alpha=None, full_refit=True)
         correction = (
             2 * np.diag(P @ tr_corr[tr_idx,:] - Gamma[ts_idx,:] @ tr_corr).mean()
             + np.diag(Cov_N_ts).mean()
@@ -371,21 +370,21 @@ def cp_general(
     X,
     y,
     tr_idx,
-    Chol_t=None,
-    Chol_s=None,
-    Cov_st=None,
+    Chol_y=None,
+    Chol_ystar=None,
+    Cov_y_ystar=None,
     nboot=100,
-    alpha=1.0,
-    use_trace_corr=True,
+    alpha=.05,
+    use_trace_corr=False,
 ):
     return cp_adaptive_smoother(
         model,
         X=X,
         y=y,
         tr_idx=tr_idx,
-        Chol_t=Chol_t,
-        Chol_s=Chol_s,
-        Cov_st=Cov_st,
+        Chol_y=Chol_y,
+        Chol_ystar=Chol_ystar,
+        Cov_y_ystar=Cov_y_ystar,
         nboot=nboot,
         alpha=alpha,
         full_refit=False,
@@ -411,7 +410,7 @@ def _compute_cp_estimator(
     regress_t_eps,
     tr_idx,
     ts_idx,
-    Cov_st,
+    Cov_y_ystar,
     Cov_tr_ts,
     full_refit,
     use_trace_corr,
@@ -434,10 +433,10 @@ def _compute_cp_estimator(
     if isinstance(model, LinearSelector):
         if P is None:
             P = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)[0]
-        if Cov_st is not None and P_full is None:
+        if Cov_y_ystar is not None and P_full is None:
             P_full = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=True)[0]
 
-    if Cov_st is None:
+    if Cov_y_ystar is None:
         regress_t_eps_ts = regress_t_eps[ts_idx]
         Np_ts = wp_ts.copy()
     else:
@@ -445,7 +444,7 @@ def _compute_cp_estimator(
         Np_ts = IMGamma_ts_f @ wp
 
     if full_refit:
-        if Cov_st is None:
+        if Cov_y_ystar is None:
             P_corr = P.copy() 
         else:
             P_corr = (IMGamma_ts_f.T @ (P_full - Gamma_ts)) 
@@ -474,32 +473,79 @@ def cp_adaptive_smoother(
     X,
     y,
     tr_idx,
-    Chol_t=None,
-    Chol_s=None,
-    Cov_st=None,
+    Chol_y=None,
+    Chol_ystar=None,
+    Cov_y_ystar=None,
     nboot=100,
-    alpha=1.0,
+    alpha=.05,
     full_refit=True,
-    use_trace_corr=True,
-    ret_yhats=False,
+    use_trace_corr=False,
+    ret_yhats=False, ## TODO: don't expose to users
 ):
+    """Computes Mallow's Cp for any linear model and dependent train and test set.
+
+    Parameters
+    ----------
+    model: object
+
+    X : array-like of shape (n, p)
+
+    y : array-like of shape (n,)
+
+    tr_idx : bool array-like of shape (n,)
+
+    Chol_y : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
+        in which case ``Chol_y`` is set to ``np.eye(n)``.
+
+    Chol_ystar : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
+        in which case ``Chol_ystar`` is set to ``np.eye(n)``.
+
+    Cov_y_ystar : array-like of shape (n, n), optional
+        Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
+        in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
+
+    n_boot : int, optional
+        Number of bootstrap draws to average over. Default is ``100``.
+
+    alpha : float, optional
+        Amount of noise elevation to apply to data. To approximate performance
+        on original data, a small value of :math:`\\alpha` is recommended as in
+        default. Default is ``.05``.
+
+    full_refit : bool, optional
+        If ``True`` computes estimator for refitting/predicting using original data
+        :math:`Y`, i.e. predictions are :math:`S(W)Y`. If ``False``, uses 
+        :math:`S(W)W` for predictions. Default is ``False``.
+
+    use_trace_corr : bool, optional
+        If ``True``, computes estimator with deterministic trace correction. If ``False``,
+        uses random correction term with same expectation, but yielding an estimator
+        with smaller variance. Default is ``False``.
+
+    Returns
+    -------
+    err_est : float
+        Estimate of MSE of ``model`` on :math:`\\alpha` noise-elevated data.
+    """
 
     X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
 
     (X_tr, X_ts, y_tr, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
 
-    Chol_t, Sigma_t, Chol_s, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
-        Chol_t, Chol_s, n=n, alpha=alpha
+    Chol_y, Sigma_t, Chol_ystar, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
+        Chol_y, Chol_ystar, n=n, alpha=alpha
     )
 
-    if Cov_st is None:
+    if Cov_y_ystar is None:
         Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
             Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
         )
         Gamma = None
     else:
         Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
-            Sigma_t, Sigma_s, Cov_st, ts_idx, alpha, full_refit
+            Sigma_t, Sigma_s, Cov_y_ystar, ts_idx, alpha, full_refit
         )
 
     noise_correction = _get_noise_correction(
@@ -531,7 +577,7 @@ def cp_adaptive_smoother(
             regress_t_eps=regress_t_eps,
             tr_idx=tr_idx,
             ts_idx=ts_idx,
-            Cov_st=Cov_st,
+            Cov_y_ystar=Cov_y_ystar,
             Cov_tr_ts=Cov_tr_ts,
             full_refit=full_refit,
             use_trace_corr=use_trace_corr,
@@ -554,9 +600,9 @@ def cp_bagged(
     X,
     y,
     tr_idx,
-    Chol_t=None,
-    Chol_s=None,
-    Cov_st=None,
+    Chol_y=None,
+    Chol_ystar=None,
+    Cov_y_ystar=None,
     full_refit=False,
     use_trace_corr=False,
     n_estimators=100,
@@ -566,9 +612,9 @@ def cp_bagged(
         X=X,
         y=y,
         tr_idx=tr_idx,
-        Chol_t=Chol_t,
-        Chol_s=Chol_s,
-        Cov_st=Cov_st,
+        Chol_y=Chol_y,
+        Chol_ystar=Chol_ystar,
+        Cov_y_ystar=Cov_y_ystar,
         nboot=n_estimators,
         alpha=1.,
         full_refit=full_refit,
@@ -585,22 +631,22 @@ def cp_rf(
     X,
     y,
     tr_idx,
-    Chol_t=None,
-    Chol_s=None,
-    Cov_st=None, ## TODO: not implemented yet...
+    Chol_y=None,
+    Chol_ystar=None,
+    Cov_y_ystar=None, ## TODO: not implemented yet...
     ret_gls=False,
     full_refit=False,
-    use_trace_corr=True,
+    use_trace_corr=False,
     **kwargs,
 ):
 
-    kwargs["chol_eps"] = _get_subset_chol(Chol_t, tr_idx)
+    kwargs["chol_eps"] = _get_subset_chol(Chol_y, tr_idx)
 
     X, y, model, n, p = _preprocess_X_y_model(X, y, model)
 
     (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_idx)
 
-    Chol_t, Sigma_t, Chol_s, Sigma_s, _, _ = _get_covs(Chol_t, Chol_s, n=n, alpha=1.0)
+    Chol_y, Sigma_t, Chol_ystar, Sigma_s, _, _ = _get_covs(Chol_y, Chol_ystar, n=n, alpha=1.0)
 
     model.fit(X_tr, y_tr, **kwargs)
 
@@ -693,7 +739,7 @@ def bag_kfoldcv(
     X,
     y,
     k=10,
-    Chol_t=None,
+    Chol_y=None,
     n_estimators=100,
 ):
 
@@ -712,10 +758,10 @@ def bag_kfoldcv(
         tr_bool = np.zeros(n)
         tr_bool[tr_idx] = 1
         (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_bool)
-        if Chol_t is None:
+        if Chol_y is None:
             kwargs["chol_eps"] = None
         else:
-            kwargs["chol_eps"] = _get_subset_chol(Chol_t, tr_idx)
+            kwargs["chol_eps"] = _get_subset_chol(Chol_y, tr_idx)
         bagg_model.fit(X_tr, y_tr, **kwargs)
         err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 
@@ -728,7 +774,7 @@ def bag_kmeanscv(
     y,
     coord,
     k=10,
-    Chol_t=None,
+    Chol_y=None,
     n_estimators=100,
 ):
 
@@ -748,10 +794,10 @@ def bag_kmeanscv(
         tr_bool = np.zeros(n)
         tr_bool[tr_idx] = 1
         (X_tr, X_ts, y_tr, y_ts, tr_idx, ts_idx, n_tr, n_ts) = split_data(X, y, tr_bool)
-        if Chol_t is None:
+        if Chol_y is None:
             kwargs["chol_eps"] = None
         else:
-            kwargs["chol_eps"] = _get_subset_chol(Chol_t, tr_idx)
+            kwargs["chol_eps"] = _get_subset_chol(Chol_y, tr_idx)
         bagg_model.fit(X_tr, y_tr, **kwargs)
         err.append(np.mean((y_ts - bagg_model.predict(X_ts)) ** 2))
 

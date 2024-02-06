@@ -14,6 +14,7 @@ spe.estimators
 
 
     cp_smoother
+    cp_adaptive_smoother
 
 
 spe.bagging

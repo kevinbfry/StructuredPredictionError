@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 from spe.relaxed_lasso import BaggedRelaxedLasso, RelaxedLasso
-from spe.forest import BlurredForestRegressor
+from spe.forest import ParametricRandomForestRegressor
 from ..mse_estimator import ErrorComparer
 from spe.estimators import (
     kfoldcv,
@@ -45,8 +45,8 @@ def test_lin(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         fair=False,
     )
@@ -75,8 +75,8 @@ def test_relaxed_lasso(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         fair=False,
     )
@@ -105,8 +105,8 @@ def test_relaxed_lasso_fair(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         fair=True,
     )
@@ -135,8 +135,8 @@ def test_bagged_relaxed_lasso(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         fair=False,
     )
@@ -154,7 +154,7 @@ def test_blurred_forest(n=100):
     mse_sim = ErrorComparer()
 
     (true_mse_tst, kfcv_mse_tst, spcv_mse_tst, gmcp_mse_tst) = mse_sim.compare(
-        BlurredForestRegressor(n_estimators=5),
+        ParametricRandomForestRegressor(n_estimators=5),
         [bag_kfoldcv, bag_kmeanscv, cp_rf],
         [{"k": 5}, {"k": 5}, {"use_trace_corr": False}],
         niter=10,
@@ -165,8 +165,8 @@ def test_blurred_forest(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         fair=False,
         bootstrap_type="blur",
@@ -185,7 +185,7 @@ def test_blurred_forest_fair(n=100):
     mse_sim = ErrorComparer()
 
     (true_mse_tst, kfcv_mse_tst, spcv_mse_tst, gmcp_mse_tst) = mse_sim.compare(
-        BlurredForestRegressor(n_estimators=5),
+        ParametricRandomForestRegressor(n_estimators=5),
         [bag_kfoldcv, bag_kmeanscv, cp_rf],
         [{"k": 5}, {"k": 5}, {"use_trace_corr": False}],
         niter=10,
@@ -196,8 +196,8 @@ def test_blurred_forest_fair(n=100):
         X=None,
         beta=None,
         coord=coord,
-        Chol_t=None,
-        Chol_s=None,
+        Chol_y=None,
+        Chol_ystar=None,
         tr_idx=None,
         fair=True,
         bootstrap_type="blur",
