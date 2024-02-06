@@ -11,7 +11,10 @@ from .tree import LinearSelector
 
 
 class RelaxedLasso(LinearSelector, BaseEstimator):
-    """Build a forest of trees from the training set (X, y).
+    """Relaxed lasso linear regression model.
+
+    Fits the usual lasso, then refits an unpenalized linear regression on features
+    selected by the lasso.
 
     Parameters
     ----------

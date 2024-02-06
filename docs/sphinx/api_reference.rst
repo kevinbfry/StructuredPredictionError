@@ -61,17 +61,17 @@ spe.relaxed_lasso
     RelaxedLasso
 
 
-.. spe.smoothers
-.. -------------
+spe.smoothers
+-------------
 
 
-.. .. currentmodule:: spe.smoothers
+.. currentmodule:: spe.smoothers
 
 
-.. .. autosummary::
-..     :toctree: generated/
+.. autosummary::
+    :toctree: generated/
 
 
-..     BSplineRegressor
-..     LinearRegression
+    BSplineRegressor
+    LinearRegression
 

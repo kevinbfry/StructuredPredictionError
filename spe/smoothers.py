@@ -26,7 +26,7 @@ class LinearRegression(LinearSelector, LinReg):
 
 
 class BSplineRegressor(LinearSelector, BaseEstimator):
-    """BSpline Linear Regression Model
+    """BSpline linear regression model.
 
     Generate feature matrix of B-splines and fit a linear regression to that 
     expanded feature set.
