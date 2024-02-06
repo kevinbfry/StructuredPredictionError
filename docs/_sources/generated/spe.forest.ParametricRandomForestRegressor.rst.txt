@@ -1,0 +1,66 @@
+﻿spe.forest.ParametricRandomForestRegressor
+==========================================
+
+.. currentmodule:: spe.forest
+
+.. autoclass:: ParametricRandomForestRegressor
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ParametricRandomForestRegressor.__init__
+      ~ParametricRandomForestRegressor.apply
+      ~ParametricRandomForestRegressor.decision_path
+      ~ParametricRandomForestRegressor.fit
+      ~ParametricRandomForestRegressor.get_group_X
+      ~ParametricRandomForestRegressor.get_linear_smoother
+      ~ParametricRandomForestRegressor.get_metadata_routing
+      ~ParametricRandomForestRegressor.get_params
+      ~ParametricRandomForestRegressor.predict
+      ~ParametricRandomForestRegressor.score
+      ~ParametricRandomForestRegressor.set_fit_request
+      ~ParametricRandomForestRegressor.set_params
+      ~ParametricRandomForestRegressor.set_score_request
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ParametricRandomForestRegressor.estimators_samples_
+      ~ParametricRandomForestRegressor.feature_importances_
+   
+   
+
+   
+   
+   
+   .. automethod:: __init__
+   .. automethod:: apply
+   .. automethod:: decision_path
+   .. automethod:: fit
+   .. automethod:: get_group_X
+   .. automethod:: get_linear_smoother
+   .. automethod:: get_metadata_routing
+   .. automethod:: get_params
+   .. automethod:: predict
+   .. automethod:: score
+   .. automethod:: set_fit_request
+   .. automethod:: set_params
+   .. automethod:: set_score_request
+   
+   
+
+   
+   
+   
+   .. autoattribute:: estimators_samples_
+   .. autoattribute:: feature_importances_
+   
+   
