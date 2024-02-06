@@ -114,7 +114,7 @@ def _parallel_build_trees(
     
 
 
-class BlurredForestRegressor(RandomForestRegressor):
+class ParametricRandomForestRegressor(RandomForestRegressor):
         
     @_fit_context(prefer_skip_nested_validation=True)
     ## KF:
