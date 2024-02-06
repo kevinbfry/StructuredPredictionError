@@ -47,31 +47,31 @@ spe.forest
     ParametricRandomForestRegressor
 
 
-spe.relaxed_lasso
------------
+.. spe.relaxed_lasso
+.. -----------
 
 
-.. currentmodule:: spe.relaxed_lasso
+.. .. currentmodule:: spe.relaxed_lasso
 
 
-.. autosummary::
-    :toctree: generated/
+.. .. autosummary::
+..     :toctree: generated/
 
 
-    RelaxedLasso
+..     RelaxedLasso
 
 
-spe.smoothers
------------
+.. spe.smoothers
+.. -----------
 
 
-.. currentmodule:: spe.smoothers
+.. .. currentmodule:: spe.smoothers
 
 
-.. autosummary::
-    :toctree: generated/
+.. .. autosummary::
+..     :toctree: generated/
 
 
-    BSplineRegressor
-    LinearRegression
+..     BSplineRegressor
+..     LinearRegression
 
