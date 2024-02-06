@@ -13,8 +13,10 @@ spe.estimators
     :toctree: generated/
 
 
-    cp_smoother
     cp_adaptive_smoother
+    cp_bagged
+    cp_general
+    cp_smoother
 
 
 spe.bagging

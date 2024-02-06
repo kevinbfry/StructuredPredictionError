@@ -43,8 +43,8 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.estimators.cp_adaptive_smoother';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="spe.bagging.ParametricBaggingRegressor" href="spe.bagging.ParametricBaggingRegressor.html" />
-    <link rel="prev" title="spe.estimators.cp_smoother" href="spe.estimators.cp_smoother.html" />
+    <link rel="next" title="spe.estimators.cp_bagged" href="spe.estimators.cp_bagged.html" />
+    <link rel="prev" title="API Reference" href="../api_reference.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -302,8 +302,10 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.estimators.cp_adaptive_smoother</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_bagged.html">spe.estimators.cp_bagged</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_general.html">spe.estimators.cp_general</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="spe.bagging.ParametricBaggingRegressor.html">spe.bagging.ParametricBaggingRegressor</a></li>
@@ -371,12 +373,14 @@ document.write(`
 <h1>spe.estimators.cp_adaptive_smoother<a class="headerlink" href="#spe-estimators-cp-adaptive-smoother" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="spe.estimators.cp_adaptive_smoother">
-<span class="sig-prename descclassname"><span class="pre">spe.estimators.</span></span><span class="sig-name descname"><span class="pre">cp_adaptive_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Cov_y_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nboot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_trace_corr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_yhats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.estimators.cp_adaptive_smoother" title="Link to this definition">#</a></dt>
-<dd><p>Computes Mallow’s Cp for any linear model and dependent train and test set.</p>
+<span class="sig-prename descclassname"><span class="pre">spe.estimators.</span></span><span class="sig-name descname"><span class="pre">cp_adaptive_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Cov_y_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nboot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_trace_corr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.estimators.cp_adaptive_smoother" title="Link to this definition">#</a></dt>
+<dd><p>Computes Generalized Cp for adaptive linear smoothers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>model: object</strong></dt><dd></dd>
+<dt><strong>model: object</strong></dt><dd><p>The model to estimate MSE for. Must have predictions of the form
+<span class="math notranslate nohighlight">\(S(Y)Y\)</span> where <span class="math notranslate nohighlight">\(S(Y) \in \mathbb{R}^{n\times n}\)</span>.</p>
+</dd>
 <dt><strong>X</strong><span class="classifier">array-like of shape (n, p)</span></dt><dd></dd>
 <dt><strong>y</strong><span class="classifier">array-like of shape (n,)</span></dt><dd></dd>
 <dt><strong>tr_idx</strong><span class="classifier">bool array-like of shape (n,)</span></dt><dd></dd>
@@ -427,20 +431,20 @@ with smaller variance. Default is <code class="docutils literal notranslate"><sp
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="spe.estimators.cp_smoother.html"
+       href="../api_reference.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">spe.estimators.cp_smoother</p>
+        <p class="prev-next-title">API Reference</p>
       </div>
     </a>
     <a class="right-next"
-       href="spe.bagging.ParametricBaggingRegressor.html"
+       href="spe.estimators.cp_bagged.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">spe.bagging.ParametricBaggingRegressor</p>
+        <p class="prev-next-title">spe.estimators.cp_bagged</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

@@ -1,0 +1,6 @@
+﻿spe.estimators.cp\_bagged
+=========================
+
+.. currentmodule:: spe.estimators
+
+.. autofunction:: cp_bagged

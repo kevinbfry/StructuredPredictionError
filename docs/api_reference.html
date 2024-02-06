@@ -42,7 +42,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="spe.estimators.cp_smoother" href="generated/spe.estimators.cp_smoother.html" />
+    <link rel="next" title="spe.estimators.cp_adaptive_smoother" href="generated/spe.estimators.cp_adaptive_smoother.html" />
     <link rel="prev" title="SPE Documentation" href="index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -301,8 +301,10 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="generated/spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/spe.estimators.cp_adaptive_smoother.html">spe.estimators.cp_adaptive_smoother</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/spe.estimators.cp_bagged.html">spe.estimators.cp_bagged</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/spe.estimators.cp_general.html">spe.estimators.cp_general</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/spe.bagging.ParametricBaggingRegressor.html">spe.bagging.ParametricBaggingRegressor</a></li>
@@ -369,10 +371,16 @@ document.write(`
 <h2>spe.estimators<a class="headerlink" href="#spe-estimators" title="Link to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.estimators.cp_smoother.html#spe.estimators.cp_smoother" title="spe.estimators.cp_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_smoother</span></code></a>(model, X, y, tr_idx[, Chol_y, ...])</p></td>
-<td><p>Computes Mallow's Cp for any linear model and dependent train and test set.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.estimators.cp_adaptive_smoother.html#spe.estimators.cp_adaptive_smoother" title="spe.estimators.cp_adaptive_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_adaptive_smoother</span></code></a>(model, X, y, tr_idx[, ...])</p></td>
+<td><p>Computes Generalized Cp for adaptive linear smoothers.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/spe.estimators.cp_adaptive_smoother.html#spe.estimators.cp_adaptive_smoother" title="spe.estimators.cp_adaptive_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_adaptive_smoother</span></code></a>(model, X, y, tr_idx[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spe.estimators.cp_bagged.html#spe.estimators.cp_bagged" title="spe.estimators.cp_bagged"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_bagged</span></code></a>(model, X, y, tr_idx[, Chol_y, ...])</p></td>
+<td><p>Computes Generalized Cp for bagged models.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.estimators.cp_general.html#spe.estimators.cp_general" title="spe.estimators.cp_general"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_general</span></code></a>(model, X, y, tr_idx[, Chol_y, ...])</p></td>
+<td><p>Computes Generalized Cp for arbitrary models.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spe.estimators.cp_smoother.html#spe.estimators.cp_smoother" title="spe.estimators.cp_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_smoother</span></code></a>(model, X, y, tr_idx[, Chol_y, ...])</p></td>
 <td><p>Computes Mallow's Cp for any linear model and dependent train and test set.</p></td>
 </tr>
 </tbody>
@@ -420,11 +428,11 @@ document.write(`
       </div>
     </a>
     <a class="right-next"
-       href="generated/spe.estimators.cp_smoother.html"
+       href="generated/spe.estimators.cp_adaptive_smoother.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">spe.estimators.cp_smoother</p>
+        <p class="prev-next-title">spe.estimators.cp_adaptive_smoother</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
