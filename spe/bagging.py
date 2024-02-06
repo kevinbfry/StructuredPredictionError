@@ -234,6 +234,15 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
             Override value used when fitting base estimator. Only supported
             if the base estimator has a check_input parameter for fit function.
 
+        chol_eps : array-like of shape (n_samples,n_samples), optional
+            Cholesky of parametric bootstrap covariance matrix. In the case of 
+            ``do_param_boot`` is ``False``, ``chol_eps`` is ignored. If 
+            ``chol_eps`` is ``None`` and ``do_param_boot`` is ``True``, then 
+            ``chol_eps`` is ``np.eye(n_samples)``. Default is ``None``.
+
+        do_param_boot : bool, optional
+            If ``True`` performs parametric bootstrap sampling. Default is ``False``.
+
         Returns
         -------
         self : object

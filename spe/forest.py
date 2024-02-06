@@ -167,7 +167,7 @@ class BlurredForestRegressor(RandomForestRegressor):
         y, 
         sample_weight=None, 
         chol_eps=None, 
-        do_param_boot=False
+        do_param_boot=False,
     ):
         """
         Build a forest of trees from the training set (X, y).
@@ -189,6 +189,15 @@ class BlurredForestRegressor(RandomForestRegressor):
             ignored while searching for a split in each node. In the case of
             classification, splits are also ignored if they would result in any
             single class carrying a negative weight in either child node.
+
+        chol_eps : array-like of shape (n_samples,n_samples), optional
+            Cholesky of parametric bootstrap covariance matrix. In the case of 
+            ``do_param_boot`` is ``False``, ``chol_eps`` is ignored. If 
+            ``chol_eps`` is ``None`` and ``do_param_boot`` is ``True``, then 
+            ``chol_eps`` is ``np.eye(n_samples)``. Default is ``None``.
+
+        do_param_boot : bool, optional
+            If ``True`` performs parametric bootstrap sampling. Default is ``False``.
 
         Returns
         -------
