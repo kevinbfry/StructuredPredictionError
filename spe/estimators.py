@@ -377,7 +377,51 @@ def cp_general(
     alpha=.05,
     use_trace_corr=False,
 ):
-    return cp_adaptive_smoother(
+    """Computes Generalized Cp for arbitrary models.
+
+    Parameters
+    ----------
+    model: object
+        The model to estimate MSE for.
+
+    X : array-like of shape (n, p)
+
+    y : array-like of shape (n,)
+
+    tr_idx : bool array-like of shape (n,)
+
+    Chol_y : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
+        in which case ``Chol_y`` is set to ``np.eye(n)``.
+
+    Chol_ystar : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
+        in which case ``Chol_ystar`` is set to ``np.eye(n)``.
+
+    Cov_y_ystar : array-like of shape (n, n), optional
+        Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
+        in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
+
+    n_boot : int, optional
+        Number of bootstrap draws to average over. Default is ``100``.
+
+    alpha : float, optional
+        Amount of noise elevation to apply to data. To approximate performance
+        on original data, a small value of :math:`\\alpha` is recommended as in
+        default. Default is ``.05``.
+
+    use_trace_corr : bool, optional
+        If ``True``, computes estimator with deterministic trace correction. If ``False``,
+        uses random correction term with same expectation, but yielding an estimator
+        with smaller variance. Default is ``False``.
+
+    Returns
+    -------
+    err_est : float
+        Estimate of MSE of ``model`` on :math:`\\alpha` noise-elevated data.
+    """
+
+    return _compute_cp_estimator(
         model,
         X=X,
         y=y,
@@ -397,7 +441,7 @@ def _get_noise_correction(Cov_s_ts, Cov_t_ts, Cov_wp_ts, use_trace_corr):
     else:
         return np.diag(Cov_s_ts).mean() - np.diag(Cov_t_ts).mean()
     
-def _compute_cp_estimator(
+def _compute_one_realization_cp_estimator(
     model,
     X, 
     X_ts, 
@@ -468,6 +512,86 @@ def _compute_cp_estimator(
 
     return est, yhat
 
+def _compute_cp_estimator(
+    model,
+    X,
+    y,
+    tr_idx,
+    Chol_y=None,
+    Chol_ystar=None,
+    Cov_y_ystar=None,
+    nboot=100,
+    alpha=.05,
+    full_refit=True,
+    use_trace_corr=False,
+    ret_yhats=False,
+):
+
+    X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
+
+    (X_tr, X_ts, y_tr, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
+
+    Chol_y, Sigma_t, Chol_ystar, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
+        Chol_y, Chol_ystar, n=n, alpha=alpha
+    )
+
+    if Cov_y_ystar is None:
+        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
+            Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
+        )
+        Gamma = None
+    else:
+        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
+            Sigma_t, Sigma_s, Cov_y_ystar, ts_idx, alpha, full_refit
+        )
+
+    noise_correction = _get_noise_correction(
+        Cov_s_ts, 
+        Cov_t_ts, 
+        Cov_wp_ts,
+        use_trace_corr
+    )
+    boot_ests = np.zeros(nboot)
+    if ret_yhats:
+        yhats = np.zeros((n_ts, nboot))
+    for i in range(nboot):
+        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
+        w_tr = w[tr_idx]
+        wp_ts = wp[ts_idx]
+
+        model.fit(X_tr, w_tr)
+
+        base_est, yhat = _compute_one_realization_cp_estimator(
+            model=model,
+            X=X, 
+            X_ts=X_ts, 
+            y=y, 
+            y_tr=y_tr, 
+            w=w, 
+            w_tr=w_tr,
+            wp=wp,
+            wp_ts=wp_ts,
+            regress_t_eps=regress_t_eps,
+            tr_idx=tr_idx,
+            ts_idx=ts_idx,
+            Cov_y_ystar=Cov_y_ystar,
+            Cov_tr_ts=Cov_tr_ts,
+            full_refit=full_refit,
+            use_trace_corr=use_trace_corr,
+            Gamma=Gamma,
+        )
+        boot_ests[i] = base_est
+        if ret_yhats:
+            yhats[:,i] = yhat
+
+    cp_est = boot_ests.mean() + noise_correction
+
+    if ret_yhats:
+        return cp_est, yhats
+
+    return cp_est
+
+
 def cp_adaptive_smoother(
     model,
     X,
@@ -480,13 +604,14 @@ def cp_adaptive_smoother(
     alpha=.05,
     full_refit=True,
     use_trace_corr=False,
-    ret_yhats=False, ## TODO: don't expose to users
 ):
-    """Computes Mallow's Cp for any linear model and dependent train and test set.
+    """Computes Generalized Cp for adaptive linear smoothers.
 
     Parameters
     ----------
     model: object
+        The model to estimate MSE for. Must have predictions of the form
+        :math:`S(Y)Y` where :math:`S(Y) \\in \\mathbb{R}^{n\\times n}`.
 
     X : array-like of shape (n, p)
 
@@ -530,69 +655,20 @@ def cp_adaptive_smoother(
         Estimate of MSE of ``model`` on :math:`\\alpha` noise-elevated data.
     """
 
-    X, y, _, n, _ = _preprocess_X_y_model(X, y, None)
-
-    (X_tr, X_ts, y_tr, _, tr_idx, ts_idx, _, n_ts) = split_data(X, y, tr_idx)
-
-    Chol_y, Sigma_t, Chol_ystar, Sigma_s, Chol_eps, proj_t_eps = _get_covs(
-        Chol_y, Chol_ystar, n=n, alpha=alpha
+    return _compute_cp_estimator(
+        model=model,
+        X=X,
+        y=y,
+        tr_idx=tr_idx,
+        Chol_y=Chol_y,
+        Chol_ystar=Chol_ystar,
+        Cov_y_ystar=Cov_y_ystar,
+        nboot=nboot,
+        alpha=alpha,
+        full_refit=full_refit,
+        use_trace_corr=use_trace_corr,
+        ret_yhats=False,
     )
-
-    if Cov_y_ystar is None:
-        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts = _get_tr_ts_covs(
-            Sigma_t, Sigma_s, tr_idx, ts_idx, alpha
-        )
-        Gamma = None
-    else:
-        Cov_tr_ts, Cov_s_ts, Cov_t_ts, Cov_wp_ts, Gamma = _get_tr_ts_covs_corr(
-            Sigma_t, Sigma_s, Cov_y_ystar, ts_idx, alpha, full_refit
-        )
-
-    noise_correction = _get_noise_correction(
-        Cov_s_ts, 
-        Cov_t_ts, 
-        Cov_wp_ts,
-        use_trace_corr
-    )
-    boot_ests = np.zeros(nboot)
-    if ret_yhats:
-        yhats = np.zeros((n_ts, nboot))
-    for i in range(nboot):
-        w, wp, eps, regress_t_eps = _blur(y, Chol_eps, proj_t_eps)
-        w_tr = w[tr_idx]
-        wp_ts = wp[ts_idx]
-
-        model.fit(X_tr, w_tr)
-
-        base_est, yhat = _compute_cp_estimator(
-            model=model,
-            X=X, 
-            X_ts=X_ts, 
-            y=y, 
-            y_tr=y_tr, 
-            w=w, 
-            w_tr=w_tr,
-            wp=wp,
-            wp_ts=wp_ts,
-            regress_t_eps=regress_t_eps,
-            tr_idx=tr_idx,
-            ts_idx=ts_idx,
-            Cov_y_ystar=Cov_y_ystar,
-            Cov_tr_ts=Cov_tr_ts,
-            full_refit=full_refit,
-            use_trace_corr=use_trace_corr,
-            Gamma=Gamma,
-        )
-        boot_ests[i] = base_est
-        if ret_yhats:
-            yhats[:,i] = yhat
-
-    cp_est = boot_ests.mean() + noise_correction
-
-    if ret_yhats:
-        return cp_est, yhats
-
-    return cp_est
 
 
 def cp_bagged(
@@ -606,9 +682,52 @@ def cp_bagged(
     full_refit=False,
     use_trace_corr=False,
     n_estimators=100,
-    **kwargs,
 ):
-    ind_est, yhats = cp_adaptive_smoother(model,
+    """Computes Generalized Cp for bagged models.
+
+    Parameters
+    ----------
+    model: object
+        The base estimator to fit on bootstraps of the data. 
+
+    X : array-like of shape (n, p)
+
+    y : array-like of shape (n,)
+
+    tr_idx : bool array-like of shape (n,)
+
+    Chol_y : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
+        in which case ``Chol_y`` is set to ``np.eye(n)``.
+
+    Chol_ystar : array-like of shape (n, n), optional
+        Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
+        in which case ``Chol_ystar`` is set to ``np.eye(n)``.
+
+    Cov_y_ystar : array-like of shape (n, n), optional
+        Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
+        in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
+
+    full_refit : bool, optional
+        If ``True`` computes estimator for refitting/predicting using original data
+        :math:`Y`, i.e. predictions are :math:`S(W)Y`. If ``False``, uses 
+        :math:`S(W)W` for predictions. Default is ``False``.
+
+    use_trace_corr : bool, optional
+        If ``True``, computes estimator with deterministic trace correction. If ``False``,
+        uses random correction term with same expectation, but yielding an estimator
+        with smaller variance. Default is ``False``.
+
+    n_estimators : int, optional
+        Number of base estimators in the bagged model. Default is ``100``.
+
+    Returns
+    -------
+    err_est : float
+        Estimate of MSE of ``model`` on :math:`\\alpha` noise-elevated data.
+    """
+    ind_est, yhats = _compute_cp_estimator(
+        model,
         X=X,
         y=y,
         tr_idx=tr_idx,
