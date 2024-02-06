@@ -72,5 +72,6 @@ spe.smoothers
     :toctree: generated/
 
 
+    BSplineRegressor
     LinearRegression
 
