@@ -11,6 +11,56 @@ from .tree import LinearSelector
 
 
 class RelaxedLasso(LinearSelector, BaseEstimator):
+    """Build a forest of trees from the training set (X, y).
+
+    Parameters
+    ----------
+    lambd : float, optional
+        Constant that multiplies the L1 term, controlling regularization strength. 
+        ``lambd`` must be a non-negative ``float`` i.e. in ``[0, inf)``.
+
+    fit_intercept : bool, optional  
+        Whether to calculate the intercept for this model. If set to ``False``, no 
+        intercept will be used in calculations (i.e. data is expected to be centered). 
+        Default is ``True``.
+
+    precompute : bool or array-like of shape (n_features, n_features), optional
+        Whether to use a precomputed Gram matrix to speed up calculations. The 
+        Gram matrix can also be passed as argument. For sparse input this option 
+        is always ``False`` to preserve sparsity. Default is ``False``.
+
+    copy_X : bool, optional
+        If True, ``X`` will be copied; else, it may be overwritten. Default is ``True``.
+
+
+    max_iter : int, optional
+        The maximum number of iterations. Default is ``1000``.
+
+    tol : float, optional
+        The tolerance for the optimization: if the updates are smaller than ``tol``, 
+        the optimization code checks the dual gap for optimality and continues until 
+        it is smaller than ``tol``. Default is ``1e-4``.
+
+    warm_start : bool, optional
+        When set to ``True``, reuse the solution of the previous call to fit as 
+        initialization, otherwise, just erase the previous solution. Default is ``False``.
+
+    positive : bool, optional
+        When set to ``True``, forces the coefficients to be positive. Default is ``False``.
+
+    random_state : int, optional
+        The seed of the pseudo random number generator that selects a random feature 
+        to update. Used when ``selection`` is ``random``. Pass an ``int`` for reproducible 
+        output across multiple function calls. Default is ``None``.
+
+    selection : {'cyclic', 'random'}, optional
+        If set to ``random``, a random coefficient is updated every iteration rather 
+        than looping over features sequentially by default. This (setting to 
+        ``random``) often leads to significantly faster convergence especially 
+        when tol is higher than 1e-4. Default is `'cyclic'`.
+        
+    
+    """
     def __init__(
         self,
         lambd=1.0,
@@ -18,7 +68,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         precompute=False,
         copy_X=True,
         max_iter=1000,
-        tol=0.0001,
+        tol=1e-4,#0.0001,
         warm_start=False,
         positive=False,
         random_state=None,

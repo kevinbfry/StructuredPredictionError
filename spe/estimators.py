@@ -316,21 +316,22 @@ def cp_smoother(
     ----------
     model: object
 
-    X : array-like of shape (n, p)
+    X : array-like of shape (n_samples, n_features)
 
-    y : array-like of shape (n,)
+    y : array-like of shape (n_samples,)
 
-    tr_idx : bool array-like of shape (n,)
+    tr_idx : bool array-like of shape (n_samples,)
+        Boolean index of which samples to train the model on.
 
-    Chol_y : array-like of shape (n, n), optional
+    Chol_y : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
         in which case ``Chol_y`` is set to ``np.eye(n)``.
 
-    Chol_ystar : array-like of shape (n, n), optional
+    Chol_ystar : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
         in which case ``Chol_ystar`` is set to ``np.eye(n)``.
 
-    Cov_y_ystar : array-like of shape (n, n), optional
+    Cov_y_ystar : array-like of shape (n_samples, n_samples), optional
         Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
         in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
 
@@ -384,21 +385,22 @@ def cp_general(
     model: object
         The model to estimate MSE for.
 
-    X : array-like of shape (n, p)
+    X : array-like of shape (n_samples, n_features)
 
-    y : array-like of shape (n,)
+    y : array-like of shape (n_samples,)
 
-    tr_idx : bool array-like of shape (n,)
+    tr_idx : bool array-like of shape (n_samples,)
+        Boolean index of which samples to train the model on.
 
-    Chol_y : array-like of shape (n, n), optional
+    Chol_y : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
         in which case ``Chol_y`` is set to ``np.eye(n)``.
 
-    Chol_ystar : array-like of shape (n, n), optional
+    Chol_ystar : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
         in which case ``Chol_ystar`` is set to ``np.eye(n)``.
 
-    Cov_y_ystar : array-like of shape (n, n), optional
+    Cov_y_ystar : array-like of shape (n_samples, n_samples), optional
         Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
         in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
 
@@ -613,21 +615,22 @@ def cp_adaptive_smoother(
         The model to estimate MSE for. Must have predictions of the form
         :math:`S(Y)Y` where :math:`S(Y) \\in \\mathbb{R}^{n\\times n}`.
 
-    X : array-like of shape (n, p)
+    X : array-like of shape (n_samples, n_features)
 
-    y : array-like of shape (n,)
+    y : array-like of shape (n_samples,)
 
-    tr_idx : bool array-like of shape (n,)
+    tr_idx : bool array-like of shape (n_samples,)
+        Boolean index of which samples to train the model on.
 
-    Chol_y : array-like of shape (n, n), optional
+    Chol_y : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
         in which case ``Chol_y`` is set to ``np.eye(n)``.
 
-    Chol_ystar : array-like of shape (n, n), optional
+    Chol_ystar : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
         in which case ``Chol_ystar`` is set to ``np.eye(n)``.
 
-    Cov_y_ystar : array-like of shape (n, n), optional
+    Cov_y_ystar : array-like of shape (n_samples, n_samples), optional
         Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
         in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
 
@@ -690,21 +693,22 @@ def cp_bagged(
     model: object
         The base estimator to fit on bootstraps of the data. 
 
-    X : array-like of shape (n, p)
+    X : array-like of shape (n_samples, n_features)
 
-    y : array-like of shape (n,)
+    y : array-like of shape (n_samples,)
 
-    tr_idx : bool array-like of shape (n,)
+    tr_idx : bool array-like of shape (n_samples,)
+        Boolean index of which samples to train the model on.
 
-    Chol_y : array-like of shape (n, n), optional
+    Chol_y : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_Y`. Default is ``None`` 
         in which case ``Chol_y`` is set to ``np.eye(n)``.
 
-    Chol_ystar : array-like of shape (n, n), optional
+    Chol_ystar : array-like of shape (n_samples, n_samples), optional
         Cholesky of covariance matrix of :math:`\\Sigma_{Y^*}`. Default is ``None`` 
         in which case ``Chol_ystar`` is set to ``np.eye(n)``.
 
-    Cov_y_ystar : array-like of shape (n, n), optional
+    Cov_y_ystar : array-like of shape (n_samples, n_samples), optional
         Covariance matrix of :math:`\\Sigma_{Y,Y^*}`. Default is ``None`` 
         in which case it is assumed :math:`\\Sigma_{Y,Y^*} = 0`.
 

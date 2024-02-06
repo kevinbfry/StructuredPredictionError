@@ -2,6 +2,20 @@ API Reference
 =============
 
 
+spe.bagging
+-----------
+
+
+.. currentmodule:: spe.bagging
+
+
+.. autosummary::
+    :toctree: generated/
+
+
+    ParametricBaggingRegressor
+
+
 spe.estimators
 -----------
 
@@ -19,20 +33,6 @@ spe.estimators
     cp_smoother
 
 
-spe.bagging
------------
-
-
-.. currentmodule:: spe.bagging
-
-
-.. autosummary::
-    :toctree: generated/
-
-
-    ParametricBaggingRegressor
-
-
 spe.forest
 -----------
 
@@ -45,4 +45,33 @@ spe.forest
 
 
     ParametricRandomForestRegressor
+
+
+spe.relaxed_lasso
+-----------
+
+
+.. currentmodule:: spe.relaxed_lasso
+
+
+.. autosummary::
+    :toctree: generated/
+
+
+    RelaxedLasso
+
+
+spe.smoothers
+-----------
+
+
+.. currentmodule:: spe.smoothers
+
+
+.. autosummary::
+    :toctree: generated/
+
+
+    BSplineRegressor
+    LinearRegression
 

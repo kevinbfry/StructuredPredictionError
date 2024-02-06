@@ -126,8 +126,7 @@ class ParametricRandomForestRegressor(RandomForestRegressor):
         chol_eps=None, 
         do_param_boot=False,
     ):
-        """
-        Build a forest of trees from the training set (X, y).
+        """Build a forest of trees from the training set (X, y).
 
         Parameters
         ----------
