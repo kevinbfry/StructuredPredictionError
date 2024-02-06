@@ -39,29 +39,28 @@ class BSplineRegressor(LinearSelector, BaseEstimator):
     ----------
     n_knots : int, optional
         Number of knots of the splines if `knots` equals one of
-        {'uniform', 'quantile'}. Must be larger or equal 2. Ignored if `knots`
+        {'uniform', 'quantile'}. Must be larger or equal 2. Ignored if ``knots``
         is array-like. Default is `5`.
 
     degree : int, optional
         The polynomial degree of the spline basis. Must be a non-negative
-        integer. Default is `3`.
+        integer. Default is ``3``.
 
     knots : {'uniform', 'quantile'} or array-like of shape \
         (n_knots, n_features), optional
         Set knot positions such that first knot <= features <= last knot.
-        Default is `uniform`.
+        Default is `'uniform'`.
 
-        - If 'uniform', `n_knots` number of knots are distributed uniformly
+        - If `'uniform'`, ``n_knots`` number of knots are distributed uniformly
           from min to max values of the features.
-        - If 'quantile', they are distributed uniformly along the quantiles of
+        - If `'quantile'`, they are distributed uniformly along the quantiles of
           the features.
         - If an array-like is given, it directly specifies the sorted knot
           positions including the boundary knots. Note that, internally,
-          `degree` number of knots are added before the first knot, the same
+          ``degree`` number of knots are added before the first knot, the same
           after the last knot.
 
-    extrapolation : {'error', 'constant', 'linear', 'continue', 'periodic'}, \
-        default='constant'
+    extrapolation : {'error', 'constant', 'linear', 'continue', 'periodic'}, optional
         If 'error', values outside the min and max values of the training
         features raises a `ValueError`. If 'constant', the value of the
         splines at minimum and maximum value of the features is used as
@@ -91,8 +90,6 @@ class BSplineRegressor(LinearSelector, BaseEstimator):
     sparse_output : bool, optional
         Will return sparse CSR matrix if set True else will return an array. This
         option is only available with ``scipy>=1.8``. Default is ``False``.
-
-        .. versionadded:: 1.2
     """
     def __init__(
         self,
