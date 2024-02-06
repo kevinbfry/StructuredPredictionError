@@ -1,7 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 #
 # For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-docs.org/en/master/usage/configuration.html
+# https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import os
 import sys
@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
-# https://www.sphinx-docs.org/en/master/usage/configuration.html#project-information
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'spe'
 copyright = '2024, Kevin Fry'
@@ -19,7 +19,7 @@ author = 'Kevin Fry'
 release = open("../../VERSION", "r").read()
 
 # -- General configuration ---------------------------------------------------
-# https://www.sphinx-docs.org/en/master/usage/configuration.html#general-configuration
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -31,7 +31,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 
 # -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-docs.org/en/master/usage/configuration.html#options-for-html-output
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'pydata_sphinx_theme'
 html_theme_options = {
