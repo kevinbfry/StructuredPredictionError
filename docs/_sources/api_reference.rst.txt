@@ -17,7 +17,7 @@ spe.bagging
 
 
 spe.estimators
------------
+--------------
 
 
 .. currentmodule:: spe.estimators
@@ -34,7 +34,7 @@ spe.estimators
 
 
 spe.forest
------------
+----------
 
 
 .. currentmodule:: spe.forest
@@ -47,22 +47,22 @@ spe.forest
     ParametricRandomForestRegressor
 
 
-.. spe.relaxed_lasso
-.. -----------
+spe.relaxed_lasso
+-----------------
 
 
-.. .. currentmodule:: spe.relaxed_lasso
+.. currentmodule:: spe.relaxed_lasso
 
 
-.. .. autosummary::
-..     :toctree: generated/
+.. autosummary::
+    :toctree: generated/
 
 
-..     RelaxedLasso
+    RelaxedLasso
 
 
 .. spe.smoothers
-.. -----------
+.. -------------
 
 
 .. .. currentmodule:: spe.smoothers
