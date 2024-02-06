@@ -1,0 +1,53 @@
+﻿spe.smoothers.LinearRegression
+==============================
+
+.. currentmodule:: spe.smoothers
+
+.. autoclass:: LinearRegression
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LinearRegression.__init__
+      ~LinearRegression.fit
+      ~LinearRegression.get_group_X
+      ~LinearRegression.get_linear_smoother
+      ~LinearRegression.get_metadata_routing
+      ~LinearRegression.get_params
+      ~LinearRegression.predict
+      ~LinearRegression.score
+      ~LinearRegression.set_fit_request
+      ~LinearRegression.set_params
+      ~LinearRegression.set_predict_request
+      ~LinearRegression.set_score_request
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   .. automethod:: __init__
+   .. automethod:: fit
+   .. automethod:: get_group_X
+   .. automethod:: get_linear_smoother
+   .. automethod:: get_metadata_routing
+   .. automethod:: get_params
+   .. automethod:: predict
+   .. automethod:: score
+   .. automethod:: set_fit_request
+   .. automethod:: set_params
+   .. automethod:: set_predict_request
+   .. automethod:: set_score_request
+   
+   
+
+   
+   
+   
