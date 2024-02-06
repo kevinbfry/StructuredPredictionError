@@ -2,13 +2,13 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="./" data-theme="dark">
+<html lang="en" data-content_root="../" data-theme="dark">
 
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Reference &#8212; spe 0.1.0 documentation</title>
+    <title>spe.estimators.cp_smoother &#8212; spe 0.1.0 documentation</title>
   
   
   
@@ -18,32 +18,33 @@
   </script>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
-<link href="_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
 
   
-  <link href="_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
-  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
 
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="_static/numpy.css?v=92d1e6fe" />
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/numpy.css?v=92d1e6fe" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
-  <script src="_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
 
-    <script src="_static/documentation_options.js?v=01f34227"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference';</script>
-    <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="spe.estimators.cp_smoother" href="generated/spe.estimators.cp_smoother.html" />
-    <link rel="prev" title="SPE Documentation" href="index.html" />
+    <script src="../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.estimators.cp_smoother';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="spe.bagging.ParametricBaggingRegressor" href="spe.bagging.ParametricBaggingRegressor.html" />
+    <link rel="prev" title="API Reference" href="../api_reference.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -79,7 +80,7 @@
     <div class="search-button__overlay"></div>
     <div class="search-button__search-container">
 <form class="bd-search d-flex align-items-center"
-      action="search.html"
+      action="../search.html"
       method="get">
   <i class="fa-solid fa-magnifying-glass"></i>
   <input type="search"
@@ -109,7 +110,7 @@
 
   
 
-<a class="navbar-brand logo" href="index.html">
+<a class="navbar-brand logo" href="../index.html">
   
   
   
@@ -131,14 +132,14 @@
   <ul class="bd-navbar-elements navbar-nav">
     
                     <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
                         API Reference
                       </a>
                     </li>
                 
 
                     <li class="nav-item">
-                      <a class="nav-link nav-internal" href="user_guide.html">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
                         User Guide
                       </a>
                     </li>
@@ -242,14 +243,14 @@ document.write(`
   <ul class="bd-navbar-elements navbar-nav">
     
                     <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
                         API Reference
                       </a>
                     </li>
                 
 
                     <li class="nav-item">
-                      <a class="nav-link nav-internal" href="user_guide.html">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
                         User Guide
                       </a>
                     </li>
@@ -300,11 +301,11 @@ document.write(`
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="generated/spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.estimators.cp_smoother</a></li>
 </ul>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="generated/spe.bagging.ParametricBaggingRegressor.html">spe.bagging.ParametricBaggingRegressor</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.bagging.ParametricBaggingRegressor.html">spe.bagging.ParametricBaggingRegressor</a></li>
 </ul>
 </div>
 </nav></div>
@@ -338,11 +339,14 @@ document.write(`
   <ul class="bd-breadcrumbs">
     
     <li class="breadcrumb-item breadcrumb-home">
-      <a href="index.html" class="nav-link" aria-label="Home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page">API Reference</li>
+    
+    <li class="breadcrumb-item"><a href="../api_reference.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">spe.estimato...</li>
   </ul>
 </nav>
 </div>
@@ -359,35 +363,40 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="api-reference">
-<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading">#</a></h1>
-<section id="spe-estimators">
-<h2>spe.estimators<a class="headerlink" href="#spe-estimators" title="Link to this heading">#</a></h2>
-<table class="autosummary longtable table autosummary">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.estimators.cp_smoother.html#spe.estimators.cp_smoother" title="spe.estimators.cp_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cp_smoother</span></code></a>(model, X, y, tr_idx[, Chol_t, ...])</p></td>
-<td><p>Computes Mallow's Cp for any linear model and dependent train and test set.</p></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="spe-bagging">
-<h2>spe.bagging<a class="headerlink" href="#spe-bagging" title="Link to this heading">#</a></h2>
-<table class="autosummary longtable table autosummary">
-<tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.bagging.ParametricBaggingRegressor.html#spe.bagging.ParametricBaggingRegressor" title="spe.bagging.ParametricBaggingRegressor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParametricBaggingRegressor</span></code></a>([estimator, ...])</p></td>
-<td><p></p></td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="spe-forest">
-<h2>spe.forest<a class="headerlink" href="#spe-forest" title="Link to this heading">#</a></h2>
-<table class="autosummary longtable table autosummary">
-<tbody>
-</tbody>
-</table>
-</section>
+  <section id="spe-estimators-cp-smoother">
+<h1>spe.estimators.cp_smoother<a class="headerlink" href="#spe-estimators-cp-smoother" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="spe.estimators.cp_smoother">
+<span class="sig-prename descclassname"><span class="pre">spe.estimators.</span></span><span class="sig-name descname"><span class="pre">cp_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Cov_st</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.estimators.cp_smoother" title="Link to this definition">#</a></dt>
+<dd><p>Computes Mallow’s Cp for any linear model and dependent train and test set.</p>
+<p>TODO: Longer description.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>model: object</strong></dt><dd></dd>
+<dt><strong>X</strong><span class="classifier">array-like of shape (n, p)</span></dt><dd></dd>
+<dt><strong>y</strong><span class="classifier">array-like of shape (n,)</span></dt><dd></dd>
+<dt><strong>tr_idx</strong><span class="classifier">bool array-like of shape (n,)</span></dt><dd></dd>
+<dt><strong>Chol_t</strong><span class="classifier">array-like of shape (n, n), optional</span></dt><dd><p>Cholesky of covariance matrix of <span class="math notranslate nohighlight">\(\Sigma_Y\)</span>. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> 
+in which case <code class="docutils literal notranslate"><span class="pre">Chol_t</span></code> is set to <code class="docutils literal notranslate"><span class="pre">np.eye(n)</span></code>.</p>
+</dd>
+<dt><strong>Chol_s</strong><span class="classifier">array-like of shape (n, n), optional</span></dt><dd><p>Cholesky of covariance matrix of <span class="math notranslate nohighlight">\(\Sigma_{Y^*}\)</span>. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> 
+in which case <code class="docutils literal notranslate"><span class="pre">Chol_s</span></code> is set to <code class="docutils literal notranslate"><span class="pre">np.eye(n)</span></code>.</p>
+</dd>
+<dt><strong>Cov_st</strong><span class="classifier">array-like of shape (n, n), optional</span></dt><dd><p>Cholesky of covariance matrix of <span class="math notranslate nohighlight">\(\Sigma_{Y,Y^*}\)</span>. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> 
+in which case it is assumed <span class="math notranslate nohighlight">\(\Sigma_{Y,Y^*} = 0\)</span>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>err_est</strong><span class="classifier">float</span></dt><dd><p>Cp type estimate of MSE.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
@@ -401,20 +410,20 @@ document.write(`
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="index.html"
+       href="../api_reference.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">SPE Documentation</p>
+        <p class="prev-next-title">API Reference</p>
       </div>
     </a>
     <a class="right-next"
-       href="generated/spe.estimators.cp_smoother.html"
+       href="spe.bagging.ParametricBaggingRegressor.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">spe.estimators.cp_smoother</p>
+        <p class="prev-next-title">spe.bagging.ParametricBaggingRegressor</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -436,16 +445,14 @@ document.write(`
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-estimators">spe.estimators</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-bagging">spe.bagging</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-forest">spe.forest</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.estimators.cp_smoother"><code class="docutils literal notranslate"><span class="pre">cp_smoother()</span></code></a></li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="_sources/api_reference.rst.txt">
+    <a href="../_sources/generated/spe.estimators.cp_smoother.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>
@@ -464,8 +471,8 @@ document.write(`
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script src="_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
-<script src="_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+  <script src="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
