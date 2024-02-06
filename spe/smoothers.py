@@ -33,10 +33,6 @@ class BSplineRegressor(LinearSelector, BaseEstimator):
 
     Parameters
     ----------
-
-
-    Parameters
-    ----------
     n_knots : int, optional
         Number of knots of the splines if `knots` equals one of
         {'uniform', 'quantile'}. Must be larger or equal 2. Ignored if ``knots``
