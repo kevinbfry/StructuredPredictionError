@@ -1,6 +1,0 @@
-﻿spe.estimators.cp\_smoother
-===========================
-
-.. currentmodule:: spe.estimators
-
-.. autofunction:: cp_smoother
