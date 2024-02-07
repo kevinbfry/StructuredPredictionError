@@ -17,7 +17,7 @@ from spe.estimators import (
     by_spatial,
     cp_smoother,
     cp_adaptive_smoother,
-    cp_general,
+    cp_arbitrary,
     cp_bagged,
     cp_rf,
     new_y_est,
@@ -35,7 +35,7 @@ class ErrorComparer(object):
     CV_METHODS = (kfoldcv, kmeanscv) + BAGCV_METHODS
     SPCV_METHODS = (bag_kmeanscv, kmeanscv)
     BAGCP_METHODS = (cp_rf, cp_bagged)#, cp_bagged2)
-    GENCP_METHODS = (cp_smoother, cp_adaptive_smoother, cp_general) + BAGCP_METHODS
+    GENCP_METHODS = (cp_smoother, cp_adaptive_smoother, cp_arbitrary) + BAGCP_METHODS
     TESTERR_METHODS = (new_y_est,)
 
     def gen_X_beta(self, n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):

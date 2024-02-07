@@ -366,7 +366,7 @@ def cp_smoother(
     return np.mean((y_ts - P @ y_tr) ** 2) + correction
 
 
-def cp_general(
+def cp_arbitrary(
     model,
     X,
     y,

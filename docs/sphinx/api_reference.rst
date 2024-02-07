@@ -28,8 +28,8 @@ spe.estimators
 
 
     cp_adaptive_smoother
+    cp_arbitrary
     cp_bagged
-    cp_general
     cp_smoother
 
 
