@@ -16,6 +16,9 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
     Fits the usual lasso, then refits an unpenalized linear regression on features
     selected by the lasso.
 
+    Documentation is heavily lifted from sklearn Lasso and LinearRegression classes,
+    both of which are utilized by this class.
+
     Parameters
     ----------
     lambd : float, optional
