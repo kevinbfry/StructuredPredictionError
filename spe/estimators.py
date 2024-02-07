@@ -310,7 +310,7 @@ def cp_smoother(
     Chol_ystar=None,
     Cov_y_ystar=None,
 ):
-    """Computes Mallow's Cp for any linear model and dependent train and test set.
+    """Computes Generalized Mallows's Cp for any linear model and dependent train and test set.
 
     Parameters
     ----------
@@ -378,7 +378,7 @@ def cp_general(
     alpha=.05,
     use_trace_corr=False,
 ):
-    """Computes Generalized Cp for arbitrary models.
+    """Computes Generalized Mallows's Cp for arbitrary models.
 
     Parameters
     ----------
@@ -607,7 +607,7 @@ def cp_adaptive_smoother(
     full_refit=True,
     use_trace_corr=False,
 ):
-    """Computes Generalized Cp for adaptive linear smoothers.
+    """Computes Generalized Mallows's Cp for adaptive linear smoothers.
 
     Parameters
     ----------
@@ -686,7 +686,7 @@ def cp_bagged(
     use_trace_corr=False,
     n_estimators=100,
 ):
-    """Computes Generalized Cp for bagged models.
+    """Computes Generalized Mallows's Cp for bagged models.
 
     Parameters
     ----------
