@@ -1428,6 +1428,7 @@
     }
    ],
    "source": [
+    "px.offline.init_notebook_mode()\n",
     "fig = gen_model_barplots(\n",
     "    comb_errs, \n",
     "    model_names, \n",

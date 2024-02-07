@@ -374,6 +374,8 @@ document.write(`
 from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.tree import DecisionTreeRegressor
 
+import plotly.express import px
+
 from docs.plotting_utils import gen_model_barplots
 from docs.data_generation import gen_cov_mat, gen_rbf_X, gen_matern_X
 from spe.estimators import cp_general
@@ -539,7 +541,8 @@ corr_est
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig = gen_model_barplots(
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>px.offline.init_notebook_mode()
+fig = gen_model_barplots(
     [[np.array([corr_est])]],
     [&quot;a&quot;],
     [&quot;b&quot;],
