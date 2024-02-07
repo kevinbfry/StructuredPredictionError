@@ -14,10 +14,10 @@
       ~RelaxedLasso.__init__
       ~RelaxedLasso.fit
       ~RelaxedLasso.fit_linear
-      ~RelaxedLasso.get_group_X
       ~RelaxedLasso.get_linear_smoother
       ~RelaxedLasso.get_metadata_routing
       ~RelaxedLasso.get_params
+      ~RelaxedLasso.get_selected_X
       ~RelaxedLasso.predict
       ~RelaxedLasso.set_fit_request
       ~RelaxedLasso.set_params
@@ -35,10 +35,10 @@
    .. automethod:: __init__
    .. automethod:: fit
    .. automethod:: fit_linear
-   .. automethod:: get_group_X
    .. automethod:: get_linear_smoother
    .. automethod:: get_metadata_routing
    .. automethod:: get_params
+   .. automethod:: get_selected_X
    .. automethod:: predict
    .. automethod:: set_fit_request
    .. automethod:: set_params

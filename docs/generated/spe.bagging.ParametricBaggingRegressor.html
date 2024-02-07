@@ -322,6 +322,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.BSplineRegressor.html">spe.smoothers.BSplineRegressor</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.LinearRegression.html">spe.smoothers.LinearRegression</a></li>
 </ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html">spe.tree.AdaptiveLinearSmoother</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.tree.Tree.html">spe.tree.Tree</a></li>
+</ul>
 </div>
 </nav></div>
     </div>
@@ -399,7 +403,9 @@ of the dataset are drawn as random subsets of the features, then the method
 is known as Random Subspaces <a class="reference internal" href="#r6745008a2f3a-3" id="id3">[3]</a>. Finally, when base estimators are built
 on subsets of both samples and features, then the method is known as
 Random Patches <a class="reference internal" href="#r6745008a2f3a-4" id="id4">[4]</a>.</p>
-<p>Documentation is heavily lifted from sklearn BaggingRegressor class, which 
+<p>Additionally, can fit with Gaussian parametric bootstraps, and is a subclass of
+<a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother</span></code></a>.</p>
+<p>Documentation is heavily lifted from <code class="xref py py-class docutils literal notranslate"><span class="pre">BaggingRegressor</span></code> class, which 
 this class inherits from.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -435,19 +441,18 @@ the generalization error. Only available if bootstrap=True.</p>
 </dd>
 <dt><strong>warm_start</strong><span class="classifier">bool, default=False</span></dt><dd><p>When set to True, reuse the solution of the previous call to fit
 and add more estimators to the ensemble, otherwise, just fit
-a whole new ensemble. See <span class="xref std std-term">the Glossary</span>.</p>
+a whole new ensemble.</p>
 </dd>
 <dt><strong>n_jobs</strong><span class="classifier">int, default=None</span></dt><dd><p>The number of jobs to run in parallel for both <a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.fit" title="spe.bagging.ParametricBaggingRegressor.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fit()</span></code></a> and
 <a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.predict" title="spe.bagging.ParametricBaggingRegressor.predict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">predict()</span></code></a>. <code class="docutils literal notranslate"><span class="pre">None</span></code> means 1 unless in a
 <code class="xref py py-obj docutils literal notranslate"><span class="pre">joblib.parallel_backend</span></code> context. <code class="docutils literal notranslate"><span class="pre">-1</span></code> means using all
-processors. See <span class="xref std std-term">Glossary</span> for more details.</p>
+processors.</p>
 </dd>
 <dt><strong>random_state</strong><span class="classifier">int, RandomState instance or None, default=None</span></dt><dd><p>Controls the random resampling of the original dataset
 (sample wise and feature wise).
 If the base estimator accepts a <cite>random_state</cite> attribute, a different
 seed is generated for each instance in the ensemble.
-Pass an int for reproducible output across multiple function calls.
-See <span class="xref std std-term">Glossary</span>.</p>
+Pass an int for reproducible output across multiple function calls.</p>
 </dd>
 <dt><strong>verbose</strong><span class="classifier">int, default=0</span></dt><dd><p>Controls the verbosity when fitting and predicting.</p>
 </dd>
@@ -503,9 +508,9 @@ Learning and Knowledge Discovery in Databases, 346-361, 2012.</p>
 <dd class="field-odd"><dl>
 <dt><strong>estimator_</strong><span class="classifier">estimator</span></dt><dd><p>The base estimator from which the ensemble is grown.</p>
 </dd>
-<dt><strong>n_features_in_</strong><span class="classifier">int</span></dt><dd><p>Number of features seen during <span class="xref std std-term">fit</span>.</p>
+<dt><strong>n_features_in_</strong><span class="classifier">int</span></dt><dd><p>Number of features seen during <code class="docutils literal notranslate"><span class="pre">fit</span></code>.</p>
 </dd>
-<dt><strong>feature_names_in_</strong><span class="classifier">ndarray of shape (<cite>n_features_in_</cite>,)</span></dt><dd><p>Names of features seen during <span class="xref std std-term">fit</span>. Defined only when <cite>X</cite>
+<dt><strong>feature_names_in_</strong><span class="classifier">ndarray of shape (<cite>n_features_in_</cite>,)</span></dt><dd><p>Names of features seen during <code class="docutils literal notranslate"><span class="pre">fit</span></code>. Defined only when <cite>X</cite>
 has feature names that are all strings.</p>
 </dd>
 <dt><strong>estimators_</strong><span class="classifier">list of estimators</span></dt><dd><p>The collection of fitted sub-estimators.</p>
@@ -535,34 +540,31 @@ when <code class="docutils literal notranslate"><span class="pre">oob_score</spa
 <tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.fit" title="spe.bagging.ParametricBaggingRegressor.fit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit</span></code></a>(X, y[, max_samples, max_depth, ...])</p></td>
 <td><p>Build a Bagging ensemble of estimators from the training</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_group_X" title="spe.bagging.ParametricBaggingRegressor.get_group_X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_group_X</span></code></a>(X[, X_pred])</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_linear_smoother" title="spe.bagging.ParametricBaggingRegressor.get_linear_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_linear_smoother</span></code></a>(X, tr_idx, ts_idx[, ...])</p></td>
+<td><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_linear_smoother" title="spe.bagging.ParametricBaggingRegressor.get_linear_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_linear_smoother</span></code></a>(X, tr_idx, ts_idx[, ...])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_metadata_routing" title="spe.bagging.ParametricBaggingRegressor.get_metadata_routing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metadata_routing</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_metadata_routing" title="spe.bagging.ParametricBaggingRegressor.get_metadata_routing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metadata_routing</span></code></a>()</p></td>
 <td><p>Raise <cite>NotImplementedError</cite>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_params" title="spe.bagging.ParametricBaggingRegressor.get_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_params</span></code></a>([deep])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.get_params" title="spe.bagging.ParametricBaggingRegressor.get_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_params</span></code></a>([deep])</p></td>
 <td><p>Get parameters for this estimator.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.predict" title="spe.bagging.ParametricBaggingRegressor.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X[, tr_idx, ts_idx, y_refit])</p></td>
-<td><p>Predict regression target for X.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.predict" title="spe.bagging.ParametricBaggingRegressor.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X[, tr_idx, ts_idx, y_refit])</p></td>
+<td><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.score" title="spe.bagging.ParametricBaggingRegressor.score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score</span></code></a>(X, y[, sample_weight])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.score" title="spe.bagging.ParametricBaggingRegressor.score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score</span></code></a>(X, y[, sample_weight])</p></td>
 <td><p>Return the coefficient of determination of the prediction.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_fit_request" title="spe.bagging.ParametricBaggingRegressor.set_fit_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_fit_request</span></code></a>(*[, check_input, chol_eps, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_fit_request" title="spe.bagging.ParametricBaggingRegressor.set_fit_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_fit_request</span></code></a>(*[, check_input, chol_eps, ...])</p></td>
 <td><p>Request metadata passed to the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_params" title="spe.bagging.ParametricBaggingRegressor.set_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_params</span></code></a>(**params)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_params" title="spe.bagging.ParametricBaggingRegressor.set_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_params</span></code></a>(**params)</p></td>
 <td><p>Set the parameters of this estimator.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_predict_request" title="spe.bagging.ParametricBaggingRegressor.set_predict_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_predict_request</span></code></a>(*[, tr_idx, ts_idx, y_refit])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_predict_request" title="spe.bagging.ParametricBaggingRegressor.set_predict_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_predict_request</span></code></a>(*[, tr_idx, ts_idx, y_refit])</p></td>
 <td><p>Request metadata passed to the <code class="docutils literal notranslate"><span class="pre">predict</span></code> method.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_score_request" title="spe.bagging.ParametricBaggingRegressor.set_score_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_score_request</span></code></a>(*[, sample_weight])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.bagging.ParametricBaggingRegressor.set_score_request" title="spe.bagging.ParametricBaggingRegressor.set_score_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_score_request</span></code></a>(*[, sample_weight])</p></td>
 <td><p>Request metadata passed to the <code class="docutils literal notranslate"><span class="pre">score</span></code> method.</p></td>
 </tr>
 </tbody>
@@ -627,14 +629,10 @@ if the base estimator has a check_input parameter for fit function.</p>
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="spe.bagging.ParametricBaggingRegressor.get_group_X">
-<span class="sig-name descname"><span class="pre">get_group_X</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X_pred</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.bagging.ParametricBaggingRegressor.get_group_X" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="spe.bagging.ParametricBaggingRegressor.get_linear_smoother">
 <span class="sig-name descname"><span class="pre">get_linear_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_full_P</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.bagging.ParametricBaggingRegressor.get_linear_smoother" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.bagging.ParametricBaggingRegressor.get_metadata_routing">
@@ -667,24 +665,9 @@ contained subobjects that are estimators.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.bagging.ParametricBaggingRegressor.predict">
 <span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.bagging.ParametricBaggingRegressor.predict" title="Link to this definition">#</a></dt>
-<dd><p>Predict regression target for X.</p>
-<p>The predicted regression target of an input sample is computed as the
-mean predicted regression targets of the estimators in the ensemble.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>X</strong><span class="classifier">{array-like, sparse matrix} of shape (n_samples, n_features)</span></dt><dd><p>The training input samples. Sparse matrices are accepted only if
-they are supported by the base estimator.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>y</strong><span class="classifier">ndarray of shape (n_samples,)</span></dt><dd><p>The predicted values.</p>
-</dd>
-</dl>
-</dd>
-</dl>
+<dd><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p>
+<p>Computes predictions as adaptive linear smoothing where <span class="math notranslate nohighlight">\(S(W)\)</span> is the
+output of instance’s <a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-func docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -961,7 +944,6 @@ data. Thus fetching the property may be slower than expected.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor.__init__"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor.fit"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor.fit()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor.get_group_X"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor.get_group_X()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor.get_linear_smoother"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor.get_linear_smoother()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor.get_metadata_routing"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor.get_metadata_routing()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.bagging.ParametricBaggingRegressor.get_params"><code class="docutils literal notranslate"><span class="pre">ParametricBaggingRegressor.get_params()</span></code></a></li>

@@ -45,7 +45,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.smoothers.LinearRegression';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="User Guide" href="../user_guide.html" />
+    <link rel="next" title="spe.tree.AdaptiveLinearSmoother" href="spe.tree.AdaptiveLinearSmoother.html" />
     <link rel="prev" title="spe.smoothers.BSplineRegressor" href="spe.smoothers.BSplineRegressor.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -322,6 +322,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.BSplineRegressor.html">spe.smoothers.BSplineRegressor</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.smoothers.LinearRegression</a></li>
 </ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html">spe.tree.AdaptiveLinearSmoother</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.tree.Tree.html">spe.tree.Tree</a></li>
+</ul>
 </div>
 </nav></div>
     </div>
@@ -396,7 +400,7 @@ document.write(`
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#spe.smoothers.LinearRegression.get_linear_smoother" title="spe.smoothers.LinearRegression.get_linear_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_linear_smoother</span></code></a>(X, tr_idx, ts_idx[, ...])</p></td>
-<td><p></p></td>
+<td><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#spe.smoothers.LinearRegression.get_metadata_routing" title="spe.smoothers.LinearRegression.get_metadata_routing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metadata_routing</span></code></a>()</p></td>
 <td><p>Get metadata routing of this object.</p></td>
@@ -405,7 +409,7 @@ document.write(`
 <td><p>Get parameters for this estimator.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#spe.smoothers.LinearRegression.predict" title="spe.smoothers.LinearRegression.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X[, tr_idx, ts_idx, y_refit])</p></td>
-<td><p>Predict using the linear model.</p></td>
+<td><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#spe.smoothers.LinearRegression.score" title="spe.smoothers.LinearRegression.score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">score</span></code></a>(X, y[, sample_weight])</p></td>
 <td><p>Return the coefficient of determination of the prediction.</p></td>
@@ -464,7 +468,8 @@ document.write(`
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.smoothers.LinearRegression.get_linear_smoother">
 <span class="sig-name descname"><span class="pre">get_linear_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_full_P</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.smoothers.LinearRegression.get_linear_smoother" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.smoothers.LinearRegression.get_metadata_routing">
@@ -507,21 +512,9 @@ contained subobjects that are estimators.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.smoothers.LinearRegression.predict">
 <span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.smoothers.LinearRegression.predict" title="Link to this definition">#</a></dt>
-<dd><p>Predict using the linear model.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>X</strong><span class="classifier">array-like or sparse matrix, shape (n_samples, n_features)</span></dt><dd><p>Samples.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>C</strong><span class="classifier">array, shape (n_samples,)</span></dt><dd><p>Returns predicted values.</p>
-</dd>
-</dl>
-</dd>
-</dl>
+<dd><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p>
+<p>Computes predictions as adaptive linear smoothing where <span class="math notranslate nohighlight">\(S(W)\)</span> is the
+output of instance’s <a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-func docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -747,11 +740,11 @@ sub-estimator of a meta-estimator, e.g. used inside a
       </div>
     </a>
     <a class="right-next"
-       href="../user_guide.html"
+       href="spe.tree.AdaptiveLinearSmoother.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">User Guide</p>
+        <p class="prev-next-title">spe.tree.AdaptiveLinearSmoother</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

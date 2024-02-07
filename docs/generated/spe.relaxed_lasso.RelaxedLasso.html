@@ -40,6 +40,8 @@
     <script src="../_static/doctools.js?v=888ff710"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.relaxed_lasso.RelaxedLasso';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -320,6 +322,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.BSplineRegressor.html">spe.smoothers.BSplineRegressor</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.LinearRegression.html">spe.smoothers.LinearRegression</a></li>
 </ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html">spe.tree.AdaptiveLinearSmoother</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.tree.Tree.html">spe.tree.Tree</a></li>
+</ul>
 </div>
 </nav></div>
     </div>
@@ -383,9 +389,11 @@ document.write(`
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spe.relaxed_lasso.</span></span><span class="sig-name descname"><span class="pre">RelaxedLasso</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lambd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fit_intercept</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">precompute</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy_X</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">warm_start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cyclic'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.relaxed_lasso.RelaxedLasso" title="Link to this definition">#</a></dt>
 <dd><p>Relaxed lasso linear regression model.</p>
 <p>Fits the usual lasso, then refits an unpenalized linear regression on features
-selected by the lasso.</p>
-<p>Documentation is heavily lifted from sklearn Lasso and LinearRegression classes,
-both of which are utilized by this class.</p>
+selected by the lasso. Additionally is a subclass of 
+<a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother</span></code></a>.</p>
+<p>Documentation is heavily lifted from <code class="xref py py-class docutils literal notranslate"><span class="pre">Lasso</span></code> and 
+<code class="xref py py-class docutils literal notranslate"><span class="pre">LinearRegression</span></code> classes, both of which are 
+utilized by this class.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -437,20 +445,20 @@ when tol is higher than 1e-4. Default is <cite>‘cyclic’</cite>.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.fit_linear" title="spe.relaxed_lasso.RelaxedLasso.fit_linear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fit_linear</span></code></a>(X, y[, sample_weight])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_group_X" title="spe.relaxed_lasso.RelaxedLasso.get_group_X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_group_X</span></code></a>(X)</p></td>
-<td><p></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_linear_smoother" title="spe.relaxed_lasso.RelaxedLasso.get_linear_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_linear_smoother</span></code></a>(X, tr_idx, ts_idx[, ...])</p></td>
+<td><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_linear_smoother" title="spe.relaxed_lasso.RelaxedLasso.get_linear_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_linear_smoother</span></code></a>(X, tr_idx, ts_idx[, ...])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_metadata_routing" title="spe.relaxed_lasso.RelaxedLasso.get_metadata_routing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metadata_routing</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_metadata_routing" title="spe.relaxed_lasso.RelaxedLasso.get_metadata_routing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_metadata_routing</span></code></a>()</p></td>
 <td><p>Get metadata routing of this object.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_params" title="spe.relaxed_lasso.RelaxedLasso.get_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_params</span></code></a>([deep])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_params" title="spe.relaxed_lasso.RelaxedLasso.get_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_params</span></code></a>([deep])</p></td>
 <td><p>Get parameters for this estimator.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.predict" title="spe.relaxed_lasso.RelaxedLasso.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X[, tr_idx, ts_idx, y_refit])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.get_selected_X" title="spe.relaxed_lasso.RelaxedLasso.get_selected_X"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_selected_X</span></code></a>(X)</p></td>
 <td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.predict" title="spe.relaxed_lasso.RelaxedLasso.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X[, tr_idx, ts_idx, y_refit])</p></td>
+<td><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#spe.relaxed_lasso.RelaxedLasso.set_fit_request" title="spe.relaxed_lasso.RelaxedLasso.set_fit_request"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_fit_request</span></code></a>(*[, check_input, lasso_y, ...])</p></td>
 <td><p>Request metadata passed to the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method.</p></td>
@@ -479,14 +487,10 @@ when tol is higher than 1e-4. Default is <cite>‘cyclic’</cite>.</p>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="spe.relaxed_lasso.RelaxedLasso.get_group_X">
-<span class="sig-name descname"><span class="pre">get_group_X</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.relaxed_lasso.RelaxedLasso.get_group_X" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
 <dt class="sig sig-object py" id="spe.relaxed_lasso.RelaxedLasso.get_linear_smoother">
 <span class="sig-name descname"><span class="pre">get_linear_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ret_full_P</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.relaxed_lasso.RelaxedLasso.get_linear_smoother" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.relaxed_lasso.RelaxedLasso.get_metadata_routing">
@@ -527,9 +531,17 @@ contained subobjects that are estimators.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="spe.relaxed_lasso.RelaxedLasso.get_selected_X">
+<span class="sig-name descname"><span class="pre">get_selected_X</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.relaxed_lasso.RelaxedLasso.get_selected_X" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="spe.relaxed_lasso.RelaxedLasso.predict">
 <span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.relaxed_lasso.RelaxedLasso.predict" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<dd><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p>
+<p>Computes predictions as adaptive linear smoothing where <span class="math notranslate nohighlight">\(S(W)\)</span> is the
+output of instance’s <a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-func docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother()</span></code></a>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="spe.relaxed_lasso.RelaxedLasso.set_fit_request">
@@ -705,10 +717,10 @@ sub-estimator of a meta-estimator, e.g. used inside a
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.__init__"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.fit"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.fit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.fit_linear"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.fit_linear()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.get_group_X"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.get_group_X()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.get_linear_smoother"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.get_linear_smoother()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.get_metadata_routing"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.get_metadata_routing()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.get_params"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.get_params()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.get_selected_X"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.get_selected_X()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.predict"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.predict()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.set_fit_request"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.set_fit_request()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.relaxed_lasso.RelaxedLasso.set_params"><code class="docutils literal notranslate"><span class="pre">RelaxedLasso.set_params()</span></code></a></li>

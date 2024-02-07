@@ -320,6 +320,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/spe.smoothers.BSplineRegressor.html">spe.smoothers.BSplineRegressor</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/spe.smoothers.LinearRegression.html">spe.smoothers.LinearRegression</a></li>
 </ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/spe.tree.AdaptiveLinearSmoother.html">spe.tree.AdaptiveLinearSmoother</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/spe.tree.Tree.html">spe.tree.Tree</a></li>
+</ul>
 </div>
 </nav></div>
     </div>
@@ -409,7 +413,7 @@ document.write(`
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.forest.ParametricRandomForestRegressor.html#spe.forest.ParametricRandomForestRegressor" title="spe.forest.ParametricRandomForestRegressor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParametricRandomForestRegressor</span></code></a>([...])</p></td>
-<td><p>A random forest regressor.</p></td>
+<td><p>A random forest regressor that can use parametric bootstraps.</p></td>
 </tr>
 </tbody>
 </table>
@@ -433,6 +437,19 @@ document.write(`
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/spe.smoothers.LinearRegression.html#spe.smoothers.LinearRegression" title="spe.smoothers.LinearRegression"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearRegression</span></code></a>(*[, fit_intercept, copy_X, ...])</p></td>
 <td><p></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="spe-tree">
+<h2>spe.tree<a class="headerlink" href="#spe-tree" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/spe.tree.AdaptiveLinearSmoother.html#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother</span></code></a>()</p></td>
+<td><p>ABC class all adaptive linear smoother models should inherit from.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/spe.tree.Tree.html#spe.tree.Tree" title="spe.tree.Tree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tree</span></code></a>(*[, criterion, splitter, max_depth, ...])</p></td>
+<td><p>A decision tree regressor.</p></td>
 </tr>
 </tbody>
 </table>
@@ -490,6 +507,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-forest">spe.forest</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-relaxed-lasso">spe.relaxed_lasso</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-smoothers">spe.smoothers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe-tree">spe.tree</a></li>
 </ul>
   </nav></div>
 

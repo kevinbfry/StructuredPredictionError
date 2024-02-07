@@ -13,7 +13,6 @@
    
       ~ParametricBaggingRegressor.__init__
       ~ParametricBaggingRegressor.fit
-      ~ParametricBaggingRegressor.get_group_X
       ~ParametricBaggingRegressor.get_linear_smoother
       ~ParametricBaggingRegressor.get_metadata_routing
       ~ParametricBaggingRegressor.get_params
@@ -41,7 +40,6 @@
    
    .. automethod:: __init__
    .. automethod:: fit
-   .. automethod:: get_group_X
    .. automethod:: get_linear_smoother
    .. automethod:: get_metadata_routing
    .. automethod:: get_params

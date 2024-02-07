@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>spe.estimators.cp_bagged &#8212; spe 0.1.0 documentation</title>
+    <title>spe.tree.AdaptiveLinearSmoother &#8212; spe 0.1.0 documentation</title>
   
   
   
@@ -42,11 +42,11 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.estimators.cp_bagged';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.tree.AdaptiveLinearSmoother';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="spe.estimators.cp_smoother" href="spe.estimators.cp_smoother.html" />
-    <link rel="prev" title="spe.estimators.cp_arbitrary" href="spe.estimators.cp_arbitrary.html" />
+    <link rel="next" title="spe.tree.Tree" href="spe.tree.Tree.html" />
+    <link rel="prev" title="spe.smoothers.LinearRegression" href="spe.smoothers.LinearRegression.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -306,10 +306,10 @@ document.write(`
   <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="spe.bagging.ParametricBaggingRegressor.html">spe.bagging.ParametricBaggingRegressor</a></li>
 </ul>
-<ul class="current nav bd-sidenav">
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_adaptive_smoother.html">spe.estimators.cp_adaptive_smoother</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_arbitrary.html">spe.estimators.cp_arbitrary</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.estimators.cp_bagged</a></li>
+<li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_bagged.html">spe.estimators.cp_bagged</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
 </ul>
 <ul class="nav bd-sidenav">
@@ -322,8 +322,8 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.BSplineRegressor.html">spe.smoothers.BSplineRegressor</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.smoothers.LinearRegression.html">spe.smoothers.LinearRegression</a></li>
 </ul>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="spe.tree.AdaptiveLinearSmoother.html">spe.tree.AdaptiveLinearSmoother</a></li>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.tree.AdaptiveLinearSmoother</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.tree.Tree.html">spe.tree.Tree</a></li>
 </ul>
 </div>
@@ -365,7 +365,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="../api_reference.html" class="nav-link">API Reference</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">spe.estimato...</li>
+    <li class="breadcrumb-item active" aria-current="page">spe.tree.Ada...</li>
   </ul>
 </nav>
 </div>
@@ -382,49 +382,48 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="spe-estimators-cp-bagged">
-<h1>spe.estimators.cp_bagged<a class="headerlink" href="#spe-estimators-cp-bagged" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="spe.estimators.cp_bagged">
-<span class="sig-prename descclassname"><span class="pre">spe.estimators.</span></span><span class="sig-name descname"><span class="pre">cp_bagged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Cov_y_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_trace_corr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_estimators</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.estimators.cp_bagged" title="Link to this definition">#</a></dt>
-<dd><p>Computes Generalized Mallows’s Cp for bagged models.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>model: object</strong></dt><dd><p>The base estimator to fit on bootstraps of the data.</p>
-</dd>
-<dt><strong>X</strong><span class="classifier">array-like of shape (n_samples, n_features)</span></dt><dd></dd>
-<dt><strong>y</strong><span class="classifier">array-like of shape (n_samples,)</span></dt><dd></dd>
-<dt><strong>tr_idx</strong><span class="classifier">bool array-like of shape (n_samples,)</span></dt><dd><p>Boolean index of which samples to train the model on.</p>
-</dd>
-<dt><strong>Chol_y</strong><span class="classifier">array-like of shape (n_samples, n_samples), optional</span></dt><dd><p>Cholesky of covariance matrix of <span class="math notranslate nohighlight">\(\Sigma_Y\)</span>. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> 
-in which case <code class="docutils literal notranslate"><span class="pre">Chol_y</span></code> is set to <code class="docutils literal notranslate"><span class="pre">np.eye(n)</span></code>.</p>
-</dd>
-<dt><strong>Chol_ystar</strong><span class="classifier">array-like of shape (n_samples, n_samples), optional</span></dt><dd><p>Cholesky of covariance matrix of <span class="math notranslate nohighlight">\(\Sigma_{Y^*}\)</span>. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> 
-in which case <code class="docutils literal notranslate"><span class="pre">Chol_ystar</span></code> is set to <code class="docutils literal notranslate"><span class="pre">np.eye(n)</span></code>.</p>
-</dd>
-<dt><strong>Cov_y_ystar</strong><span class="classifier">array-like of shape (n_samples, n_samples), optional</span></dt><dd><p>Covariance matrix of <span class="math notranslate nohighlight">\(\Sigma_{Y,Y^*}\)</span>. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> 
-in which case it is assumed <span class="math notranslate nohighlight">\(\Sigma_{Y,Y^*} = 0\)</span>.</p>
-</dd>
-<dt><strong>full_refit</strong><span class="classifier">bool, optional</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code> computes estimator for refitting/predicting using original data
-<span class="math notranslate nohighlight">\(Y\)</span>, i.e. predictions are <span class="math notranslate nohighlight">\(S(W)Y\)</span>. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, uses 
-<span class="math notranslate nohighlight">\(S(W)W\)</span> for predictions. Default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
-</dd>
-<dt><strong>use_trace_corr</strong><span class="classifier">bool, optional</span></dt><dd><p>If <code class="docutils literal notranslate"><span class="pre">True</span></code>, computes estimator with deterministic trace correction. If <code class="docutils literal notranslate"><span class="pre">False</span></code>,
-uses random correction term with same expectation, but yielding an estimator
-with smaller variance. Default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
-</dd>
-<dt><strong>n_estimators</strong><span class="classifier">int, optional</span></dt><dd><p>Number of base estimators in the bagged model. Default is <code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>err_est</strong><span class="classifier">float</span></dt><dd><p>Estimate of MSE of <code class="docutils literal notranslate"><span class="pre">model</span></code> on <span class="math notranslate nohighlight">\(\alpha\)</span> noise-elevated data.</p>
-</dd>
-</dl>
-</dd>
-</dl>
+  <section id="spe-tree-adaptivelinearsmoother">
+<h1>spe.tree.AdaptiveLinearSmoother<a class="headerlink" href="#spe-tree-adaptivelinearsmoother" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="spe.tree.AdaptiveLinearSmoother">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">spe.tree.</span></span><span class="sig-name descname"><span class="pre">AdaptiveLinearSmoother</span></span><a class="headerlink" href="#spe.tree.AdaptiveLinearSmoother" title="Link to this definition">#</a></dt>
+<dd><p>ABC class all adaptive linear smoother models should inherit from.</p>
+<p>Enforces subclasses to have the method necessary to be valid <cite>model</cite> inputs to 
+<a class="reference internal" href="spe.estimators.cp_adaptive_smoother.html#spe.estimators.cp_adaptive_smoother" title="spe.estimators.cp_adaptive_smoother"><code class="xref py py-func docutils literal notranslate"><span class="pre">cp_adaptive_smoother()</span></code></a>, <a class="reference internal" href="spe.estimators.cp_bagged.html#spe.estimators.cp_bagged" title="spe.estimators.cp_bagged"><code class="xref py py-func docutils literal notranslate"><span class="pre">cp_bagged()</span></code></a> when
+<cite>full_refit</cite> is <cite>True</cite>.</p>
+<p class="rubric">Methods</p>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.tree.AdaptiveLinearSmoother.__init__" title="spe.tree.AdaptiveLinearSmoother.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(*args, **kwargs)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#spe.tree.AdaptiveLinearSmoother.get_linear_smoother" title="spe.tree.AdaptiveLinearSmoother.get_linear_smoother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_linear_smoother</span></code></a>(X)</p></td>
+<td><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#spe.tree.AdaptiveLinearSmoother.predict" title="spe.tree.AdaptiveLinearSmoother.predict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">predict</span></code></a>(X[, tr_idx, ts_idx, y_refit])</p></td>
+<td><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py method">
+<dt class="sig sig-object py" id="spe.tree.AdaptiveLinearSmoother.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.tree.AdaptiveLinearSmoother.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spe.tree.AdaptiveLinearSmoother.get_linear_smoother">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_linear_smoother</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.tree.AdaptiveLinearSmoother.get_linear_smoother" title="Link to this definition">#</a></dt>
+<dd><p>Get fitted adaptive linear smoother matrix <span class="math notranslate nohighlight">\(S(W)\)</span>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="spe.tree.AdaptiveLinearSmoother.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ts_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_refit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.tree.AdaptiveLinearSmoother.predict" title="Link to this definition">#</a></dt>
+<dd><p>Compute <span class="math notranslate nohighlight">\(S(W)y_{refit}\)</span> as predictions.</p>
+<p>Computes predictions as adaptive linear smoothing where <span class="math notranslate nohighlight">\(S(W)\)</span> is the
+output of instance’s <a class="reference internal" href="#spe.tree.AdaptiveLinearSmoother" title="spe.tree.AdaptiveLinearSmoother"><code class="xref py py-func docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother()</span></code></a>.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -440,20 +439,20 @@ with smaller variance. Default is <code class="docutils literal notranslate"><sp
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="spe.estimators.cp_arbitrary.html"
+       href="spe.smoothers.LinearRegression.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">spe.estimators.cp_arbitrary</p>
+        <p class="prev-next-title">spe.smoothers.LinearRegression</p>
       </div>
     </a>
     <a class="right-next"
-       href="spe.estimators.cp_smoother.html"
+       href="spe.tree.Tree.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">spe.estimators.cp_smoother</p>
+        <p class="prev-next-title">spe.tree.Tree</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -475,14 +474,19 @@ with smaller variance. Default is <code class="docutils literal notranslate"><sp
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.estimators.cp_bagged"><code class="docutils literal notranslate"><span class="pre">cp_bagged()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.tree.AdaptiveLinearSmoother"><code class="docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.tree.AdaptiveLinearSmoother.__init__"><code class="docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother.__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.tree.AdaptiveLinearSmoother.get_linear_smoother"><code class="docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother.get_linear_smoother()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.tree.AdaptiveLinearSmoother.predict"><code class="docutils literal notranslate"><span class="pre">AdaptiveLinearSmoother.predict()</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/generated/spe.estimators.cp_bagged.rst.txt">
+    <a href="../_sources/generated/spe.tree.AdaptiveLinearSmoother.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

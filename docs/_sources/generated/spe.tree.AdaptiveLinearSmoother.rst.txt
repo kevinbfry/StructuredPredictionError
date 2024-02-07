@@ -1,0 +1,35 @@
+﻿spe.tree.AdaptiveLinearSmoother
+===============================
+
+.. currentmodule:: spe.tree
+
+.. autoclass:: AdaptiveLinearSmoother
+
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AdaptiveLinearSmoother.__init__
+      ~AdaptiveLinearSmoother.get_linear_smoother
+      ~AdaptiveLinearSmoother.predict
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+   .. automethod:: __init__
+   .. automethod:: get_linear_smoother
+   .. automethod:: predict
+   
+   
+
+   
+   
+   
