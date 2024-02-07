@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import plotly.express as px 
@@ -97,7 +98,9 @@ def gen_model_barplots(
 
     if fig_name:
         # fig.to_image(format="pdf", width=600, height=400, name=)
-        fig.write_image("../figures/" + fig_name + ".pdf")#, width=600, height=450)
+        if not os.path.isdir("../../figures/"):
+            os.mkdir("../../figures/")
+        fig.write_image("../../figures/" + fig_name + ".pdf")#, width=600, height=450)
 
     return fig
 
