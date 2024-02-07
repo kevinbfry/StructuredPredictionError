@@ -39,9 +39,11 @@
     <script src="_static/documentation_options.js?v=01f34227"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quickstart Guide" href="notebooks/quickstart.html" />
     <link rel="prev" title="spe.smoothers.LinearRegression" href="generated/spe.smoothers.LinearRegression.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -299,7 +301,13 @@ document.write(`
 <nav class="bd-docs-nav bd-links"
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"></div>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="notebooks/quickstart.html">Quickstart Guide</a></li>
+
+
+
+</ul>
+</div>
 </nav></div>
     </div>
   
@@ -355,6 +363,12 @@ document.write(`
   <section id="user-guide">
 <h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading">#</a></h1>
 <div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/quickstart.html">Quickstart Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/quickstart.html#Generate-toy-data">Generate toy data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/quickstart.html#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a></li>
+<li class="toctree-l1"><a class="reference internal" href="notebooks/quickstart.html#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span></a></li>
+</ul>
 </div>
 </section>
 
@@ -376,6 +390,15 @@ document.write(`
         <p class="prev-next-subtitle">previous</p>
         <p class="prev-next-title">spe.smoothers.LinearRegression</p>
       </div>
+    </a>
+    <a class="right-next"
+       href="notebooks/quickstart.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Quickstart Guide</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
     </a>
 </div>
                 </footer>
