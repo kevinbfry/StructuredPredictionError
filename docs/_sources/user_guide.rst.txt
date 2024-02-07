@@ -2,16 +2,24 @@ User Guide
 ==========
 
 
-.. toctree::
-    :maxdepth: 1
-
 Getting started
 ---------------
     
+
+.. toctree::
+    :maxdepth: 1
+
+
     notebooks/quickstart
+
 
 Simulations
 -----------
+
+
+.. toctree::
+    :maxdepth: 1
+
 
     notebooks/arbitrary
     notebooks/adaptive_linear
