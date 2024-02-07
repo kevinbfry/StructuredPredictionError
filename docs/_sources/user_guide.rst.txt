@@ -7,4 +7,5 @@ User Guide
 
 
     notebooks/quickstart
+    notebooks/quickstart2
 
