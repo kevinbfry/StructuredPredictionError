@@ -6,13 +6,16 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.utils.validation import check_is_fitted
 
 
-class LinearSelector(ABC):
+class AdaptiveLinearSmoother(ABC):
+    """ABC class all adaptive linear smoother models should inherit from.
+
+    Enforces subclasses to have the method necessary to be valid `model` inputs to 
+    :func:`~spe.estimators.cp_adaptive_smoother`, :func:`~spe.estimators.cp_bagged` when
+    `full_refit` is `True`.
+    """
     @abstractmethod
     def get_linear_smoother(self, X):
-        pass
-
-    @abstractmethod
-    def get_group_X(self, X, tr_idx, ts_idx, ret_full_P=False):
+        """Get fitted adaptive linear smoother matrix :math:`S(W)`."""
         pass
 
     def predict(
@@ -22,6 +25,11 @@ class LinearSelector(ABC):
         ts_idx=None,
         y_refit=None,
     ):
+        """Compute :math:`S(W)y_{refit}` as predictions.
+        
+        Computes predictions as adaptive linear smoothing where :math:`S(W)` is the
+        output of instance's :func:`~spe.tree.AdaptiveLinearSmoother`.
+        """
         check_is_fitted(self)
         if tr_idx is None and ts_idx is None and y_refit is None:
             return super().predict(X)
@@ -34,11 +42,14 @@ class LinearSelector(ABC):
             raise ValueError("Either all of 'tr_idx', 'ts_idx', 'y_refit' must be None or all must not be None")
 
 
-class Tree(LinearSelector, DecisionTreeRegressor):
+class Tree(AdaptiveLinearSmoother, DecisionTreeRegressor):
     """A decision tree regressor.
 
-    Documentation is heavily lifted from sklearn DecisionTreeRegressor class, 
-    which this class inherits from.
+    Usual regression tree that is additionally a subclass of
+    :class:`~spe.tree.AdaptiveLinearSmoother`.
+
+    Documentation is heavily lifted from :class:`~sklearn.tree.DecisionTreeRegressor` 
+    class, which this class inherits from.
 
     Parameters
     ----------
@@ -113,7 +124,6 @@ class Tree(LinearSelector, DecisionTreeRegressor):
         improvement of the criterion is identical for several splits and one
         split has to be selected at random. To obtain a deterministic behaviour
         during fitting, ``random_state`` has to be fixed to an integer.
-        See :term:`Glossary <random_state>` for details.
 
     max_leaf_nodes : int, default=None
         Grow a tree with ``max_leaf_nodes`` in best-first fashion.
@@ -139,8 +149,7 @@ class Tree(LinearSelector, DecisionTreeRegressor):
     ccp_alpha : non-negative float, default=0.0
         Complexity parameter used for Minimal Cost-Complexity Pruning. The
         subtree with the largest cost complexity that is smaller than
-        ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
-        :ref:`minimal_cost_complexity_pruning` for details.
+        ``ccp_alpha`` will be chosen. By default, no pruning is performed.
 
     monotonic_cst : array-like of int of shape (n_features), default=None
         Indicates the monotonicity constraint to enforce on each feature.
@@ -153,8 +162,6 @@ class Tree(LinearSelector, DecisionTreeRegressor):
         Monotonicity constraints are not supported for:
           - multioutput regressions (i.e. when `n_outputs_ > 1`),
           - regressions trained on data with missing values.
-
-        Read more in the :ref:`User Guide <monotonic_cst_gbdt>`.
 
     Attributes
     ----------
@@ -173,10 +180,10 @@ class Tree(LinearSelector, DecisionTreeRegressor):
         The inferred value of max_features.
 
     n_features_in_ : int
-        Number of features seen during :term:`fit`.
+        Number of features seen during ``fit``.
 
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
+        Names of features seen during ``fit``. Defined only when `X`
         has feature names that are all strings.
 
     n_outputs_ : int

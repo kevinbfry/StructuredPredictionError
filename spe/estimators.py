@@ -10,7 +10,7 @@ from sklearn.base import clone
 from sklearn.utils.validation import check_X_y, check_is_fitted
 
 from .relaxed_lasso import RelaxedLasso
-from .tree import Tree, LinearSelector
+from .tree import Tree, AdaptiveLinearSmoother
 from .forest import ParametricRandomForestRegressor
 from .bagging import ParametricBaggingRegressor
 
@@ -464,8 +464,8 @@ def _compute_one_realization_cp_estimator(
     P=None,
     P_full=None,
 ):
-    if full_refit and not isinstance(model, LinearSelector):
-        raise TypeError("model must inherit from 'LinearSelector' class")
+    if full_refit and not isinstance(model, AdaptiveLinearSmoother):
+        raise TypeError("model must inherit from 'AdaptiveLinearSmoother' class when 'full_refit' is 'True'")
     
     n_ts = X_ts.shape[0]
 
@@ -476,7 +476,7 @@ def _compute_one_realization_cp_estimator(
     else:
         Gamma_ts = np.zeros((X_ts.shape[0], X.shape[0]))
 
-    if isinstance(model, LinearSelector):
+    if isinstance(model, AdaptiveLinearSmoother):
         if P is None:
             P = model.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P=False)[0]
         if Cov_y_ystar is not None and P_full is None:

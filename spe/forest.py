@@ -20,7 +20,7 @@ from sklearn.utils.validation import (
     check_is_fitted,
 )
 
-from .tree import LinearSelector
+from .tree import AdaptiveLinearSmoother
 
 
 MAX_INT = np.iinfo(np.int32).max
@@ -116,9 +116,9 @@ def _parallel_build_trees(
     
 
 
-class ParametricRandomForestRegressor(LinearSelector, RandomForestRegressor):
+class ParametricRandomForestRegressor(AdaptiveLinearSmoother, RandomForestRegressor):
     """
-    A random forest regressor.
+    A random forest regressor that can use parametric bootstraps.
 
     A random forest is a meta estimator that fits a number of decision tree
     regressors on various sub-samples of the dataset and uses averaging to
@@ -128,8 +128,12 @@ class ParametricRandomForestRegressor(LinearSelector, RandomForestRegressor):
     The sub-sample size is controlled with the `max_samples` parameter if
     `bootstrap=True` (default), otherwise the whole dataset is used to build
     each tree.
+
+    Additionally, can fit with Gaussian parametric bootstraps, and is a subclass of
+    :class:`~spe.tree.AdaptiveLinearSmoother`.
     
-    Documentation is heavily lifted from sklearn RandomForestRegressor class, which 
+    Documentation is heavily lifted from sklearn 
+    :class:`~sklearn.ensemble.RandomForestRegressor` class, which 
     this class inherits from.
 
     Parameters
@@ -238,15 +242,13 @@ class ParametricRandomForestRegressor(LinearSelector, RandomForestRegressor):
         The number of jobs to run in parallel. :meth:`fit`, :meth:`predict`,
         :meth:`decision_path` and :meth:`apply` are all parallelized over the
         trees. ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
-        context. ``-1`` means using all processors. See :term:`Glossary
-        <n_jobs>` for more details.
+        context. ``-1`` means using all processors. 
 
     random_state : int, RandomState instance or None, default=None
         Controls both the randomness of the bootstrapping of the samples used
         when building trees (if ``bootstrap=True``) and the sampling of the
         features to consider when looking for the best split at each node
         (if ``max_features < n_features``).
-        See :term:`Glossary <random_state>` for details.
 
     verbose : int, default=0
         Controls the verbosity when fitting and predicting.
@@ -254,14 +256,12 @@ class ParametricRandomForestRegressor(LinearSelector, RandomForestRegressor):
     warm_start : bool, default=False
         When set to ``True``, reuse the solution of the previous call to fit
         and add more estimators to the ensemble, otherwise, just fit a whole
-        new forest. See :term:`Glossary <warm_start>` and
-        :ref:`gradient_boosting_warm_start` for details.
+        new forest.
 
     ccp_alpha : non-negative float, default=0.0
         Complexity parameter used for Minimal Cost-Complexity Pruning. The
         subtree with the largest cost complexity that is smaller than
-        ``ccp_alpha`` will be chosen. By default, no pruning is performed. See
-        :ref:`minimal_cost_complexity_pruning` for details.
+        ``ccp_alpha`` will be chosen. By default, no pruning is performed.
 
     max_samples : int or float, default=None
         If bootstrap is True, the number of samples to draw from X
@@ -284,8 +284,6 @@ class ParametricRandomForestRegressor(LinearSelector, RandomForestRegressor):
           - multioutput regressions (i.e. when `n_outputs_ > 1`),
           - regressions trained on data with missing values.
 
-        Read more in the :ref:`User Guide <monotonic_cst_gbdt>`.
-
     Attributes
     ----------
     estimator_ : :class:`~sklearn.tree.DecisionTreeRegressor`
@@ -307,10 +305,10 @@ class ParametricRandomForestRegressor(LinearSelector, RandomForestRegressor):
         :func:`sklearn.inspection.permutation_importance` as an alternative.
 
     n_features_in_ : int
-        Number of features seen during :term:`fit`.
+        Number of features seen during ``fit``.
 
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
+        Names of features seen during ``fit``. Defined only when `X`
         has feature names that are all strings.
 
     n_outputs_ : int

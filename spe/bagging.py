@@ -21,7 +21,7 @@ from sklearn.utils.validation import (
 )
 from sklearn.ensemble._base import _partition_estimators
 
-from .tree import LinearSelector
+from .tree import AdaptiveLinearSmoother
 
 MAX_INT = np.iinfo(np.int32).max
 
@@ -168,7 +168,7 @@ def _parallel_build_estimators(
     return estimators, estimators_features, eps_list
 
 
-class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
+class ParametricBaggingRegressor(AdaptiveLinearSmoother, BaggingRegressor):
     """A Bagging regressor.
 
     A Bagging regressor is an ensemble meta-estimator that fits base
@@ -188,7 +188,10 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
     on subsets of both samples and features, then the method is known as
     Random Patches [4]_.
 
-    Documentation is heavily lifted from sklearn BaggingRegressor class, which 
+    Additionally, can fit with Gaussian parametric bootstraps, and is a subclass of
+    :class:`~spe.tree.AdaptiveLinearSmoother`.
+
+    Documentation is heavily lifted from :class:`~sklearn.ensemble.BaggingRegressor` class, which 
     this class inherits from.
 
     Parameters
@@ -230,13 +233,13 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
     warm_start : bool, default=False
         When set to True, reuse the solution of the previous call to fit
         and add more estimators to the ensemble, otherwise, just fit
-        a whole new ensemble. See :term:`the Glossary <warm_start>`.
+        a whole new ensemble.
 
     n_jobs : int, default=None
         The number of jobs to run in parallel for both :meth:`fit` and
         :meth:`predict`. ``None`` means 1 unless in a
         :obj:`joblib.parallel_backend` context. ``-1`` means using all
-        processors. See :term:`Glossary <n_jobs>` for more details.
+        processors.
 
     random_state : int, RandomState instance or None, default=None
         Controls the random resampling of the original dataset
@@ -244,7 +247,6 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
         If the base estimator accepts a `random_state` attribute, a different
         seed is generated for each instance in the ensemble.
         Pass an int for reproducible output across multiple function calls.
-        See :term:`Glossary <random_state>`.
 
     verbose : int, default=0
         Controls the verbosity when fitting and predicting.
@@ -256,10 +258,10 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
 
 
     n_features_in_ : int
-        Number of features seen during :term:`fit`.
+        Number of features seen during ``fit``.
 
     feature_names_in_ : ndarray of shape (`n_features_in_`,)
-        Names of features seen during :term:`fit`. Defined only when `X`
+        Names of features seen during ``fit``. Defined only when `X`
         has feature names that are all strings.
 
     estimators_ : list of estimators
@@ -540,13 +542,8 @@ class ParametricBaggingRegressor(LinearSelector, BaggingRegressor):
 
         return self
 
-    def get_group_X(self, X, X_pred=None):
-        check_is_fitted(self)
-
-        return super().get_group_X(X)
-
     def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):
-        assert(isinstance(self.base_estimator, LinearSelector))
+        assert(isinstance(self.base_estimator, AdaptiveLinearSmoother))
 
         Ps = [est.get_linear_smoother(X, tr_idx, ts_idx, ret_full_P)[0] for est in self.estimators_]
         
