@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Quickstart 2 Guide &#8212; spe 0.1.0 documentation</title>
+    <title>Simulate \(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\) &#8212; spe 0.1.0 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/quickstart2';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/est_vs_oracle_cov';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="prev" title="Quickstart Guide" href="quickstart.html" />
@@ -305,7 +305,8 @@ document.write(`
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Quickstart 2 Guide</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a></li>
+
 </ul>
 </div>
 </nav></div>
@@ -346,7 +347,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="../user_guide.html" class="nav-link">User Guide</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Quickstart 2 Guide</li>
+    <li class="breadcrumb-item active" aria-current="page">Simulate...</li>
   </ul>
 </nav>
 </div>
@@ -369,31 +370,41 @@ document.write(`
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import numpy as np
 from sklearn.gaussian_process.kernels import Matern, RBF
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.linear_model import RidgeCV
+from sklearn.ensemble import RandomForestRegressor
 
-from docs.plotting_utils import gen_model_barplots
-from docs.data_generation import gen_cov_mat, gen_rbf_X, gen_matern_X
-from spe.estimators import cp_general
+import plotly.express as px
+
+from docs.mse_estimator import ErrorComparer
+from docs.data_generation import gen_rbf_X, gen_matern_X, gen_cov_mat
+from spe.tree import Tree
+from spe.estimators import new_y_est, cp_general, kfoldcv, kmeanscv
 </pre></div>
 </div>
 </div>
-<section id="Quickstart-2-Guide">
-<h1>Quickstart 2 Guide<a class="headerlink" href="#Quickstart-2-Guide" title="Link to this heading">#</a></h1>
-<p>Here we show the basics of using <code class="docutils literal notranslate"><span class="pre">spe</span></code>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>np.random.seed(1)
+<br/></pre></div>
+</div>
+</div>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>## number of realizations to run
-niter = 100
+niter = 5
 
 ## data generation parameters
-gsize=10
-n=10**2
-p=30
-s=30
+gsize=20
+n=20**2
+p=5
+s=5
 delta = 0.75
 snr = 0.4
+tr_frac = .25
 
 noise_kernel = &#39;matern&#39;
 noise_length_scale = 1.
@@ -403,16 +414,54 @@ X_kernel = &#39;matern&#39;
 X_length_scale = 5.
 X_nu = 2.5
 
-## plot parameters
-model_names = [&quot;Decision Tree&quot;]
-est_names = [&quot;GenCp&quot;, &quot;KFCV&quot;, &quot;SPCV&quot;]
+## ErrorComparer parameters
+alpha = .05
+nboot = 100
+k = 5
+max_depth = 2
+lambd = .05
+models = [
+    Tree(max_depth=max_depth),
+    RidgeCV(alphas=[.01,.1, 1.]),
+    RandomForestRegressor(n_estimators=100, max_depth=max_depth)
+]
+ests = [
+    new_y_est,
+    new_y_est,
+    cp_general,
+    kfoldcv,
+    kmeanscv
+]
+est_kwargs = [
+    {&#39;alpha&#39;: None,
+    &#39;full_refit&#39;: False},
+    {&#39;alpha&#39;: alpha,
+    &#39;full_refit&#39;: False},
+    {&#39;use_trace_corr&#39;: False,
+     &#39;alpha&#39;: alpha},
+    {&#39;k&#39;: k},
+    {&#39;k&#39;: k}
+]
+
+model_names = [
+    &quot;Decision Tree&quot;,
+    &quot;Ridge CV&quot;,
+    &quot;Random Forest&quot;
+]
+est_names = [&quot;OGenCp&quot;, &quot;EGenCp&quot;, &quot;KFCV&quot;, &quot;SPCV&quot;]
 </pre></div>
 </div>
 </div>
-<section id="Generate-toy-data">
-<h2>Generate toy data<a class="headerlink" href="#Generate-toy-data" title="Link to this heading">#</a></h2>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>err_cmp = ErrorComparer()
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>nx = ny = int(np.sqrt(n))
@@ -426,7 +475,7 @@ coord = np.stack([c_x, c_y]).T
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>if noise_kernel == &#39;rbf&#39;:
@@ -447,7 +496,7 @@ else:
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>if X_kernel == &#39;rbf&#39;:
@@ -460,77 +509,291 @@ else:
 beta = np.zeros(p)
 idx = np.random.choice(p,size=s,replace=False)
 beta[idx] = np.random.uniform(-1,1,size=s)
-
-y = X @ beta + Chol_y @ np.random.randn(n)
 </pre></div>
 </div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>tr_idx = np.ones(n, dtype=bool)
 </pre></div>
 </div>
 </div>
-</section>
-<section id="Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">
-<h2>Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span><a class="headerlink" href="#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)" title="Link to this heading">#</a></h2>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>ind_est = cp_general(
-    DecisionTreeRegressor(max_depth=3),
-    X=X,
-    y=y,
-    tr_idx=tr_idx,
-    Chol_y=Chol_y,
-    alpha=.05,
-    use_trace_corr=False
-)
-ind_est
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
-</pre></div>
-</div>
-<div class="output_area docutils container">
-<div class="highlight"><pre>
-1.337245935587206
-</pre></div></div>
-</div>
-</section>
-<section id="Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">
-<h2>Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span><a class="headerlink" href="#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&-\Sigma_{Y}-\end{pmatrix}\right)" title="Link to this heading">#</a></h2>
+<section id="Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">
+<h1>Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span><a class="headerlink" href="#Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)" title="Link to this heading">#</a></h1>
+<section id="Estimate-with-True-Covs">
+<h2>Estimate with True Covs<a class="headerlink" href="#Estimate-with-True-Covs" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>corr_est = cp_general(
-    DecisionTreeRegressor(max_depth=3),
-    X=X,
-    y=y,
-    tr_idx=tr_idx,
-    Chol_y=Chol_y,
-    Cov_y_ystar=Cov_y_ystar,
-    alpha=.05,
-    use_trace_corr=False
-)
-corr_est
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>true_model_errs = []
+for model in models:
+    errs = err_cmp.compare(
+        model,
+        ests[:2] + ests[3:],
+        est_kwargs[:2] + est_kwargs[3:],
+        niter=niter,
+        n=n,
+        p=p,
+        s=s,
+        snr=snr,
+        X=X,
+        beta=beta,
+        coord=coord,
+        Chol_y=Chol_y,
+        Chol_ystar=None,
+        Cov_y_ystar=None,
+        tr_idx=tr_idx,
+        fair=False,
+        piecewise_const_mu=True,
+    )
+    true_model_errs.append(errs)
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+  0%|          | 0/5 [00:00&lt;?, ?it/s]
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 5/5 [00:00&lt;00:00, 15.44it/s]
+100%|██████████| 5/5 [00:00&lt;00:00, 24.26it/s]
+100%|██████████| 5/5 [00:04&lt;00:00,  1.10it/s]
+</pre></div></div>
+</div>
+</section>
+<section id="Estimate-with-Matching-Model">
+<h2>Estimate with Matching Model<a class="headerlink" href="#Estimate-with-Matching-Model" title="Link to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from sklearn.base import clone
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model_errs = []
+for model in models:
+    errs = err_cmp.compare(
+        model,
+        ests[2:3],
+        est_kwargs[2:3],
+        niter=niter,
+        n=n,
+        p=p,
+        s=s,
+        snr=snr,
+        X=X,
+        beta=beta,
+        coord=coord,
+        Chol_y=Chol_y,
+        Chol_ystar=None,
+        Cov_y_ystar=None,
+        tr_idx=tr_idx,
+        fair=False,
+        piecewise_const_mu=True,
+        est_sigma=True,
+        est_sigma_model=clone(model),
+    )
+    model_errs.append(errs)
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 5/5 [00:06&lt;00:00,  1.28s/it]
+100%|██████████| 5/5 [00:05&lt;00:00,  1.17s/it]
+100%|██████████| 5/5 [00:45&lt;00:00,  9.07s/it]
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>comb_errs = []
+for true_err, model_err in zip(true_model_errs, model_errs):
+    comb_errs.append(true_err[:2] + model_err + true_err[2:])
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from importlib import reload
+from doc import plotting_utils
+reload(plotting_utils)
+from docs.plotting_utils import gen_model_barplots
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig = gen_model_barplots(
+    comb_errs,
+    model_names,
+    est_names,
+    title=&quot;Comparing Performance: Estimated vs Oracle Covariance NSN&quot;,
+    err_bars=True,
+    color_discrete_sequence=[px.colors.qualitative.Bold[i] for i in [0,5,1,2]],
+    fig_name=&quot;est_cov_ind&quot;,
+)
+fig.show()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
 <div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="Simulate-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">
+<h1>Simulate <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span><a class="headerlink" href="#Simulate-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&-\Sigma_{Y}-\end{pmatrix}\right)" title="Link to this heading">#</a></h1>
+<section id="id1">
+<h2>Estimate with True Covs<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>true_model_errs_corr = []
+for model in models:
+    errs = err_cmp.compare(
+        model,
+        ests[:2] + ests[3:],
+        est_kwargs[:2] + est_kwargs[3:],
+        niter=niter,
+        n=n,
+        p=p,
+        s=s,
+        snr=snr,
+        X=X,
+        beta=beta,
+        coord=coord,
+        Chol_y=Chol_y,
+        Chol_ystar=None,
+        Cov_y_ystar=Cov_y_ystar,
+        tr_idx=tr_idx,
+        fair=False,
+        piecewise_const_mu=True,
+    )
+    true_model_errs_corr.append(errs)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-0.5807589441798799
+100%|██████████| 5/5 [00:00&lt;00:00, 23.32it/s]
+100%|██████████| 5/5 [00:00&lt;00:00, 23.89it/s]
+100%|██████████| 5/5 [00:04&lt;00:00,  1.10it/s]
 </pre></div></div>
+</div>
+</section>
+<section id="id2">
+<h2>Estimate with Matching Model<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model_errs_corr = []
+for model in models:
+    errs = err_cmp.compare(
+        model,
+        ests[2:3],
+        est_kwargs[2:3],
+        niter=niter,
+        n=n,
+        p=p,
+        s=s,
+        snr=snr,
+        X=X,
+        beta=beta,
+        coord=coord,
+        Chol_y=Chol_y,
+        Chol_ystar=None,
+        Cov_y_ystar=Cov_y_ystar,
+        tr_idx=tr_idx,
+        fair=False,
+        piecewise_const_mu=True,
+        est_sigma=&quot;corr_resp&quot;,
+        est_sigma_model=clone(model),
+    )
+    model_errs_corr.append(errs)
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 5/5 [00:06&lt;00:00,  1.30s/it]
+100%|██████████| 5/5 [00:06&lt;00:00,  1.27s/it]
+100%|██████████| 5/5 [00:45&lt;00:00,  9.01s/it]
+</pre></div></div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>comb_errs_corr = []
+for true_err, model_err in zip(true_model_errs_corr, model_errs_corr):
+    comb_errs_corr.append(true_err[:2] + model_err + true_err[2:])
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig = gen_model_barplots(
+    comb_errs_corr,
+    model_names,
+    est_names,
+    title=&quot;Comparing Performance: Estimated vs Oracle Covariance SSN&quot;,
+    err_bars=True,
+    color_discrete_sequence=[px.colors.qualitative.Bold[i] for i in [0,5,1,2]],
+    fig_name=&quot;est_cov_corr&quot;,
+)
+fig.show()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
 </div>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
@@ -580,16 +843,24 @@ corr_est
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Generate-toy-data">Generate toy data</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span></a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-with-True-Covs">Estimate with True Covs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-with-Matching-Model">Estimate with Matching Model</a></li>
 </ul>
+</li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Simulate-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">Simulate <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Estimate with True Covs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Estimate with Matching Model</a></li>
+</ul>
+</li>
+</ul>
+
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/notebooks/quickstart2.ipynb.txt">
+    <a href="../_sources/notebooks/est_vs_oracle_cov.ipynb.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

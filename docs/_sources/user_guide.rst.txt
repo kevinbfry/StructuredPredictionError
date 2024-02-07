@@ -7,5 +7,5 @@ User Guide
 
 
     notebooks/quickstart
-    notebooks/quickstart2
+    notebooks/est_vs_oracle_cov
 
