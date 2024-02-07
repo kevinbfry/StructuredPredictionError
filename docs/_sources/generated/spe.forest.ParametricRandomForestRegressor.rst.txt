@@ -4,8 +4,6 @@
 .. currentmodule:: spe.forest
 
 .. autoclass:: ParametricRandomForestRegressor
-   :members:
-   :inherited-members:
 
    
    
@@ -25,6 +23,7 @@
       ~ParametricRandomForestRegressor.score
       ~ParametricRandomForestRegressor.set_fit_request
       ~ParametricRandomForestRegressor.set_params
+      ~ParametricRandomForestRegressor.set_predict_request
       ~ParametricRandomForestRegressor.set_score_request
    
    
@@ -55,6 +54,7 @@
    .. automethod:: score
    .. automethod:: set_fit_request
    .. automethod:: set_params
+   .. automethod:: set_predict_request
    .. automethod:: set_score_request
    
    

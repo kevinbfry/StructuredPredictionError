@@ -4,8 +4,6 @@
 .. currentmodule:: spe.smoothers
 
 .. autoclass:: LinearRegression
-   :members:
-   :inherited-members:
 
    
    

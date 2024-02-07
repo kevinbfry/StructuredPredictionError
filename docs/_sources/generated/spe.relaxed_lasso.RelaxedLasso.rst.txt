@@ -4,8 +4,6 @@
 .. currentmodule:: spe.relaxed_lasso
 
 .. autoclass:: RelaxedLasso
-   :members:
-   :inherited-members:
 
    
    
