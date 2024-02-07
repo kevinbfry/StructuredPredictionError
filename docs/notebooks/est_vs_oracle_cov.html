@@ -374,6 +374,7 @@ from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.linear_model import RidgeCV
 from sklearn.ensemble import RandomForestRegressor
 
+import plotly
 import plotly.express as px
 
 from docs.mse_estimator import ErrorComparer
@@ -653,7 +654,7 @@ from docs.plotting_utils import gen_model_barplots
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>px.offline.init_notebook_mode()
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>plotly.offline.init_notebook_mode()
 fig = gen_model_barplots(
     comb_errs,
     model_names,
