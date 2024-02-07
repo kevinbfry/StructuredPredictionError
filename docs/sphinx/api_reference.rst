@@ -75,3 +75,17 @@ spe.smoothers
     BSplineRegressor
     LinearRegression
 
+
+spe.tree
+-------------
+
+
+.. currentmodule:: spe.tree
+
+
+.. autosummary::
+    :toctree: generated/
+
+    AdaptiveLinearSmoother
+    Tree
+

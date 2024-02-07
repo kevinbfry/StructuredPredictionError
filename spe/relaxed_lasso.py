@@ -7,17 +7,19 @@ from sklearn.ensemble import BaggingRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .tree import LinearSelector
+from .tree import AdaptiveLinearSmoother
 
 
-class RelaxedLasso(LinearSelector, BaseEstimator):
+class RelaxedLasso(AdaptiveLinearSmoother, BaseEstimator):
     """Relaxed lasso linear regression model.
 
     Fits the usual lasso, then refits an unpenalized linear regression on features
-    selected by the lasso.
+    selected by the lasso. Additionally is a subclass of 
+    :class:`~spe.tree.AdaptiveLinearSmoother`.
 
-    Documentation is heavily lifted from sklearn Lasso and LinearRegression classes,
-    both of which are utilized by this class.
+    Documentation is heavily lifted from :class:`~sklearn.linear_model.Lasso` and 
+    :class:`~sklearn.linear_model.LinearRegression` classes, both of which are 
+    utilized by this class.
 
     Parameters
     ----------
@@ -104,7 +106,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
             selection,
         )
 
-    def get_group_X(self, X):
+    def get_selected_X(self, X):
         check_is_fitted(self)
 
         E = self.E_
@@ -118,14 +120,14 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
     def get_linear_smoother(self, X, tr_idx, ts_idx, ret_full_P=False):
         X_tr = X[tr_idx,:]
         X_ts = X[ts_idx,:]
-        XE_tr = self.get_group_X(X_tr)
+        XE_tr = self.get_selected_X(X_tr)
         if not np.any(XE_tr):
             # print("zeros")
             if ret_full_P:
                 return [np.zeros((X_ts.shape[0], X.shape[0]))]
             return [np.zeros((X_ts.shape[0], X_tr.shape[0]))]
         
-        XE_ts = self.get_group_X(X_ts)
+        XE_ts = self.get_selected_X(X_ts)
         if ret_full_P:
             n = X.shape[0]
             full_XE_tr = np.zeros((n,XE_tr.shape[1]))
@@ -170,7 +172,7 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
         return self
 
     def fit_linear(self, X, y, sample_weight=None):
-        XE = self.get_group_X(X)
+        XE = self.get_selected_X(X)
 
         self.linm.fit(XE, y, sample_weight=sample_weight)
 
@@ -183,6 +185,6 @@ class RelaxedLasso(LinearSelector, BaseEstimator):
     ):
         check_is_fitted(self)
         if tr_idx is None and ts_idx is None and y_refit is None:
-            XE = self.get_group_X(X)
+            XE = self.get_selected_X(X)
             return self.linm.predict(XE)
         return super().predict(X, tr_idx, ts_idx, y_refit)

@@ -5,10 +5,10 @@ from sklearn.preprocessing import SplineTransformer
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from .tree import LinearSelector
+from .tree import AdaptiveLinearSmoother
 
 
-class LinearRegression(LinearSelector, LinReg):
+class LinearRegression(AdaptiveLinearSmoother, LinReg):
     def get_group_X(self, X, X_pred=None):
         return super().get_group_X(X, X_pred)
     
@@ -25,7 +25,7 @@ class LinearRegression(LinearSelector, LinReg):
         return [X_ts @ np.linalg.pinv(X_tr)]
 
 
-class BSplineRegressor(LinearSelector, BaseEstimator):
+class BSplineRegressor(AdaptiveLinearSmoother, BaseEstimator):
     """BSpline linear regression model.
 
     Generate feature matrix of B-splines and fit a linear regression to that 
