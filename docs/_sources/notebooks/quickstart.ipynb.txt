@@ -61,7 +61,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# Generate toy data"
+    "## Generate toy data"
    ]
   },
   {
@@ -135,7 +135,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# Estimate MSE for $Y, Y^* \\overset{iid}{\\sim} \\mathcal{N}(\\mu, \\Sigma_Y)$"
+    "## Estimate MSE for $Y, Y^* \\overset{iid}{\\sim} \\mathcal{N}(\\mu, \\Sigma_Y)$"
    ]
   },
   {
@@ -174,7 +174,7 @@
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# Estimate MSE for $\\begin{pmatrix} Y \\\\ Y^* \\end{pmatrix} \\sim \\mathcal{N}\\left(\\begin{pmatrix} \\mu \\\\ \\mu \\end{pmatrix}, \\begin{pmatrix}\\Sigma_Y & \\Sigma_{Y, Y^*} \\\\ \\Sigma_{Y^*, Y} & \\Sigma_{Y}  \\end{pmatrix}\\right)$"
+    "## Estimate MSE for $\\begin{pmatrix} Y \\\\ Y^* \\end{pmatrix} \\sim \\mathcal{N}\\left(\\begin{pmatrix} \\mu \\\\ \\mu \\end{pmatrix}, \\begin{pmatrix}\\Sigma_Y & \\Sigma_{Y, Y^*} \\\\ \\Sigma_{Y^*, Y} & \\Sigma_{Y}  \\end{pmatrix}\\right)$"
    ]
   },
   {

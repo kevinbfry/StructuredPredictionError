@@ -305,9 +305,6 @@ document.write(`
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Quickstart Guide</a></li>
-
-
-
 </ul>
 </div>
 </nav></div>
@@ -411,9 +408,8 @@ est_names = [&quot;GenCp&quot;, &quot;KFCV&quot;, &quot;SPCV&quot;]
 </pre></div>
 </div>
 </div>
-</section>
 <section id="Generate-toy-data">
-<h1>Generate toy data<a class="headerlink" href="#Generate-toy-data" title="Link to this heading">#</a></h1>
+<h2>Generate toy data<a class="headerlink" href="#Generate-toy-data" title="Link to this heading">#</a></h2>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
 </pre></div>
@@ -478,7 +474,7 @@ y = X @ beta + Chol_y @ np.random.randn(n)
 </div>
 </section>
 <section id="Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">
-<h1>Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span><a class="headerlink" href="#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)" title="Link to this heading">#</a></h1>
+<h2>Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span><a class="headerlink" href="#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
 </pre></div>
@@ -507,7 +503,7 @@ ind_est
 </div>
 </section>
 <section id="Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">
-<h1>Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span><a class="headerlink" href="#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&-\Sigma_{Y}-\end{pmatrix}\right)" title="Link to this heading">#</a></h1>
+<h2>Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span><a class="headerlink" href="#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&-\Sigma_{Y}-\end{pmatrix}\right)" title="Link to this heading">#</a></h2>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
@@ -543,6 +539,7 @@ corr_est
 </pre></div>
 </div>
 </div>
+</section>
 </section>
 
 
@@ -582,12 +579,10 @@ corr_est
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Quickstart Guide</a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Generate-toy-data">Generate toy data</a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Generate-toy-data">Generate toy data</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-MSE-for-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">Estimate MSE for <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-MSE-for-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">Estimate MSE for <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span></a></li>
 </ul>
-
   </nav></div>
 
   <div class="sidebar-secondary-item">
