@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Simulate \(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\) &#8212; spe 0.1.0 documentation</title>
+    <title>Estimated vs Oracle Covariance &#8212; spe 0.1.0 documentation</title>
   
   
   
@@ -46,7 +46,7 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/est_vs_oracle_cov';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="prev" title="Quickstart Guide" href="quickstart.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -304,8 +304,9 @@ document.write(`
      aria-label="Section Navigation">
   <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
   <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Guide</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Estimated vs Oracle Covariance</a></li>
+
 
 </ul>
 </div>
@@ -347,7 +348,7 @@ document.write(`
     
     <li class="breadcrumb-item"><a href="../user_guide.html" class="nav-link">User Guide</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page">Simulate...</li>
+    <li class="breadcrumb-item active" aria-current="page">Estimated...</li>
   </ul>
 </nav>
 </div>
@@ -387,9 +388,12 @@ from spe.estimators import new_y_est, cp_general, kfoldcv, kmeanscv
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>np.random.seed(1)
-<br/></pre></div>
+</pre></div>
 </div>
 </div>
+<section id="Estimated-vs-Oracle-Covariance">
+<h1>Estimated vs Oracle Covariance<a class="headerlink" href="#Estimated-vs-Oracle-Covariance" title="Link to this heading">#</a></h1>
+<p>Here we investigate the effect of estimating the covariance matrix on the quality of estimators in <code class="docutils literal notranslate"><span class="pre">spe</span></code>.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -520,6 +524,7 @@ beta[idx] = np.random.uniform(-1,1,size=s)
 </pre></div>
 </div>
 </div>
+</section>
 <section id="Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">
 <h1>Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span><a class="headerlink" href="#Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)" title="Link to this heading">#</a></h1>
 <section id="Estimate-with-True-Covs">
@@ -822,7 +827,7 @@ fig.show()
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Quickstart Guide</p>
+        <p class="prev-next-title">Quickstart</p>
       </div>
     </a>
 </div>
@@ -843,7 +848,8 @@ fig.show()
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Estimated vs Oracle Covariance</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a><ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-with-True-Covs">Estimate with True Covs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-with-Matching-Model">Estimate with Matching Model</a></li>
 </ul>
