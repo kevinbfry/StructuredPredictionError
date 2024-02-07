@@ -1,6 +1,0 @@
-﻿spe.estimators.cp\_general
-==========================
-
-.. currentmodule:: spe.estimators
-
-.. autofunction:: cp_general

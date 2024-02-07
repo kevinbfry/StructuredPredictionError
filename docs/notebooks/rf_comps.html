@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Estimated vs Oracle Covariance &#8212; spe 0.1.0 documentation</title>
+    <title>Random Forest Comparisons &#8212; spe 0.1.0 documentation</title>
   
   
   
@@ -43,7 +43,7 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/est_vs_oracle_cov';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/rf_comps';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -331,7 +331,7 @@ document.write(`
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page">Estimated...</li>
+    <li class="breadcrumb-item active" aria-current="page">Random...</li>
   </ul>
 </nav>
 </div>
@@ -354,7 +354,6 @@ document.write(`
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import numpy as np
 from sklearn.gaussian_process.kernels import Matern, RBF
-from sklearn.linear_model import RidgeCV
 from sklearn.ensemble import RandomForestRegressor
 
 import plotly
@@ -362,8 +361,9 @@ import plotly.express as px
 
 from docs.mse_estimator import ErrorComparer
 from docs.data_generation import gen_rbf_X, gen_matern_X, gen_cov_mat
+from spe.forest import ParametricRandomForestRegressor
 from spe.tree import Tree
-from spe.estimators import new_y_est, cp_arbitrary, kfoldcv, kmeanscv
+from spe.estimators import new_y_est, cp_bagged
 </pre></div>
 </div>
 </div>
@@ -375,9 +375,9 @@ from spe.estimators import new_y_est, cp_arbitrary, kfoldcv, kmeanscv
 </pre></div>
 </div>
 </div>
-<section id="Estimated-vs-Oracle-Covariance">
-<h1>Estimated vs Oracle Covariance<a class="headerlink" href="#Estimated-vs-Oracle-Covariance" title="Link to this heading">#</a></h1>
-<p>Here we investigate the effect of estimating the covariance matrix on the quality of estimates from <code class="docutils literal notranslate"><span class="pre">spe.estimators.cp_arbitrary</span></code>.</p>
+<section id="Random-Forest-Comparisons">
+<h1>Random Forest Comparisons<a class="headerlink" href="#Random-Forest-Comparisons" title="Link to this heading">#</a></h1>
+<p>Here we compare the MSE of the usual parametric random forest (RF) and the non-parametric RF which is technically the model <code class="docutils literal notranslate"><span class="pre">spe.estimators.cp_bagged</span></code>.</p>
 <div class="nbinput nblast docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
 </pre></div>
@@ -388,11 +388,11 @@ niter = 100
 ## data generation parameters
 gsize=20
 n=20**2
-p=5
-s=5
+p=30
+s=30
 delta = 0.75
 snr = 0.4
-tr_frac = .25
+tr_frac = .5
 
 noise_kernel = &#39;matern&#39;
 noise_length_scale = 1.
@@ -403,40 +403,31 @@ X_length_scale = 5.
 X_nu = 2.5
 
 ## ErrorComparer parameters
-alpha = .05
-nboot = 100
-k = 5
-max_depth = 2
-lambd = .05
+max_depth = 3
 models = [
-    Tree(max_depth=max_depth),
-    RidgeCV(alphas=[.01,.1, 1.]),
-    RandomForestRegressor(n_estimators=100, max_depth=max_depth)
+    [
+        RandomForestRegressor(max_depth=max_depth, max_features=&#39;sqrt&#39;),
+        ParametricRandomForestRegressor(max_depth=max_depth, max_features=&#39;sqrt&#39;),
+        Tree(max_depth=max_depth, max_features=&#39;sqrt&#39;),
+    ]
 ]
 ests = [
     new_y_est,
     new_y_est,
-    cp_arbitrary,
-    kfoldcv,
-    kmeanscv
+    cp_bagged,
 ]
 est_kwargs = [
     {&#39;alpha&#39;: None,
     &#39;full_refit&#39;: False},
-    {&#39;alpha&#39;: alpha,
-    &#39;full_refit&#39;: False},
-    {&#39;use_trace_corr&#39;: False,
-     &#39;alpha&#39;: alpha},
-    {&#39;k&#39;: k},
-    {&#39;k&#39;: k}
+    {&#39;alpha&#39;: None},
+    {
+        &#39;use_trace_corr&#39;: False,
+    },
 ]
 
-model_names = [
-    &quot;Decision Tree&quot;,
-    &quot;Ridge CV&quot;,
-    &quot;Random Forest&quot;
-]
-est_names = [&quot;OGenCp&quot;, &quot;EGenCp&quot;, &quot;KFCV&quot;, &quot;SPCV&quot;]
+## plot parameters
+model_names = [&quot;Blurred Forest&quot;]
+est_names = [&quot;NPRF&quot;, &quot;PRF&quot;, &quot;GenCpPRF&quot;]
 </pre></div>
 </div>
 </div>
@@ -508,78 +499,17 @@ beta[idx] = np.random.uniform(-1,1,size=s)
 </pre></div>
 </div>
 </div>
-<section id="Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">
-<h2>Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span><a class="headerlink" href="#Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)" title="Link to this heading">#</a></h2>
-<section id="Estimate-with-True-Covs">
-<h3>Estimate with True Covs<a class="headerlink" href="#Estimate-with-True-Covs" title="Link to this heading">#</a></h3>
 <div class="nbinput docutils container">
 <div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>true_model_errs = []
-for model in models:
-    errs = err_cmp.compare(
-        model,
-        ests[:2] + ests[3:],
-        est_kwargs[:2] + est_kwargs[3:],
-        niter=niter,
-        n=n,
-        p=p,
-        s=s,
-        snr=snr,
-        X=X,
-        beta=beta,
-        coord=coord,
-        Chol_y=Chol_y,
-        Chol_ystar=None,
-        Cov_y_ystar=None,
-        tr_idx=tr_idx,
-        fair=False,
-        piecewise_const_mu=True,
-    )
-    true_model_errs.append(errs)
-</pre></div>
-</div>
-</div>
-<div class="nboutput docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-  0%|          | 0/100 [00:00&lt;?, ?it/s]
-</pre></div></div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-100%|██████████| 100/100 [00:03&lt;00:00, 27.67it/s]
-100%|██████████| 100/100 [00:04&lt;00:00, 24.70it/s]
-100%|██████████| 100/100 [01:31&lt;00:00,  1.09it/s]
-</pre></div></div>
-</div>
-</section>
-<section id="Estimate-with-Matching-Model">
-<h3>Estimate with Matching Model<a class="headerlink" href="#Estimate-with-Matching-Model" title="Link to this heading">#</a></h3>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from sklearn.base import clone
-</pre></div>
-</div>
-</div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
-</pre></div>
-</div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>model_errs = []
+
 for model in models:
     errs = err_cmp.compare(
         model,
-        ests[2:3],
-        est_kwargs[2:3],
+        ests,
+        est_kwargs,
         niter=niter,
         n=n,
         p=p,
@@ -593,9 +523,6 @@ for model in models:
         Cov_y_ystar=None,
         tr_idx=tr_idx,
         fair=False,
-        piecewise_const_mu=True,
-        est_sigma=True,
-        est_sigma_model=clone(model),
     )
     model_errs.append(errs)
 </pre></div>
@@ -606,45 +533,34 @@ for model in models:
 </div>
 <div class="output_area stderr docutils container">
 <div class="highlight"><pre>
-100%|██████████| 100/100 [02:13&lt;00:00,  1.34s/it]
-100%|██████████| 100/100 [02:14&lt;00:00,  1.35s/it]
-100%|██████████| 100/100 [18:43&lt;00:00, 11.23s/it]
+100%|██████████| 100/100 [01:03&lt;00:00,  1.59it/s]
 </pre></div></div>
 </div>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>comb_errs = []
-for true_err, model_err in zip(true_model_errs, model_errs):
-    comb_errs.append(true_err[:2] + model_err + true_err[2:])
-</pre></div>
-</div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>from importlib import reload
-from docs import plotting_utils
-reload(plotting_utils)
+import docs.plotting_utils
+reload(docs.plotting_utils)
 from docs.plotting_utils import gen_model_barplots
 </pre></div>
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[14]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>plotly.offline.init_notebook_mode()
 fig = gen_model_barplots(
-    comb_errs,
+    model_errs,
     model_names,
     est_names,
-    title=&quot;Comparing Performance: Estimated vs Oracle Covariance NSN&quot;,
+    title=&quot;RFs: Spatial Train/Test Split, SSN&quot;,
+    has_test_risk=False,
     err_bars=True,
-    color_discrete_sequence=[px.colors.qualitative.Bold[i] for i in [0,5,1,2]],
-    fig_name=&quot;est_cov_ind&quot;,
+    # color_discrete_sequence=px.colors.qualitative.Bold[-1],
+    color_discrete_sequence=px.colors.qualitative.Pastel[0],
 )
 fig.show()
 </pre></div>
@@ -679,155 +595,9 @@ fig.show()
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area rendered_html docutils container">
-<div>                            <div id="4adce3f0-9fc5-44c1-96eb-f1e966b3acbb" class="plotly-graph-div" style="height:600px; width:1350px;"></div>            <script type="text/javascript">                require(["plotly"], function(Plotly) {                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("4adce3f0-9fc5-44c1-96eb-f1e966b3acbb")) {                    Plotly.newPlot(                        "4adce3f0-9fc5-44c1-96eb-f1e966b3acbb",                        [{"error_y":{"array":[0.10516352693827395,0.14433124309453474,0.09153822448153615,0.23393020577070972],"color":"black","type":"data"},"marker":{"color":["rgb(127, 60, 141)","rgb(128, 186, 90)","rgb(17, 165, 121)","rgb(57, 105, 172)"]},"text":[1.006,1.015,0.936,1.184],"textposition":"outside","x":["OGenCp","EGenCp","KFCV","SPCV"],"y":[1.006330197477407,1.0148596313228122,0.9358243351284681,1.1836447938919612],"type":"bar","xaxis":"x","yaxis":"y"},{"error_y":{"array":[0.10957628459208665,0.1288820250158449,0.08833308418669561,0.27995534828306096],"color":"black","type":"data"},"marker":{"color":["rgb(127, 60, 141)","rgb(128, 186, 90)","rgb(17, 165, 121)","rgb(57, 105, 172)"]},"text":[1.0,1.025,0.946,1.214],"textposition":"outside","x":["OGenCp","EGenCp","KFCV","SPCV"],"y":[1.000291079296518,1.0251987958849758,0.9459648478755098,1.2137583176800215],"type":"bar","xaxis":"x2","yaxis":"y2"},{"error_y":{"array":[0.10307402176518615,0.10593420913315568,0.08540388007294167,0.12726579922743378],"color":"black","type":"data"},"marker":{"color":["rgb(127, 60, 141)","rgb(128, 186, 90)","rgb(17, 165, 121)","rgb(57, 105, 172)"]},"text":[1.004,0.993,0.906,1.061],"textposition":"outside","x":["OGenCp","EGenCp","KFCV","SPCV"],"y":[1.0040205898886678,0.9929766915255333,0.9055475810660976,1.0614544042224947],"type":"bar","xaxis":"x3","yaxis":"y3"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.2888888888888889],"title":{"text":"Method"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Relative MSE"}},"xaxis2":{"anchor":"y2","domain":[0.35555555555555557,0.6444444444444445],"title":{"text":"Method"}},"yaxis2":{"anchor":"x2","domain":[0.0,1.0]},"xaxis3":{"anchor":"y3","domain":[0.7111111111111111,1.0],"title":{"text":"Method"}},"yaxis3":{"anchor":"x3","domain":[0.0,1.0]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Decision Tree","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Ridge CV","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Random Forest","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"shapes":[{"line":{"color":"red"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":1.0,"y1":1.0,"yref":"y"},{"line":{"color":"red"},"type":"line","x0":0,"x1":1,"xref":"x2 domain","y0":1.0,"y1":1.0,"yref":"y2"},{"line":{"color":"red"},"type":"line","x0":0,"x1":1,"xref":"x3 domain","y0":1.0,"y1":1.0,"yref":"y3"}],"font":{"size":15},"title":{"text":"Comparing Performance: Estimated vs Oracle Covariance NSN"},"showlegend":false,"height":600,"width":1350},                        {"responsive": true}                    ).then(function(){
+<div>                            <div id="cb9df806-2887-4b3a-a78c-3c9c4dad4876" class="plotly-graph-div" style="height:600px; width:400px;"></div>            <script type="text/javascript">                require(["plotly"], function(Plotly) {                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("cb9df806-2887-4b3a-a78c-3c9c4dad4876")) {                    Plotly.newPlot(                        "cb9df806-2887-4b3a-a78c-3c9c4dad4876",                        [{"error_y":{"array":[1.6325885644697093,1.6044409617542383,0.8471336069114377],"color":"black","type":"data"},"marker":{"color":"rgb(102, 197, 204)"},"text":[16.119,16.138,16.278],"textposition":"outside","x":["NPRF","PRF","GenCpPRF"],"y":[16.119463036242262,16.13772017390038,16.27779299674884],"type":"bar","xaxis":"x","yaxis":"y"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"title":{"text":"Method"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Relative MSE"}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Blurred Forest","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"font":{"size":15},"title":{"text":"RFs: Spatial Train\u002fTest Split, SSN"},"showlegend":false,"height":600,"width":400},                        {"responsive": true}                    ).then(function(){
 
-var gd = document.getElementById('4adce3f0-9fc5-44c1-96eb-f1e966b3acbb');
-var x = new MutationObserver(function (mutations, observer) {{
-        var display = window.getComputedStyle(gd).display;
-        if (!display || display === 'none') {{
-            console.log([gd, 'removed!']);
-            Plotly.purge(gd);
-            observer.disconnect();
-        }}
-}});
-
-// Listen for the removal of the full notebook cells
-var notebookContainer = gd.closest('#notebook-container');
-if (notebookContainer) {{
-    x.observe(notebookContainer, {childList: true});
-}}
-
-// Listen for the clearing of the current output cell
-var outputEl = gd.closest('.output');
-if (outputEl) {{
-    x.observe(outputEl, {childList: true});
-}}
-
-                        })                };                });            </script>        </div></div>
-</div>
-</section>
-</section>
-<section id="Simulate-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">
-<h2>Simulate <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span><a class="headerlink" href="#Simulate-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&-\Sigma_{Y}-\end{pmatrix}\right)" title="Link to this heading">#</a></h2>
-<section id="id1">
-<h3>Estimate with True Covs<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>true_corr_model_errs = []
-for model in models:
-    errs = err_cmp.compare(
-        model,
-        ests[:2] + ests[3:],
-        est_kwargs[:2] + est_kwargs[3:],
-        niter=niter,
-        n=n,
-        p=p,
-        s=s,
-        snr=snr,
-        X=X,
-        beta=beta,
-        coord=coord,
-        Chol_y=Chol_y,
-        Chol_ystar=None,
-        Cov_y_ystar=Cov_y_ystar,
-        tr_idx=tr_idx,
-        fair=False,
-        piecewise_const_mu=True,
-    )
-    true_corr_model_errs.append(errs)
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-100%|██████████| 100/100 [00:07&lt;00:00, 13.71it/s]
-100%|██████████| 100/100 [00:04&lt;00:00, 20.02it/s]
-100%|██████████| 100/100 [01:45&lt;00:00,  1.06s/it]
-</pre></div></div>
-</div>
-</section>
-<section id="id2">
-<h3>Estimate with Matching Model<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[16]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>corr_model_errs = []
-for model in models:
-    errs = err_cmp.compare(
-        model,
-        ests[2:3],
-        est_kwargs[2:3],
-        niter=niter,
-        n=n,
-        p=p,
-        s=s,
-        snr=snr,
-        X=X,
-        beta=beta,
-        coord=coord,
-        Chol_y=Chol_y,
-        Chol_ystar=None,
-        Cov_y_ystar=Cov_y_ystar,
-        tr_idx=tr_idx,
-        fair=False,
-        piecewise_const_mu=True,
-        est_sigma=&quot;corr_resp&quot;,
-        est_sigma_model=clone(model),
-    )
-    corr_model_errs.append(errs)
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area stderr docutils container">
-<div class="highlight"><pre>
-100%|██████████| 100/100 [02:40&lt;00:00,  1.61s/it]
-100%|██████████| 100/100 [02:21&lt;00:00,  1.42s/it]
-100%|██████████| 100/100 [15:44&lt;00:00,  9.45s/it]
-</pre></div></div>
-</div>
-<div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[17]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>comb_errs_corr = []
-for true_err, model_err in zip(true_corr_model_errs, corr_model_errs):
-    comb_errs_corr.append(true_err[:2] + model_err + true_err[2:])
-</pre></div>
-</div>
-</div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[18]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>corr_fig = gen_model_barplots(
-    comb_errs_corr,
-    model_names,
-    est_names,
-    title=&quot;Comparing Performance: Estimated vs Oracle Covariance SSN&quot;,
-    err_bars=True,
-    color_discrete_sequence=[px.colors.qualitative.Bold[i] for i in [0,5,1,2]],
-    fig_name=&quot;est_cov_corr&quot;,
-)
-corr_fig.show()
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt empty docutils container">
-</div>
-<div class="output_area rendered_html docutils container">
-<div>                            <div id="5b98f312-9c1d-46b4-ba8a-76909bf66709" class="plotly-graph-div" style="height:600px; width:1350px;"></div>            <script type="text/javascript">                require(["plotly"], function(Plotly) {                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("5b98f312-9c1d-46b4-ba8a-76909bf66709")) {                    Plotly.newPlot(                        "5b98f312-9c1d-46b4-ba8a-76909bf66709",                        [{"error_y":{"array":[0.077232892518231,0.11730900854985447,0.09047512333075364,0.21601489715908753],"color":"black","type":"data"},"marker":{"color":["rgb(127, 60, 141)","rgb(128, 186, 90)","rgb(17, 165, 121)","rgb(57, 105, 172)"]},"text":[1.006,1.064,1.091,1.355],"textposition":"outside","x":["OGenCp","EGenCp","KFCV","SPCV"],"y":[1.0061115463179144,1.0636020670621056,1.0914388876956198,1.3551448126460848],"type":"bar","xaxis":"x","yaxis":"y"},{"error_y":{"array":[0.09326197238070845,0.1272145794090493,0.10119262974490544,0.315855552274163],"color":"black","type":"data"},"marker":{"color":["rgb(127, 60, 141)","rgb(128, 186, 90)","rgb(17, 165, 121)","rgb(57, 105, 172)"]},"text":[1.003,1.081,1.03,1.306],"textposition":"outside","x":["OGenCp","EGenCp","KFCV","SPCV"],"y":[1.0026648988509186,1.0806838025594188,1.0296460745914244,1.3055489020394968],"type":"bar","xaxis":"x2","yaxis":"y2"},{"error_y":{"array":[0.08636207121943239,0.11991394789006495,0.09582815555374666,0.16251412075731997],"color":"black","type":"data"},"marker":{"color":["rgb(127, 60, 141)","rgb(128, 186, 90)","rgb(17, 165, 121)","rgb(57, 105, 172)"]},"text":[1.004,1.06,1.07,1.266],"textposition":"outside","x":["OGenCp","EGenCp","KFCV","SPCV"],"y":[1.0044237294578615,1.0599626032378586,1.0700451789260819,1.265740558127973],"type":"bar","xaxis":"x3","yaxis":"y3"}],                        {"template":{"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"ticks":""}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"heatmapgl":[{"type":"heatmapgl","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"ticks":""}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"ticks":""}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattermapbox":[{"type":"scattermapbox","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"ticks":""}}}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"#2a3f5f"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"#E5ECF6","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]},"layout":{"autotypenumbers":"strict","colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"#E5ECF6","polar":{"bgcolor":"#E5ECF6","angularaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"ternary":{"bgcolor":"#E5ECF6","aaxis":{"gridcolor":"white","linecolor":"white","ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]]},"xaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"yaxis":{"gridcolor":"white","linecolor":"white","ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true,"zerolinewidth":2},"scene":{"xaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"#E5ECF6","gridcolor":"white","linecolor":"white","showbackground":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"#E5ECF6","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05},"mapbox":{"style":"light"}}},"xaxis":{"anchor":"y","domain":[0.0,0.2888888888888889],"title":{"text":"Method"}},"yaxis":{"anchor":"x","domain":[0.0,1.0],"title":{"text":"Relative MSE"}},"xaxis2":{"anchor":"y2","domain":[0.35555555555555557,0.6444444444444445],"title":{"text":"Method"}},"yaxis2":{"anchor":"x2","domain":[0.0,1.0]},"xaxis3":{"anchor":"y3","domain":[0.7111111111111111,1.0],"title":{"text":"Method"}},"yaxis3":{"anchor":"x3","domain":[0.0,1.0]},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Decision Tree","x":0.14444444444444446,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Ridge CV","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Random Forest","x":0.8555555555555556,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"}],"shapes":[{"line":{"color":"red"},"type":"line","x0":0,"x1":1,"xref":"x domain","y0":1.0,"y1":1.0,"yref":"y"},{"line":{"color":"red"},"type":"line","x0":0,"x1":1,"xref":"x2 domain","y0":1.0,"y1":1.0,"yref":"y2"},{"line":{"color":"red"},"type":"line","x0":0,"x1":1,"xref":"x3 domain","y0":1.0,"y1":1.0,"yref":"y3"}],"font":{"size":15},"title":{"text":"Comparing Performance: Estimated vs Oracle Covariance SSN"},"showlegend":false,"height":600,"width":1350},                        {"responsive": true}                    ).then(function(){
-
-var gd = document.getElementById('5b98f312-9c1d-46b4-ba8a-76909bf66709');
+var gd = document.getElementById('cb9df806-2887-4b3a-a78c-3c9c4dad4876');
 var x = new MutationObserver(function (mutations, observer) {{
         var display = window.getComputedStyle(gd).display;
         if (!display || display === 'none') {{
@@ -860,8 +630,6 @@ if (outputEl) {{
 </div>
 </div>
 </section>
-</section>
-</section>
 
 
                 </article>
@@ -884,30 +652,9 @@ if (outputEl) {{
 
 
   <div class="sidebar-secondary-item">
-<div
-    id="pst-page-navigation-heading-2"
-    class="page-toc tocsection onthispage">
-    <i class="fa-solid fa-list"></i> On this page
-  </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Simulate-Y,-Y^*-\overset{iid}{\sim}-\mathcal{N}(\mu,-\Sigma_Y)">Simulate <span class="math notranslate nohighlight">\(Y, Y^* \overset{iid}{\sim} \mathcal{N}(\mu, \Sigma_Y)\)</span></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-with-True-Covs">Estimate with True Covs</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Estimate-with-Matching-Model">Estimate with Matching Model</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Simulate-\begin{pmatrix}-Y-\\-Y^*-\end{pmatrix}-\sim-\mathcal{N}\left(\begin{pmatrix}-\mu-\\-\mu-\end{pmatrix},-\begin{pmatrix}\Sigma_Y-&amp;-\Sigma_{Y,-Y^*}-\\-\Sigma_{Y^*,-Y}-&amp;-\Sigma_{Y}-\end{pmatrix}\right)">Simulate <span class="math notranslate nohighlight">\(\begin{pmatrix} Y \\ Y^* \end{pmatrix} \sim \mathcal{N}\left(\begin{pmatrix} \mu \\ \mu \end{pmatrix}, \begin{pmatrix}\Sigma_Y &amp; \Sigma_{Y, Y^*} \\ \Sigma_{Y^*, Y} &amp; \Sigma_{Y} \end{pmatrix}\right)\)</span></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">Estimate with True Covs</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Estimate with Matching Model</a></li>
-</ul>
-</li>
-</ul>
-  </nav></div>
-
-  <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/notebooks/est_vs_oracle_cov.ipynb.txt">
+    <a href="../_sources/notebooks/rf_comps.ipynb.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>

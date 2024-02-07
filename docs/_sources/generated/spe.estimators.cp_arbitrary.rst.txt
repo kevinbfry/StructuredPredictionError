@@ -1,0 +1,6 @@
+﻿spe.estimators.cp\_arbitrary
+============================
+
+.. currentmodule:: spe.estimators
+
+.. autofunction:: cp_arbitrary

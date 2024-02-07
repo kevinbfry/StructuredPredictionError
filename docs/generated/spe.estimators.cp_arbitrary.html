@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>spe.estimators.cp_general &#8212; spe 0.1.0 documentation</title>
+    <title>spe.estimators.cp_arbitrary &#8212; spe 0.1.0 documentation</title>
   
   
   
@@ -42,11 +42,11 @@
     <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
     <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.estimators.cp_general';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/spe.estimators.cp_arbitrary';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="spe.estimators.cp_smoother" href="spe.estimators.cp_smoother.html" />
-    <link rel="prev" title="spe.estimators.cp_bagged" href="spe.estimators.cp_bagged.html" />
+    <link rel="next" title="spe.estimators.cp_bagged" href="spe.estimators.cp_bagged.html" />
+    <link rel="prev" title="spe.estimators.cp_adaptive_smoother" href="spe.estimators.cp_adaptive_smoother.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -308,8 +308,8 @@ document.write(`
 </ul>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_adaptive_smoother.html">spe.estimators.cp_adaptive_smoother</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.estimators.cp_arbitrary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_bagged.html">spe.estimators.cp_bagged</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">spe.estimators.cp_general</a></li>
 <li class="toctree-l1"><a class="reference internal" href="spe.estimators.cp_smoother.html">spe.estimators.cp_smoother</a></li>
 </ul>
 <ul class="nav bd-sidenav">
@@ -378,11 +378,11 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="spe-estimators-cp-general">
-<h1>spe.estimators.cp_general<a class="headerlink" href="#spe-estimators-cp-general" title="Link to this heading">#</a></h1>
+  <section id="spe-estimators-cp-arbitrary">
+<h1>spe.estimators.cp_arbitrary<a class="headerlink" href="#spe-estimators-cp-arbitrary" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="spe.estimators.cp_general">
-<span class="sig-prename descclassname"><span class="pre">spe.estimators.</span></span><span class="sig-name descname"><span class="pre">cp_general</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Cov_y_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nboot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_trace_corr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.estimators.cp_general" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="spe.estimators.cp_arbitrary">
+<span class="sig-prename descclassname"><span class="pre">spe.estimators.</span></span><span class="sig-name descname"><span class="pre">cp_arbitrary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">X</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tr_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Chol_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Cov_y_ystar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nboot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_trace_corr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#spe.estimators.cp_arbitrary" title="Link to this definition">#</a></dt>
 <dd><p>Computes Generalized Mallows’s Cp for arbitrary models.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -436,20 +436,20 @@ with smaller variance. Default is <code class="docutils literal notranslate"><sp
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="spe.estimators.cp_bagged.html"
+       href="spe.estimators.cp_adaptive_smoother.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">spe.estimators.cp_bagged</p>
+        <p class="prev-next-title">spe.estimators.cp_adaptive_smoother</p>
       </div>
     </a>
     <a class="right-next"
-       href="spe.estimators.cp_smoother.html"
+       href="spe.estimators.cp_bagged.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">spe.estimators.cp_smoother</p>
+        <p class="prev-next-title">spe.estimators.cp_bagged</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -471,14 +471,14 @@ with smaller variance. Default is <code class="docutils literal notranslate"><sp
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.estimators.cp_general"><code class="docutils literal notranslate"><span class="pre">cp_general()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spe.estimators.cp_arbitrary"><code class="docutils literal notranslate"><span class="pre">cp_arbitrary()</span></code></a></li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/generated/spe.estimators.cp_general.rst.txt">
+    <a href="../_sources/generated/spe.estimators.cp_arbitrary.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>
