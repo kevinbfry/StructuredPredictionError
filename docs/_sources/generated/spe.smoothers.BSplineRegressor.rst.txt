@@ -4,6 +4,8 @@
 .. currentmodule:: spe.smoothers
 
 .. autoclass:: BSplineRegressor
+   :members:
+   :inherited-members:
 
    
    

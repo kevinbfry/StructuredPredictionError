@@ -4,6 +4,8 @@
 .. currentmodule:: spe.bagging
 
 .. autoclass:: ParametricBaggingRegressor
+   :members:
+   :inherited-members:
 
    
    

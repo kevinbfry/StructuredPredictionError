@@ -4,6 +4,8 @@
 .. currentmodule:: spe.forest
 
 .. autoclass:: ParametricRandomForestRegressor
+   :members:
+   :inherited-members:
 
    
    
