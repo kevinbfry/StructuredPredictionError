@@ -16,6 +16,8 @@ def gen_model_barplots(
         err_bars=False,
         color_discrete_sequence=px.colors.qualitative.Bold,
         fig_name=None,
+        fig_width=None,
+        fig_height=None,
     ):
 
     fig = make_subplots(
@@ -82,8 +84,11 @@ def gen_model_barplots(
             )
         
     fig.update_yaxes(title_text=yaxis_title, row=1, col=1)
-    fig_width = 100 * len(model_errs) * (len(model_errs[0])-offset) + 50 * len(model_errs)
-    fig_width = max(fig_width, 400)
+    if fig_width is None:
+        fig_width = 100 * len(model_errs) * (len(model_errs[0])-offset) + 50 * len(model_errs)
+        fig_width = max(fig_width, 600)
+    if fig_height is None:
+        fig_height = 600
     fig.update_layout(
         font=dict(
             # family="Courier New, monospace",
@@ -92,7 +97,7 @@ def gen_model_barplots(
         ),
         title_text=title, 
         showlegend=False, 
-        height=600, 
+        height=fig_height, 
         width=fig_width,
     )
 

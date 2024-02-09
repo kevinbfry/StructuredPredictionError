@@ -34,15 +34,16 @@ def est_Sigma(
 
     def get_cholesky(Sigma):
         c = 1e-7/n
+        ridgedSigma = Sigma
         while True:
             try:
                 c *= 10
-                chol = np.linalg.cholesky(Sigma)#[tr_idx,:][:,tr_idx])
+                chol = np.linalg.cholesky(ridgedSigma)
             except LinAlgError as err:
                 if str(err) == "Matrix is not positive definite":
                     ## instead of doing eigendecomp, just add some proportion of trace
                     trc = np.sum(np.diag(Sigma))
-                    chol = np.linalg.cholesky(Sigma + c*trc*np.eye(n))
+                    ridgedSigma = Sigma + c*trc*np.eye(n) ## TODO: sometimes overflow, invalid value in scalary multiply warning
                 else:
                     raise
             else:

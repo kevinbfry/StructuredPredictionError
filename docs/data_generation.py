@@ -62,7 +62,7 @@ def _gen_X(n, p, cov, nspikes=None):
     return X
 
 
-### this samples grid, then uniform within grid.
+### this samples grid, then uniformly within grid.
 def create_clus_split(
     nx,
     ny,
@@ -91,9 +91,16 @@ def create_clus_split(
         grids.append([(x, y) for (x, y) in zip(gxv.ravel(), gyv.ravel())])
     grids = np.array(grids)
 
-    n_tr_centers = np.minimum(nsq, int(tr_frac * nsq * 2))
+
+    n_tr_centers = (
+        int(tr_frac * nsq) if tr_frac > .5 
+        else np.minimum(nsq, int(tr_frac * nsq * 2))
+    )
     if ts_frac is not None:
-        n_ts_centers = np.minimum(nsq, int(ts_frac * nsq * 2))
+        n_ts_centers = (
+            int(ts_frac * nsq) if tr_frac > .5 
+            else np.minimum(nsq, int(ts_frac * nsq * 2))
+        )
     else:
         ts_frac = 0
         n_ts_centers = 0
@@ -137,6 +144,8 @@ def create_clus_split(
         ts_bool = np.zeros(n).astype(bool)
         ts_bool[ts_idx] = True
         
+        assert(np.amax(tr_bool + ts_bool) == 1)
         return tr_idx, ts_idx
+        return tr_bool, ts_bool
 
     return tr_bool
