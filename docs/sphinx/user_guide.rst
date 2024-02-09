@@ -11,6 +11,7 @@ Getting started
 
 
     notebooks/quickstart
+    notebooks/motiv_ex
 
 
 Simulations
@@ -33,4 +34,7 @@ Simulations
 
     notebooks/by_comps
     notebooks/rf_comps
+
+
+    notebooks/cv_corrections
 
