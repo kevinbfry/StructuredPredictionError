@@ -1,0 +1,927 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Setup &#8212; spe 0.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.1/css/all.min.css?digest=8d27b9dea8ad943066ae" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.1/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/numpy.css?v=92d1e6fe" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae" />
+  <script src="../_static/vendor/fontawesome/6.5.1/js/all.min.js?digest=8d27b9dea8ad943066ae"></script>
+
+    <script src="../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/cv_corrections';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="dark">
+
+  
+  
+  <a id="pst-skip-link" class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">spe 0.1.0 documentation</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/JamesYang007/adelie" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../api_reference.html">
+                        API Reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../user_guide.html">
+                        User Guide
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/JamesYang007/adelie" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Setup</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>import numpy as np
+import pandas as pd
+
+from sklearn.gaussian_process.kernels import Matern, RBF
+from sklearn.cluster import KMeans
+
+from docs.data_generation import gen_rbf_X, gen_matern_X, create_clus_split, gen_cov_mat
+from docs.plotting_utils import gen_model_barplots
+
+import matplotlib.pyplot as plt
+import plotly.express as px
+
+from tqdm import tqdm
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/var/folders/06/s3csl9g94gx2ptsgwz8cpfvh0000gn/T/ipykernel_72302/1955058804.py:2: DeprecationWarning:
+Pyarrow will become a required dependency of pandas in the next major release of pandas (pandas 3.0),
+(to allow more performant data types, such as the Arrow string type, and better interoperability with other libraries)
+but was not found to be installed on your system.
+If this would cause problems for you,
+please provide us feedback at https://github.com/pandas-dev/pandas/issues/54466
+
+  import pandas as pd
+</pre></div></div>
+</div>
+<section id="Setup">
+<h1>Setup<a class="headerlink" href="#Setup" title="Link to this heading">#</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>np.random.seed(1)
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>## number of realizations to run
+niter = 100
+
+## data generation parameters
+gsize = 10
+n=60**2
+p=50
+s=50
+delta = 0.75
+snr = 0.4
+tr_frac = .2
+bloo_radius = gsize // 2
+k = 10
+
+noise_kernel = &#39;matern&#39;
+noise_length_scale = 1.
+noise_nu = .5
+
+X_kernel = &#39;matern&#39;
+X_length_scale = 5.
+X_nu = 2.5
+
+est_names = [&quot;KFCV&quot;, &quot;SPCV&quot;, &quot;BLOOCV&quot;]
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>nx = ny = int(np.sqrt(n))
+xs = np.linspace(0, gsize, nx)
+ys = np.linspace(0, gsize, ny)
+c_x, c_y = np.meshgrid(xs, ys)
+c_x = c_x.flatten()
+c_y = c_y.flatten()
+coord = np.stack([c_x, c_y]).T
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>if noise_kernel == &#39;rbf&#39;:
+    Sigma_y = gen_cov_mat(c_x, c_y, RBF(length_scale=noise_length_scale))
+elif noise_kernel == &#39;matern&#39;:
+    Sigma_y = gen_cov_mat(c_x, c_y, Matern(length_scale=noise_length_scale, nu=noise_nu))
+else:
+    Sigma_y = np.eye(n)
+
+Cov_y_ystar = delta*Sigma_y
+Sigma_y = delta*Sigma_y + (1-delta)*np.eye(n)
+
+if noise_kernel == &#39;rbf&#39; or noise_kernel == &#39;matern&#39;:
+    Chol_y = np.linalg.cholesky(Sigma_y)
+else:
+    Chol_y = np.eye(n)
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Generate-Gaussian-X,-Y">
+<h1>Generate Gaussian X, Y<a class="headerlink" href="#Generate-Gaussian-X,-Y" title="Link to this heading">#</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def gen_X():
+    if X_kernel == &#39;rbf&#39;:
+        X = gen_rbf_X(c_x, c_y, p)
+    elif X_kernel == &#39;matern&#39;:
+        X = gen_matern_X(c_x, c_y, p, length_scale=X_length_scale, nu=X_nu)
+    else:
+        X = np.random.randn(n,p)
+    return X
+
+X = gen_X()
+
+beta = np.zeros(p)
+idx = np.random.choice(p,size=s,replace=False)
+beta[idx] = np.random.uniform(-1,1,size=s)
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>Chol_y *= np.std(X@beta) / np.sqrt(snr)
+Sigma_y = Chol_y @ Chol_y.T
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>Y = X @ beta + Chol_y @ np.random.randn(n)
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Compute-expected-correction-for-one-fold-of-CV-vs-expected-correction-for-random-sample">
+<h1>Compute expected correction for one fold of CV vs expected correction for random sample<a class="headerlink" href="#Compute-expected-correction-for-one-fold-of-CV-vs-expected-correction-for-random-sample" title="Link to this heading">#</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>## assuming linear model, and bias approx 0
+def computeCorrection(
+    S,
+    Sigma,
+    tr_idx,
+    ts_idx=None,
+):
+    if ts_idx is None:
+        ts_idx = ~tr_idx
+
+    return (Sigma[ts_idx,ts_idx].sum() - 2*np.diag(S @ Sigma[tr_idx,:][:,ts_idx]).sum()) / ts_idx.sum()
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>def getDistance(c_x, c_y):
+    Loc = np.stack([c_x, c_y]).T
+    m = np.sum(Loc**2, axis=1)
+    D = (-2 * Loc.dot(Loc.T) + m).T + m
+    D = 0.5 * (D + D.T)
+    D = np.maximum(D, 0)  ## sometimes gets values like -1e-9
+    D = np.sqrt(D)
+
+    return D
+
+def getBufferTrain(D, tr_bool, ts_idx):
+    buffer_tr_bool = tr_bool &amp; (D[ts_idx,:] &gt; bloo_radius)
+    return buffer_tr_bool
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>D = getDistance(c_x, c_y)
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>kfcv_corr = np.zeros(niter)
+spcv_corr = np.zeros(niter)
+bloocv_corr = np.zeros(niter)
+ns_corr = np.zeros(niter)
+sp_corr = np.zeros(niter)
+
+for i in tqdm(range(niter)):
+    idxs = np.random.choice(n, size=int(tr_frac*n), replace=False)
+
+    cv_tr_idx = idxs[:int(tr_frac*tr_frac*n)]
+    cv_tr_bool = np.zeros(n, dtype=bool)
+    cv_tr_bool[cv_tr_idx] = True
+
+    cv_ts_idx = idxs[int(tr_frac*tr_frac*n):int(tr_frac*n)]
+    cv_ts_bool = np.zeros(n, dtype=bool)
+    cv_ts_bool[cv_ts_idx] = True
+
+    tr_idx = idxs[:int(tr_frac*tr_frac*n)]
+    tr_bool = np.zeros(n, dtype=bool)
+    tr_bool[tr_idx] = True
+
+    ts_idx = idxs[int(tr_frac*tr_frac*n):int(tr_frac*n)]
+    ts_bool = np.zeros(n, dtype=bool)
+    ts_bool[ts_idx] = True
+
+    ## split into 3 folds by kmeans
+    groups = KMeans(n_init=10, n_clusters=k).fit(coord[idxs[:int(tr_frac*n)]]).labels_
+    # groups = KMeans(n_init=10, n_clusters=5).fit(coord[idxs[:int(tr_frac*tr_frac*n)]]).labels_
+    spcv_tr_idx = idxs[np.where(groups &lt; k-1)[0]]
+    spcv_tr_bool = np.zeros(n, dtype=bool)
+    spcv_tr_bool[spcv_tr_idx] = True
+    spcv_ts_idx = idxs[np.where(groups == k-1)[0]]
+    spcv_ts_bool = np.zeros(n, dtype=bool)
+    spcv_ts_bool[spcv_ts_idx] = True
+
+    ## pick one point for ts, tr is all far enough away
+    bloocv_tr_idx = idxs[np.random.choice(len(idxs),size=len(idxs),replace=False)]
+    bloocv_ts_idx = bloocv_tr_idx[0]
+
+    bloocv_tr_bool = np.zeros(n, dtype=bool)
+    bloocv_tr_bool[bloocv_tr_idx] = True
+    bloocv_tr_bool = getBufferTrain(D, bloocv_tr_bool, bloocv_ts_idx)
+
+    bloocv_ts_bool = np.zeros(n, dtype=bool)
+    bloocv_ts_bool[bloocv_ts_idx] = True
+
+    # X = gen_rbf_X(c_x, c_y, p)
+    # X = gen_matern_X(c_x, c_y, p, length_scale=X_length_scale, nu=X_nu)
+    # Y = X@beta + Chol_y @ np.random.randn(n)
+    X = gen_X()
+
+    X_cv = X[cv_tr_idx,:]
+    S_cv = X[cv_ts_idx,:] @ np.linalg.pinv(X_cv)
+
+    X_spcv = X[spcv_tr_idx,:]
+    S_spcv = X[spcv_ts_idx,:] @ np.linalg.pinv(X_spcv)
+
+    X_bloocv = X[bloocv_tr_bool,:]
+    S_bloocv = X[bloocv_ts_idx,:] @ np.linalg.pinv(X_bloocv)
+
+
+    X_tr = X[tr_idx,:]
+    S_tr = X[ts_idx,:] @ np.linalg.pinv(X_tr)
+
+    sp_idx = np.random.choice(ts_idx,size=1)
+    sp_bool = np.zeros(n, dtype=bool)
+    sp_bool[sp_idx] = True
+    S_sp = X[sp_idx,:] @ np.linalg.pinv(X_tr)
+    kfcv_corr[i] = computeCorrection(S_cv, Sigma_y, cv_tr_bool, cv_ts_bool)
+    spcv_corr[i] = computeCorrection(S_spcv, Sigma_y, spcv_tr_bool, spcv_ts_bool)
+    bloocv_corr[i] = computeCorrection(S_bloocv, Sigma_y, bloocv_tr_bool, bloocv_ts_bool)
+    ns_corr[i] = computeCorrection(S_tr, Sigma_y, tr_bool, ts_bool)
+    sp_corr[i] = computeCorrection(S_sp, Sigma_y, tr_bool, sp_bool)
+
+corrs = pd.DataFrame({
+    &#39;KFCV&#39;: kfcv_corr,
+    &#39;SPCV&#39;: spcv_corr,
+    &#39;BLOOCV&#39;: bloocv_corr,
+})
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 100/100 [00:15&lt;00:00,  6.29it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig = gen_model_barplots(
+    [[ns_corr, kfcv_corr, spcv_corr, bloocv_corr]],
+    [&quot;&quot;],
+    est_names,
+    title=&quot;Train/Test Split: OLS Correction Term Comparisons&quot;,
+    has_elev_err=False,
+    err_bars=True,
+    color_discrete_sequence=[px.colors.qualitative.Bold[i] for i in [1,2,3]],
+)
+fig.show()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+</section>
+<section id="Compute-expected-correction-for-one-fold-of-CV-vs-expected-correction-for-clustered-sample">
+<h1>Compute expected correction for one fold of CV vs expected correction for clustered sample<a class="headerlink" href="#Compute-expected-correction-for-one-fold-of-CV-vs-expected-correction-for-clustered-sample" title="Link to this heading">#</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>clus_kfcv_corr = np.zeros(niter)
+clus_spcv_corr = np.zeros(niter)
+clus_bloocv_corr = np.zeros(niter)
+clus_ns_corr = np.zeros(niter)
+clus_sp_corr = np.zeros(niter)
+
+# tr_frac /= 2
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><span></span>for i in tqdm(range(niter)):
+    idxs, ts_idx = create_clus_split(
+        nx,
+        ny,
+        tr_frac,
+        ngrid=5,
+        ts_frac=tr_frac-tr_frac*tr_frac,
+        sort_grids=False,
+    )
+    ## randomize order for CV
+    idxs = np.random.choice(idxs, size=len(idxs), replace=False)
+
+    cv_tr_idx = idxs[:int(tr_frac*len(idxs))]
+    cv_tr_bool = np.zeros(n, dtype=bool)
+    cv_tr_bool[cv_tr_idx] = True
+
+    cv_ts_idx = idxs[int(tr_frac*len(idxs)):]
+    cv_ts_bool = np.zeros(n, dtype=bool)
+    cv_ts_bool[cv_ts_idx] = True
+
+    tr_idx = idxs[:int(tr_frac*len(idxs))]
+    tr_bool = np.zeros(n, dtype=bool)
+    tr_bool[tr_idx] = True
+
+    # ts_idx = idxs[int(tr_frac*tr_frac*n):]
+    # ts_bool = np.zeros(n, dtype=bool)
+    ts_bool[ts_idx] = True
+
+    ## split into 3 folds by kmeans
+    groups = KMeans(n_init=10, n_clusters=k).fit(coord[idxs]).labels_
+    # groups = KMeans(n_init=10, n_clusters=k).fit(coord[idxs[:int(tr_frac*n)]]).labels_
+    # groups = KMeans(n_init=10, n_clusters=5).fit(coord[idxs[:int(tr_frac*tr_frac*n)]]).labels_
+    spcv_tr_idx = idxs[np.where(groups &lt; k-1)[0]]
+    spcv_tr_bool = np.zeros(n, dtype=bool)
+    spcv_tr_bool[spcv_tr_idx] = True
+    spcv_ts_idx = idxs[np.where(groups == k-1)[0]]
+    spcv_ts_bool = np.zeros(n, dtype=bool)
+    spcv_ts_bool[spcv_ts_idx] = True
+
+    ## pick one point for ts, tr is all far enough away
+    bloocv_tr_idx = idxs[np.random.choice(len(idxs),size=len(idxs),replace=False)]
+    bloocv_ts_idx = bloocv_tr_idx[0]
+
+    bloocv_tr_bool = np.zeros(n, dtype=bool)
+    bloocv_tr_bool[bloocv_tr_idx] = True
+    bloocv_tr_bool = getBufferTrain(D, bloocv_tr_bool, bloocv_ts_idx)
+
+    bloocv_ts_bool = np.zeros(n, dtype=bool)
+    bloocv_ts_bool[bloocv_ts_idx] = True
+
+    # X = gen_rbf_X(c_x, c_y, p)
+    # X = gen_matern_X(c_x, c_y, p, length_scale=X_length_scale, nu=X_nu)
+    # Y = X@beta + Chol_y @ np.random.randn(n)
+    X = gen_X()
+
+    X_cv = X[cv_tr_idx,:]
+    S_cv = X[cv_ts_idx,:] @ np.linalg.pinv(X_cv)
+
+    X_spcv = X[spcv_tr_idx,:]
+    S_spcv = X[spcv_ts_idx,:] @ np.linalg.pinv(X_spcv)
+
+    X_bloocv = X[bloocv_tr_bool,:]
+    S_bloocv = X[bloocv_ts_idx,:] @ np.linalg.pinv(X_bloocv)
+
+
+    X_tr = X[tr_idx,:]
+    S_tr = X[ts_idx,:] @ np.linalg.pinv(X_tr)
+
+    sp_idx = np.random.choice(ts_idx,size=1)
+    sp_bool = np.zeros(n, dtype=bool)
+    sp_bool[sp_idx] = True
+
+    S_sp = X[sp_idx,:] @ np.linalg.pinv(X_tr)
+
+    clus_kfcv_corr[i] = computeCorrection(S_cv, Sigma_y, cv_tr_bool, cv_ts_bool)
+    clus_spcv_corr[i] = computeCorrection(S_spcv, Sigma_y, spcv_tr_bool, spcv_ts_bool)
+    clus_bloocv_corr[i] = computeCorrection(S_bloocv, Sigma_y, bloocv_tr_bool, bloocv_ts_bool)
+    clus_ns_corr[i] = computeCorrection(S_tr, Sigma_y, tr_bool, ts_bool)
+    clus_sp_corr[i] = computeCorrection(S_sp, Sigma_y, tr_bool, sp_bool)
+
+    # print(ts_bool.sum(), cv_tr_bool.sum(), cv_ts_bool.sum())
+
+clus_corrs = pd.DataFrame({
+    &#39;KFCV&#39;: clus_kfcv_corr,
+    &#39;SPCV&#39;: clus_spcv_corr,
+    &#39;BLOOCV&#39;: clus_bloocv_corr,
+})
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+100%|██████████| 100/100 [00:15&lt;00:00,  6.48it/s]
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>fig = gen_model_barplots(
+    [[clus_ns_corr, clus_kfcv_corr, clus_spcv_corr, clus_bloocv_corr]],
+    [&quot;&quot;],
+    est_names,
+    title=&quot;Spatial Train/Test Split: OLS Correction Term Comparisons&quot;,
+    has_elev_err=False,
+    err_bars=True,
+    color_discrete_sequence=[px.colors.qualitative.Bold[i] for i in [1,2,3]],
+)
+fig.show()
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">Setup</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Generate-Gaussian-X,-Y">Generate Gaussian X, Y</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Compute-expected-correction-for-one-fold-of-CV-vs-expected-correction-for-random-sample">Compute expected correction for one fold of CV vs expected correction for random sample</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#Compute-expected-correction-for-one-fold-of-CV-vs-expected-correction-for-clustered-sample">Compute expected correction for one fold of CV vs expected correction for clustered sample</a></li>
+</ul>
+
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/notebooks/cv_corrections.ipynb.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=8d27b9dea8ad943066ae"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=8d27b9dea8ad943066ae"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024, Kevin Fry.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.2.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
