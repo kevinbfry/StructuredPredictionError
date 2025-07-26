@@ -8,7 +8,8 @@ import numpy as np
 from scipy.sparse import issparse
 
 from sklearn.ensemble import BaggingRegressor
-from sklearn.utils import check_random_state, indices_to_mask
+from sklearn.utils import check_random_state
+from sklearn.utils._mask import indices_to_mask
 from sklearn.utils.metadata_routing import (
     _raise_for_unsupported_routing,
 )
