@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.linear_model import LassoCV, RidgeCV, Lasso
 
-from spe.estimators import cp_arbitrary as spe_est
+from spe.estimators import new_y_est, kfoldcv, kmeanscv, cp_arbitrary as spe_est
 
 
 ## number of realizations to run
@@ -26,8 +26,6 @@ X_LENGTH_SCALE = 5.
 X_NU = 2.5
 
 ## ErrorComparer parameters
-ALPHA = .05
-NBOOT = 100
 CHOL_YSTAR = None
 COV_Y_YSTAR = None
 
@@ -56,15 +54,28 @@ MODEL_KWARGS = [
 
 SPE_EST_STR = spe_est.__name__
 ## Estimator parameters
+alpha = .05
+nboot = 100
 
+## Estimator parameters
+def get_est_array(est):
+    return [
+        new_y_est.__name__,
+        new_y_est.__name__,
+        est,
+        kfoldcv.__name__, 
+        kmeanscv.__name__
+    ]
+
+EST_STRS = get_est_array(SPE_EST_STR)
 EST_KWARGS= [
     {'alpha': None,
     'full_refit': False},
-    {'alpha': ALPHA,
+    {'alpha': alpha,
     'full_refit': False},
-    {'alpha': ALPHA, 
+    {'alpha': alpha, 
     'use_trace_corr': False, 
-    'nboot': NBOOT},
+    'nboot': nboot},
     {'k': K},
     {'k': K}
 ]
