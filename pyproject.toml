@@ -2,7 +2,7 @@
 name = "spe"
 version = "0.1.0"
 description = "Tool for estimating prediction error"
-authors = ["Kevin Fry <kevinbfry@stanford.edu>"]
+authors = ["Kevin Fry <fry.kevin.b@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
@@ -14,7 +14,7 @@ pytest = ">=7"
 numba = ">=0.56.3"
 scikit-gstat = ">=1.0.2"
 llvmlite = ">=0.39.1"
-scikit-learn = ">=1.3"
+scikit-learn = "^1.6"
 # scikit-learn = {git = "https://github.com/kevinbfry/scikit-learn.git"}
 
 [tool.poetry.group.docs]
