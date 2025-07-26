@@ -28,6 +28,18 @@ from spe.estimators import (
 
 from .data_generation import create_clus_split, gen_matern_X, gen_rbf_X ## TODO: gen_rbf_X never used, only imported from here by notebooks. should data_generation not be in package?
 
+def gen_X_beta(n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):
+    if X_kernel == 'rbf':
+        X = gen_rbf_X(c_x, c_y, p)
+    elif X_kernel == 'matern':
+        X = gen_matern_X(c_x, c_y, p, length_scale=ls, nu=nu)
+    else:
+        X = np.random.randn(n,p)
+    beta = np.zeros(p)
+    idx = np.random.choice(p, size=s)
+    beta[idx] = np.random.uniform(-1, 1, size=s)
+
+    return X, beta
 
 class ErrorComparer(object):
     DATA_ARGS = ["X", "y", "y2", "tr_idx", "Chol_y", "Chol_ystar"]
@@ -38,18 +50,6 @@ class ErrorComparer(object):
     GENCP_METHODS = (cp_smoother, cp_adaptive_smoother, cp_arbitrary) + BAGCP_METHODS
     TESTERR_METHODS = (new_y_est,)
 
-    def gen_X_beta(self, n, p, s, X_kernel=None, c_x=None, c_y=None, ls=None, nu=None):
-        if X_kernel == 'rbf':
-            X = gen_rbf_X(c_x, c_y, p)
-        elif X_kernel == 'matern':
-            X = gen_matern_X(c_x, c_y, p, length_scale=ls, nu=nu)
-        else:
-            X = np.random.randn(n,p)
-        beta = np.zeros(p)
-        idx = np.random.choice(p, size=s)
-        beta[idx] = np.random.uniform(-1, 1, size=s)
-
-        return X, beta
 
     def gen_mu_sigma(
         self, 
@@ -79,6 +79,7 @@ class ErrorComparer(object):
                     + rng.normal() * (X[:,2] > rng.normal())
                     + rng.normal() * (X[:,3] > rng.normal())
                     + rng.normal() * (X[:,4] > rng.normal())
+                    # 1.5*(X[:,0] > 1) - 0.5 * (X[:,3] < 0)
                 )
 
             mu = get_piecewise_const_mu(X)
@@ -116,18 +117,17 @@ class ErrorComparer(object):
     def gen_ys(self, mu, Chol_y, Chol_ystar, sigma=1.0, Cov_y_ystar=None, delta=1.): ## TODO: why is delta here?
         n = len(mu)
 
-        Sigma_t = Chol_y @ Chol_y.T
-        Sigma_s = Chol_ystar @ Chol_ystar.T
-        
         if Cov_y_ystar is None:
             eps = Chol_y @ np.random.randn(n)
             eps2 = Chol_ystar @ np.random.randn(n)
-            full_Cov = np.block([
-                [Sigma_t, np.zeros_like(Sigma_t)],
-                [np.zeros_like(Sigma_t), Sigma_s]
-            ])
-            self.Chol_f = np.linalg.cholesky(full_Cov)
+            # full_Cov = np.block([
+            #     [Sigma_t, np.zeros_like(Sigma_t)],
+            #     [np.zeros_like(Sigma_t), Sigma_s]
+            # ])
+            # self.Chol_f = np.linalg.cholesky(full_Cov)
         else:
+            Sigma_t = Chol_y @ Chol_y.T
+            Sigma_s = Chol_ystar @ Chol_ystar.T
             full_Cov = np.block([
                 [Sigma_t, Cov_y_ystar],
                 [Cov_y_ystar, Sigma_s]
@@ -211,7 +211,7 @@ class ErrorComparer(object):
 
         for i in tqdm(range(niter)):
             if gen_beta:
-                X, beta = self.gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
+                X, beta = gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
                 mu, sigma = self.gen_mu_sigma(X, beta, snr, const_mu=const_mu, friedman_mu=friedman_mu, piecewise_const_mu=piecewise_const_mu, sigma=noise_sigma)
                 Chol_y, Chol_ystar, Cov_y_ystar = self.preprocess_chol(
                     self.Chol_y, self.Chol_ystar, sigma, n, Cov_y_ystar=self.Cov_y_ystar
@@ -241,7 +241,7 @@ class ErrorComparer(object):
                 if self.Chol_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Chol_ystar != None")
 
-                if est_sigma == 'over':
+                if est_sigma == 'over': ## TODO: what this?
                     X_over = np.random.randn(n,p)
                     X_est = np.hstack([X, X_over])
                 else:
@@ -269,14 +269,15 @@ class ErrorComparer(object):
                             "y2": y2
                         }
                     }
-                elif ests[j]  == by_spatial:
+                elif ests[j] == by_spatial:
+                    raise ValueError("commented out Chol_f")
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
-                            "Chol_f": self.Chol_f, ## TODO: this is still using truth
+                            # "Chol_f": self.Chol_f, ## TODO: this is still using truth
                             "y": y, 
                         }
                     }
-                elif ests[j]  == simple_train_test_split:
+                elif ests[j] == simple_train_test_split:
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
                             "y": y, 
