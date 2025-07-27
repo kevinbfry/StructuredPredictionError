@@ -604,7 +604,7 @@ def cp_adaptive_smoother(
     Cov_y_ystar=None,
     nboot=100,
     alpha=.05,
-    full_refit=True,
+    full_refit=False,
     use_trace_corr=False,
 ):
     """Computes Generalized Mallows's Cp for adaptive linear smoothers.

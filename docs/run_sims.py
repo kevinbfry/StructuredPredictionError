@@ -52,9 +52,9 @@ def main():
     args = parser.parse_args()
 
     if args.param_files is not None and len(args.param_files) > 0:
-        param_files = [f for f in args.param_files if os.path.isfile(os.path.join(PARAMETERS_DIR, f))]
+        param_files = [f for f in args.param_files if not f.startswith("sims_base") and os.path.isfile(os.path.join(PARAMETERS_DIR, f))]
     else:
-        param_files = [f for f in os.listdir(PARAMETERS_DIR) if f.endswith(".py") and f != "__init__.py"]
+        param_files = [f for f in os.listdir(PARAMETERS_DIR) if not f.startswith("sims_base") and f.endswith(".py") and f != "__init__.py"]
 
     if not param_files:
         print(f"No parameter files found in '{PARAMETERS_DIR}'.")

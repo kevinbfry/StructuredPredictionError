@@ -51,6 +51,10 @@ class ErrorComparer(object):
     TESTERR_METHODS = (new_y_est,)
 
 
+    def should_est(self, es):
+        return es == "corr_resp" or es == True
+
+
     def gen_mu_sigma(
         self, 
         X, 
@@ -209,6 +213,11 @@ class ErrorComparer(object):
                 self.Chol_y, self.Chol_ystar, sigma, n, Cov_y_ystar=self.Cov_y_ystar
             )
 
+        if hasattr(est_sigma, 'len'):
+            assert(len(est_sigma) == len(est_kwargs))
+        else:
+            est_sigma = [est_sigma]*len(est_kwargs)
+
         for i in tqdm(range(niter)):
             if gen_beta:
                 X, beta = gen_X_beta(n, p, s, X_kernel=X_kernel, c_x=coord[:,0], c_y=coord[:,1], ls=X_ls, nu=X_nu)
@@ -237,15 +246,18 @@ class ErrorComparer(object):
                 X_tr, y_tr, coord_tr = self.get_train(X, y, coord, tr_idx)
                 cvChol_y = Chol_y[tr_idx, :][:, tr_idx]
 
-            if est_sigma:
+            # if est_sigma:
+            if np.any([self.should_est(es) for es in est_sigma]):
                 if self.Chol_ystar is not None:
                     raise ValueError("est_sigma=True not implemented for Chol_ystar != None")
 
-                if est_sigma == 'over': ## TODO: what this?
-                    X_over = np.random.randn(n,p)
-                    X_est = np.hstack([X, X_over])
-                else:
-                    X_est = X
+                # if est_sigma == 'over': ## TODO: what this?
+                #     X_over = np.random.randn(n,p)
+                #     X_est = np.hstack([X, X_over])
+                # else:
+                #     X_est = X
+                X_est = X
+
                 est_covs = est_Sigma(X_est, y, coord, est_sigma, est_sigma_model)
                 if est_sigma == 'corr_resp':
                     est_Chol_y = est_covs[0]
@@ -263,7 +275,8 @@ class ErrorComparer(object):
                 if ests[j] in self.TESTERR_METHODS:
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
-                            "Chol_y": est_Chol_y, 
+                            # "Chol_y": est_Chol_y,
+                            "Chol_y": est_Chol_y if self.should_est(est_sigma[j]) else Chol_y, 
                             "tr_idx": tr_idx, 
                             "y": y, 
                             "y2": y2
@@ -288,20 +301,24 @@ class ErrorComparer(object):
                     est_kwargs[j] = {
                         **est_kwargs[j],
                         **{"X": X, 
-                            "Chol_y": est_Chol_y,
-                            "Chol_ystar": est_Chol_ystar,
+                            # "Chol_y": est_Chol_y,
+                            # "Chol_ystar": est_Chol_ystar,
+                            "Chol_y": est_Chol_y if self.should_est(est_sigma[j]) else Chol_y,
+                            "Chol_ystar": est_Chol_ystar if self.should_est(est_sigma[j]) else Chol_ystar,
                             "tr_idx": tr_idx, 
                             "y": y
                         },
                     }
-                    if not (delta is None): ## TODO: think this can be 'if delta is not None'
+                    if delta is not None: 
                         if ests[j] in self.CV_METHODS:
-                            est_kwargs[j] = {**est_kwargs[j], **{"Cov_y_ystar": est_Cov_y_ystar}}
+                            # est_kwargs[j] = {**est_kwargs[j], **{"Cov_y_ystar": est_Cov_y_ystar}}
+                            est_kwargs[j] = {**est_kwargs[j], **{"Cov_y_ystar": est_Cov_y_ystar if self.should_est(est_sigma[j]) else Cov_y_ystar}}
 
                 if ests[j] in self.GENCP_METHODS:
                     est_kwargs[j] = {
                         **est_kwargs[j],
-                        **{"Cov_y_ystar": est_Cov_y_ystar}
+                        # **{"Cov_y_ystar": est_Cov_y_ystar}
+                        **{"Cov_y_ystar": est_Cov_y_ystar if self.should_est(est_sigma[j]) else Cov_y_ystar}
                     }
 
             for j, est in enumerate(ests):

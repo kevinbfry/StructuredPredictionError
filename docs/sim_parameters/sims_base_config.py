@@ -1,8 +1,8 @@
-import numpy as np
-from sklearn.linear_model import LassoCV, RidgeCV, Lasso
+import plotly.express as px
 
-from spe.estimators import new_y_est, kfoldcv, kmeanscv, cp_arbitrary as spe_est
-
+## Model parameters
+def get_model_array(models):
+    return [m.__name__ for m in models]
 
 ## number of realizations to run
 NITER = 100
@@ -29,59 +29,6 @@ X_NU = 2.5
 FAIR = False
 EST_SIGMA = False
 
-## Model parameters
-def get_model_array(models):
-    return [m.__name__ for m in models]
-
-MODEL_NAMES = get_model_array([
-    Lasso,
-    RidgeCV,
-    LassoCV,
-])
-# MODEL_NAMES = ["Lasso", "Ridge CV", "Lasso CV"]
-
-lambdas = np.logspace(.01, 10, 10).tolist()
-MODEL_KWARGS = [
-    {'alpha': .31},
-    {'alphas': lambdas},
-    {'alphas': lambdas},
-]
-
-SPE_EST_STR = spe_est.__name__
-## Estimator parameters
-def get_est_array(est):
-    return [
-        new_y_est.__name__,
-        new_y_est.__name__,
-        est,
-        kfoldcv.__name__, 
-        kmeanscv.__name__
-    ]
-
-EST_STRS = get_est_array(SPE_EST_STR)
-
-alpha = .05
-nboot = 100
-k = 5
-EST_KWARGS= [
-    {'alpha': None,
-    'full_refit': False},
-    {'alpha': alpha,
-    'full_refit': False},
-    {'alpha': alpha, 
-    'use_trace_corr': False, 
-    'nboot': nboot},
-    {'k': k},
-    {'k': k}
-]
+## Plotting parameters
+COLORS = px.colors.qualitative.Bold
 EST_NAMES = ["GenCp", "KFCV", "SPCV"]
-
-## Markdown parameters
-def get_model_md_str(spe_est_str):
-    return spe_est_str.replace("cp_","").replace("_", " ").title()
-
-def get_est_md_str(spe_est_str):
-    return f"spe.estimators.{spe_est_str}"
-
-MODEL_MD_STR = get_model_md_str(SPE_EST_STR)
-EST_MD_STR = get_est_md_str(SPE_EST_STR)
