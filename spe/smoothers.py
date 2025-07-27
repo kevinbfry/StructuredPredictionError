@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import numpy as np
 
 from sklearn.linear_model import LinearRegression as LinReg
@@ -5,7 +6,41 @@ from sklearn.preprocessing import SplineTransformer
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from .tree import AdaptiveLinearSmoother
+class AdaptiveLinearSmoother(ABC):
+    """ABC class all adaptive linear smoother models should inherit from.
+
+    Enforces subclasses to have the method necessary to be valid `model` inputs to 
+    :func:`~spe.estimators.cp_adaptive_smoother`, :func:`~spe.estimators.cp_bagged` when
+    `full_refit` is `True`.
+    """
+    @abstractmethod
+    def get_linear_smoother(self, X):
+        """Get fitted adaptive linear smoother matrix :math:`S(W)`."""
+        pass
+
+    def predict(
+        self,
+        X,
+        tr_idx=None,
+        ts_idx=None,
+        y_refit=None,
+    ):
+        """Compute :math:`S(W)y_{refit}` as predictions.
+        
+        Computes predictions as adaptive linear smoothing where :math:`S(W)` is the
+        output of instance's :func:`~spe.tree.AdaptiveLinearSmoother`.
+        """
+        check_is_fitted(self)
+        if tr_idx is None and ts_idx is None and y_refit is None:
+            return super().predict(X)
+        elif tr_idx is not None and ts_idx is not None and y_refit is not None:
+            Ps = self.get_linear_smoother(X, tr_idx, ts_idx)
+            preds = [P @ y_refit for P in Ps]
+            pred = np.mean(preds, axis=0)
+            return pred
+        else:
+            raise ValueError("Either all of 'tr_idx', 'ts_idx', 'y_refit' must be None or all must not be None")
+
 
 
 class LinearRegression(AdaptiveLinearSmoother, LinReg):

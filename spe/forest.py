@@ -20,7 +20,7 @@ from sklearn.utils.validation import (
     check_is_fitted,
 )
 
-from .tree import AdaptiveLinearSmoother
+from .smoothers import AdaptiveLinearSmoother
 
 
 MAX_INT = np.iinfo(np.int32).max

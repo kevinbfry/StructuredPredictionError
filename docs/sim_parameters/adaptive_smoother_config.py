@@ -1,50 +1,28 @@
 import numpy as np
 from sklearn.linear_model import LassoCV, RidgeCV, Lasso
 
-from spe.estimators import new_y_est, kfoldcv, kmeanscv, cp_arbitrary as spe_est
+from docs.sim_parameters.sims_base_config import *
+from spe.estimators import new_y_est, kfoldcv, kmeanscv, cp_adaptive_smoother 
+from spe.tree import Tree
+from spe.relaxed_lasso import RelaxedLasso
 
-
-## number of realizations to run
-NITER = 100
-
-## data generation parameters
-GSIZE = 100#10
-SQRT_N = 10#**2
-P = 200
-S = 5
-DELTA = 0.75
-SNR = 0.4
-TR_FRAC = .5
-USE_SPATIAL_SPLIT = False
-
-NOISE_KERNEL = 'matern'
-NOISE_LENGTH_SCALE = 5.#1.
-NOISE_NU = .5
-
-X_KERNEL = 'matern'
-X_LENGTH_SCALE = 5.
-X_NU = 2.5
-
-## ErrorComparer parameters
-FAIR = False
-EST_SIGMA = False
+spe_est = cp_adaptive_smoother
 
 ## Model parameters
 def get_model_array(models):
     return [m.__name__ for m in models]
 
 MODEL_NAMES = get_model_array([
-    Lasso,
-    RidgeCV,
-    LassoCV,
+    RelaxedLasso,
+    Tree,
 ])
 # MODEL_NAMES = ["Lasso", "Ridge CV", "Lasso CV"]
 
-lambdas = np.logspace(.01, 10, 10).tolist()
+max_depth = 3
+lambd = .31
 MODEL_KWARGS = [
-    {'alpha': .31},
-    {'alphas': lambdas},
-    {'alphas': lambdas},
+    {'lambd': lambd},
+    {'max_depth': max_depth},
 ]
 
 SPE_EST_STR = spe_est.__name__
@@ -70,18 +48,12 @@ EST_KWARGS= [
     'full_refit': False},
     {'alpha': alpha, 
     'use_trace_corr': False, 
+    'full_refit': False,
     'nboot': nboot},
     {'k': k},
     {'k': k}
 ]
-EST_NAMES = ["GenCp", "KFCV", "SPCV"]
 
 ## Markdown parameters
-def get_model_md_str(spe_est_str):
-    return spe_est_str.replace("cp_","").replace("_", " ").title()
-
-def get_est_md_str(spe_est_str):
-    return f"spe.estimators.{spe_est_str}"
-
 MODEL_MD_STR = get_model_md_str(SPE_EST_STR)
 EST_MD_STR = get_est_md_str(SPE_EST_STR)

@@ -22,7 +22,7 @@ from sklearn.utils.validation import (
 )
 from sklearn.ensemble._base import _partition_estimators
 
-from .tree import AdaptiveLinearSmoother
+from .smoothers import AdaptiveLinearSmoother
 
 MAX_INT = np.iinfo(np.int32).max
 

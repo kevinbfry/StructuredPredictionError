@@ -7,7 +7,7 @@ from sklearn.ensemble import BaggingRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .tree import AdaptiveLinearSmoother
+from .smoothers import AdaptiveLinearSmoother
 
 
 class RelaxedLasso(AdaptiveLinearSmoother, BaseEstimator):
