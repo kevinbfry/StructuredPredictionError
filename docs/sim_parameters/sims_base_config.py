@@ -28,7 +28,9 @@ X_NU = 2.5
 ## ErrorComparer parameters
 FAIR = False
 EST_SIGMA = False
+FRIEDMAN_MU = False
 
 ## Plotting parameters
 COLORS = px.colors.qualitative.Bold
 EST_NAMES = ["GenCp", "KFCV", "SPCV"]
+HAS_ELEV_ERR = True
