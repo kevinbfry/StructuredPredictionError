@@ -9,7 +9,7 @@ from spe.estimators import new_y_est, simple_train_test_split, cp_bagged as spe_
 SQRT_N = 20
 P = 5
 TR_FRAC = .25
-USE_SPATIAL_SPLIT = False
+USE_SPATIAL_SPLIT = True
 
 NOISE_LENGTH_SCALE = 1.#5.
 
@@ -51,7 +51,7 @@ EST_KWARGS = [
 FRIEDMAN_MU = True
 
 ## Plotting parameters
-COLORS=[px.colors.qualitative.Bold[i] for i in [0,9]]
+COLORS=[GENCP_COLOR, SPLIT_COLOR]
 EST_NAMES = ["GenCp", "Split"]
 HAS_ELEV_ERR = False
 

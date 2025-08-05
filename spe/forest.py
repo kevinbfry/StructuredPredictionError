@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.base import _fit_context
 from sklearn.tree._tree import DOUBLE, DTYPE
 from sklearn.utils import check_random_state, compute_sample_weight
+# from sklearn.utils.validation import validate_data
 from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.parallel import Parallel, delayed
 from sklearn.ensemble._forest import (
@@ -421,12 +422,14 @@ class ParametricRandomForestRegressor(AdaptiveLinearSmoother, RandomForestRegres
             raise ValueError("sparse multilabel-indicator for y is not supported.")
 
         X, y = self._validate_data(
+        # X, y = validate_data(
             X,
             y,
             multi_output=True,
             accept_sparse="csc",
             dtype=DTYPE,
             force_all_finite=False,
+            # ensure_all_finite=False
         )
         # _compute_missing_values_in_feature_mask checks if X has missing values and
         # will raise an error if the underlying tree base estimator can't handle missing

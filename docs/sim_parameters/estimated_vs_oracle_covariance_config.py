@@ -42,7 +42,7 @@ EST_KWARGS = [
 EST_SIGMA = [False, False, False, True, False ,False]
 
 ## Plotting parameters
-COLORS=[px.colors.qualitative.Bold[i] for i in [0,5,1,2]]
+COLORS=[GENCP_COLOR, ESTGENCP_COLOR, KFCV_COLOR, SPCV_COLOR]
 EST_NAMES = ["OGenCp", "EGenCp", "KFCV", "SPCV"]
 
 ## Markdown parameters

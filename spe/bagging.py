@@ -9,6 +9,7 @@ from scipy.sparse import issparse
 
 from sklearn.ensemble import BaggingRegressor
 from sklearn.utils import check_random_state
+# from sklearn.utils.validation import validate_data
 from sklearn.utils._mask import indices_to_mask
 from sklearn.utils.metadata_routing import (
     _raise_for_unsupported_routing,
@@ -378,11 +379,13 @@ class ParametricBaggingRegressor(AdaptiveLinearSmoother, BaggingRegressor):
         _raise_for_unsupported_routing(self, "fit", sample_weight=sample_weight)
         # Convert data (X is required to be 2d and indexable)
         X, y = self._validate_data(
+        # X, y = validate_data(
             X,
             y,
             accept_sparse=["csr", "csc"],
             dtype=None,
             force_all_finite=False,
+            # ensure_all_finite=False,
             multi_output=True,
         )
         ### KF:
