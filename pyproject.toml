@@ -6,7 +6,7 @@ authors = ["Kevin Fry <fry.kevin.b@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = ">=3.10"
 numpy = ">=1.22.3"
 scipy = ">=1.11.4"
 papermill = ">=2.0.0"
@@ -14,7 +14,7 @@ pytest = ">=7"
 numba = ">=0.56.3"
 scikit-gstat = ">=1.0.2"
 llvmlite = ">=0.39.1"
-scikit-learn = "^1.6"
+scikit-learn = ">=1.5,<1.6"
 # scikit-learn = {git = "https://github.com/kevinbfry/scikit-learn.git"}
 
 [tool.poetry.group.docs]

@@ -1,5 +1,16 @@
 import plotly.express as px
 
+GENCP_COLOR = px.colors.qualitative.Bold[0]
+KFCV_COLOR = px.colors.qualitative.Bold[1]
+SPCV_COLOR = px.colors.qualitative.Bold[2]
+BLOOCV_COLOR = px.colors.qualitative.Bold[3]
+TRGENCP_COLOR = px.colors.qualitative.Bold[4]
+ESTGENCP_COLOR = px.colors.qualitative.Bold[5]
+BY05_COLOR = px.colors.qualitative.Bold[6]
+BY1_COLOR = px.colors.qualitative.Bold[7]
+BY5_COLOR = px.colors.qualitative.Bold[8]
+SPLIT_COLOR = px.colors.qualitative.Bold[9]
+
 ## Model parameters
 def get_model_array(models):
     return [m.__name__ for m in models]
@@ -30,7 +41,10 @@ FAIR = False
 EST_SIGMA = False
 FRIEDMAN_MU = False
 
+## Estimator parameters
+INCL_CV = True
+
 ## Plotting parameters
-COLORS = px.colors.qualitative.Bold
+COLORS = [GENCP_COLOR, KFCV_COLOR, SPCV_COLOR]
 EST_NAMES = ["GenCp", "KFCV", "SPCV"]
 HAS_ELEV_ERR = True
