@@ -118,25 +118,41 @@ class ErrorComparer(object):
 
         return Chol_y, Chol_ystar, Cov_y_ystar
 
-    def gen_ys(self, mu, Chol_y, Chol_ystar, sigma=1.0, Cov_y_ystar=None, delta=1.): ## TODO: why is delta here?
+    def gen_ys(self, mu, Chol_y, Chol_ystar, sigma=1.0, Cov_y_ystar=None, delta=1., need_full_cov=False): ## TODO: why is delta here?
         n = len(mu)
+
+       
+        if need_full_cov or Cov_y_ystar is not None:
+            if Cov_y_ystar is None:
+                off_diag = np.zeros_like(Chol_y)
+            else:
+                off_diag = Cov_y_ystar
+            Sigma_t = Chol_y @ Chol_y.T
+            Sigma_s = Chol_ystar @ Chol_ystar.T
+            full_Cov = np.block([
+                [Sigma_t, off_diag],
+                [off_diag, Sigma_s]
+            ])
+            self.Chol_f = Chol_f = np.linalg.cholesky(full_Cov)
 
         if Cov_y_ystar is None:
             eps = Chol_y @ np.random.randn(n)
             eps2 = Chol_ystar @ np.random.randn(n)
+            off_diag = np.zeros_like(Chol_y)
             # full_Cov = np.block([
             #     [Sigma_t, np.zeros_like(Sigma_t)],
             #     [np.zeros_like(Sigma_t), Sigma_s]
             # ])
-            # self.Chol_f = np.linalg.cholesky(full_Cov)
+            # self.Chol_f = np.linalg.cholesky(full_Cov) ## for by_spatial
         else:
-            Sigma_t = Chol_y @ Chol_y.T
-            Sigma_s = Chol_ystar @ Chol_ystar.T
-            full_Cov = np.block([
-                [Sigma_t, Cov_y_ystar],
-                [Cov_y_ystar, Sigma_s]
-            ])
-            self.Chol_f = Chol_f = np.linalg.cholesky(full_Cov)
+            # Sigma_t = Chol_y @ Chol_y.T
+            # Sigma_s = Chol_ystar @ Chol_ystar.T
+            off_diag = Cov_y_ystar
+            # full_Cov = np.block([
+            #     [Sigma_t, Cov_y_ystar],
+            #     [Cov_y_ystar, Sigma_s]
+            # ])
+            # self.Chol_f = Chol_f = np.linalg.cholesky(full_Cov)
 
             full_eps = Chol_f @ np.random.randn(2*n)
             eps = full_eps[:n]
@@ -239,7 +255,7 @@ class ErrorComparer(object):
                     )
 
             y, y2 = self.gen_ys(
-                mu, Chol_y, Chol_ystar, sigma=sigma, Cov_y_ystar=Cov_y_ystar, delta=delta
+                mu, Chol_y, Chol_ystar, sigma=sigma, Cov_y_ystar=Cov_y_ystar, delta=delta, need_full_cov=by_spatial in ests
             )
 
             if not fair:
@@ -283,10 +299,10 @@ class ErrorComparer(object):
                         }
                     }
                 elif ests[j] == by_spatial:
-                    raise ValueError("commented out Chol_f")
+                    # raise ValueError("commented out Chol_f")
                     est_kwargs[j] = {**est_kwargs[j], **{
                             "X": X, 
-                            # "Chol_f": self.Chol_f, ## TODO: this is still using truth
+                            "Chol_f": self.Chol_f, ## TODO: this is still using truth
                             "y": y, 
                         }
                     }

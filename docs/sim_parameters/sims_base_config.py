@@ -19,7 +19,7 @@ def get_model_array(models):
 NITER = 100
 
 ## data generation parameters
-GSIZE = 100#10
+GSIZE = 30#100#10
 SQRT_N = 10#**2
 P = 200
 S = 5

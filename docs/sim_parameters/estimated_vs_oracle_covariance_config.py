@@ -7,7 +7,7 @@ from spe.estimators import cp_arbitrary as spe_est
 ## data generation parameters
 SQRT_N = 20
 P = 5
-TR_FRAC = .25
+TR_FRAC = 1.#.25
 USE_SPATIAL_SPLIT = False
 
 ## Model parameters
