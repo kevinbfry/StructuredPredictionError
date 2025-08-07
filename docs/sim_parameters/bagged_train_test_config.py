@@ -11,7 +11,7 @@ P = 5
 TR_FRAC = .25
 USE_SPATIAL_SPLIT = False
 
-NOISE_LENGTH_SCALE = 1.#5.
+NOISE_LENGTH_SCALE = 5.#1.
 
 ## Model parameters
 MODEL_NAMES = get_model_array([

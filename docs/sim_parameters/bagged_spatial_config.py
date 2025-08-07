@@ -11,7 +11,7 @@ P = 5
 TR_FRAC = .25
 USE_SPATIAL_SPLIT = True
 
-NOISE_LENGTH_SCALE = 1.#5.
+NOISE_LENGTH_SCALE = 5.#1.
 
 ## Model parameters
 MODEL_NAMES = get_model_array([
@@ -51,7 +51,7 @@ EST_KWARGS = [
 FRIEDMAN_MU = True
 
 ## Plotting parameters
-COLORS=[GENCP_COLOR, SPLIT_COLOR]
+COLORS=[px.colors.qualitative.Bold[i] for i in [0,9]]
 EST_NAMES = ["GenCp", "Split"]
 HAS_ELEV_ERR = False
 
