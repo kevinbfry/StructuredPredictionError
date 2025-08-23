@@ -6,7 +6,6 @@ from spe.estimators import cp_arbitrary as spe_est
 
 ## data generation parameters
 SQRT_N = 20#**2
-TR_FRAC = .25
 
 ## Model parameters
 MODEL_NAMES = get_model_array([
@@ -43,7 +42,7 @@ EST_KWARGS = [
 ## Plotting parameters
 COLORS = [GENCP_COLOR, TRGENCP_COLOR]
 EST_NAMES = ["Rand Corr", "Trace Corr"]
-HAS_ELEV_ERR = True
+ERR_BARS = True
 
 ## Markdown parameters
 LATEX_STR = "$\mathrm{tr}(\Theta_p (\Sigma_{Y^*} - \Sigma_Y)) - \|\Sigma_Y\Sigma_\omega^{-1}\omega\|_2^2$ compared with the deterministic trace correction $\mathrm{tr}(\Theta_p (\Sigma_{Y^*} - \Sigma_{W^\perp}))$."

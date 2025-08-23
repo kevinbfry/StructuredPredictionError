@@ -1,6 +1,3 @@
-import numpy as np
-from sklearn.linear_model import LassoCV, RidgeCV, Lasso
-
 from docs.sim_parameters.sims_base_config import *
 from spe.estimators import cp_adaptive_smoother as spe_est
 from spe.tree import Tree

@@ -29,7 +29,7 @@ TR_FRAC = .5
 USE_SPATIAL_SPLIT = False
 
 NOISE_KERNEL = 'matern'
-NOISE_LENGTH_SCALE = 5.#1.
+NOISE_LENGTH_SCALE = 5.
 NOISE_NU = .5
 
 X_KERNEL = 'matern'
@@ -43,8 +43,10 @@ FRIEDMAN_MU = False
 
 ## Estimator parameters
 INCL_CV = True
+TWO_Y_EST = True
 
 ## Plotting parameters
 COLORS = [GENCP_COLOR, KFCV_COLOR, SPCV_COLOR]
 EST_NAMES = ["GenCp", "KFCV", "SPCV"]
 HAS_ELEV_ERR = True
+ERR_BARS = False
