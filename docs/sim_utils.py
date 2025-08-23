@@ -1,13 +1,19 @@
 from spe.estimators import new_y_est, kfoldcv, kmeanscv
 
 ## Estimator parameters
-def get_est_array(est_str_list, incl_cv=True):
+def get_est_array(est_str_list, incl_cv=True, two_y_est=True):
     # if isinstance(est_str_list, str):
     #     est_str_list = [est_str_list]
-    est_array = [
-        new_y_est.__name__,
-        new_y_est.__name__,
-    ] 
+    if two_y_est:
+        est_array = [
+            new_y_est.__name__,
+            new_y_est.__name__,
+        ] 
+    else:
+        est_array = [
+            new_y_est.__name__,
+        ] 
+        
     est_array.extend(est_str_list)
     if incl_cv:
         est_array.extend([

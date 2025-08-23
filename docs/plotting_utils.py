@@ -10,6 +10,7 @@ def gen_model_barplots(
         model_names, 
         est_names, 
         title, 
+        xaxis_title="Method",
         yaxis_title="Relative MSE",
         has_test_risk=True, 
         has_elev_err=False, 
@@ -66,7 +67,7 @@ def gen_model_barplots(
                 textposition='outside',
             ), row=1, col=i+1)
 
-        fig.update_xaxes(title_text="Method", row=1, col=i+1)
+        fig.update_xaxes(title_text=xaxis_title, row=1, col=i+1)
         if has_test_risk:
             fig.add_hline(
                 y=1., 
